@@ -1,0 +1,647 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/berg.jpeg">
+  <link rel="icon" href="/img/berg.jpeg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="bergzha">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="基本概念正向渲染下，是否丢弃某片元的操作是在各种测试之后，如果在frag阶段做大量算法（如光照计算），而后进行的测试将该片元舍弃，等于做了无用功。当光照数量可观时，严重消耗了算力。而延迟渲染下，先渲染场景一次，记录有效的 位置向量(Position Vector)、颜色向量(Color Vector)、法向量(Normal Vector)和&#x2F;或镜面值(Specular Value)，这时">
+<meta property="og:type" content="article">
+<meta property="og:title" content="deferred_shading">
+<meta property="og:url" content="http://example.com/2021/05/20/deferred-shading/index.html">
+<meta property="og:site_name" content="小小博客站">
+<meta property="og:description" content="基本概念正向渲染下，是否丢弃某片元的操作是在各种测试之后，如果在frag阶段做大量算法（如光照计算），而后进行的测试将该片元舍弃，等于做了无用功。当光照数量可观时，严重消耗了算力。而延迟渲染下，先渲染场景一次，记录有效的 位置向量(Position Vector)、颜色向量(Color Vector)、法向量(Normal Vector)和&#x2F;或镜面值(Specular Value)，这时">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2021/05/20/deferred-shading/deferred_g_buffer.png">
+<meta property="og:image" content="http://example.com/2021/05/20/deferred-shading/deferred_shading.png">
+<meta property="og:image" content="http://example.com/2021/05/20/deferred-shading/deferred_lights_no_depth.png">
+<meta property="og:image" content="http://example.com/2021/05/20/deferred-shading/deferred_lights_depth.png">
+<meta property="article:published_time" content="2021-05-20T05:14:00.000Z">
+<meta property="article:modified_time" content="2024-01-17T05:04:38.440Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="lighting">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://example.com/2021/05/20/deferred-shading/deferred_g_buffer.png">
+  
+  
+  
+  <title>deferred_shading - 小小博客站</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.7","typing":{"enable":false,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":false,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":{"measurement_id":null},"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml","include_content_in_search":true};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 45vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>专业野人</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/" target="_self">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/" target="_self">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/" target="_self">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/" target="_self">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/" target="_self">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle">deferred_shading</span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2021-05-20 13:14" pubdate>
+          2021年5月20日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          4.5k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          38 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <h1 id="seo-header">deferred_shading</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h3 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h3><p>正向渲染下，是否丢弃某片元的操作是在各种测试之后，如果在frag阶段做大量算法（如光照计算），而后进行的测试将该片元舍弃，等于做了无用功。当光照数量可观时，严重消耗了算力。<br>而延迟渲染下，先渲染场景一次，记录有效的 位置向量(Position Vector)、颜色向量(Color Vector)、法向量(Normal Vector)和&#x2F;或镜面值(Specular Value)，这时候的片段信息都是作为最顶层的片段，保证了对于在光照处理阶段中处理的每一个像素都只处理一次，再使用G缓冲中的几何数据对每一个片段计算场景的光照。</p>
+<p><img src="/2021/05/20/deferred-shading/deferred_g_buffer.png" srcset="/img/loading.gif" lazyload alt="d"></p>
+<h3 id="优缺点"><a href="#优缺点" class="headerlink" title="优缺点"></a>优缺点</h3><p>缺点：不能渲染透明物体 gbuffer需要大量带宽</p>
+<h3 id="vulkan实践"><a href="#vulkan实践" class="headerlink" title="vulkan实践"></a>vulkan实践</h3><ul>
+<li>vulkan实现延迟渲染的方法<ol>
+<li>多pass,一个gbuffer pass生成gbuffer,一个pass处理光照计算，中间使用semaphores同步，需要submit两次</li>
+<li>subpass,使用一个pass内嵌两个subpass</li>
+</ol>
+</li>
+</ul>
+<h2 id="G缓冲"><a href="#G缓冲" class="headerlink" title="G缓冲"></a>G缓冲</h2><p>G缓冲(G-buffer)是对所有用来储存光照相关的数据，并在最后的光照处理阶段中使用的所有纹理的总称。趁此机会，让我们顺便复习一下在正向渲染中照亮一个片段所需要的所有数据：</p>
+<p>一个3D位置向量来计算(插值)片段位置变量供lightDir和viewDir使用<br>一个RGB漫反射颜色向量，也就是反照率(Albedo)<br>一个3D法向量来判断平面的斜率<br>一个镜面强度(Specular Intensity)浮点值<br>所有光源的位置和颜色向量<br>玩家或者观察者的位置向量<br>有了这些(逐片段)变量的处置权，我们就能够计算我们很熟悉的(布林-)冯氏光照(Blinn-Phong Lighting)了。光源的位置，颜色，和玩家的观察位置可以通过uniform变量来设置，但是其它变量对于每个对象的片段都是不同的。如果我们能以某种方式传输完全相同的数据到最终的延迟光照处理阶段中，我们就能计算与之前相同的光照效果了，尽管我们只是在渲染一个2D方形的片段。</p>
+<p>OpenGL并没有限制我们能在纹理中能存储的东西，所以现在你应该清楚在一个或多个屏幕大小的纹理中储存所有逐片段数据并在之后光照处理阶段中使用的可行性了。因为G缓冲纹理将会和光照处理阶段中的2D方形一样大，我们会获得和正向渲染设置完全一样的片段数据，但在光照处理阶段这里是一对一映射。</p>
+<p>整个过程在伪代码中会是这样的：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs 伪代码">while(...) // 游戏循环<br>&#123;<br>    // 1. 几何处理阶段：渲染所有的几何/颜色数据到G缓冲 <br>    glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);<br>    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);<br>    gBufferShader.Use();<br>    for(Object obj : Objects)<br>    &#123;<br>        ConfigureShaderTransformsAndUniforms();<br>        obj.Draw();<br>    &#125;  <br>    // 2. 光照处理阶段：使用G缓冲计算场景的光照<br>    glBindFramebuffer(GL_FRAMEBUFFER, 0);<br>    glClear(GL_COLOR_BUFFER_BIT);<br>    lightingPassShader.Use();<br>    BindAllGBufferTextures();<br>    SetLightingUniforms();<br>    RenderQuad();<br>&#125;<br></code></pre></td></tr></table></figure>
+<p>对于每一个片段我们需要储存的数据有：一个位置向量、一个法向量，一个颜色向量，一个镜面强度值。所以我们在几何处理阶段中需要渲染场景中所有的对象并储存这些数据分量到G缓冲中。我们可以再次使用多渲染目标(Multiple Render Targets)来在一个渲染处理之内渲染多个颜色缓冲，在之前的泛光教程中我们也简单地提及了它。</p>
+<p>对于几何渲染处理阶段，我们首先需要初始化一个帧缓冲对象，我们很直观的称它为gBuffer，它包含了多个颜色缓冲和一个单独的深度渲染缓冲对象(Depth Renderbuffer Object)。对于位置和法向量的纹理，我们希望使用高精度的纹理(每分量16或32位的浮点数)，而对于反照率和镜面值，使用默认的纹理(每分量8位浮点数)就够了。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><code class="hljs 伪代码"><br>GLuint gBuffer;<br>glGenFramebuffers(1, &amp;gBuffer);<br>glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);<br>GLuint gPosition, gNormal, gColorSpec;<br><br>// - 位置颜色缓冲<br>glGenTextures(1, &amp;gPosition);<br>glBindTexture(GL_TEXTURE_2D, gPosition);<br>glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);<br>glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);<br>glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);<br>glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0)<br><br>// - 法线颜色缓冲<br>glGenTextures(1, &amp;gNormal);<br>glBindTexture(GL_TEXTURE_2D, gNormal);<br>glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);<br>glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);<br>glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);<br>glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);<br><br>// - 颜色 + 镜面颜色缓冲<br>glGenTextures(1, &amp;gAlbedoSpec);<br>glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);<br>glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);<br>glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);<br>glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);<br>glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);<br><br>// - 告诉OpenGL我们将要使用(帧缓冲的)哪种颜色附件来进行渲染<br>GLuint attachments[3] = &#123; GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 &#125;;<br>glDrawBuffers(3, attachments);<br><br>// 之后同样添加渲染缓冲对象(Render Buffer Object)为深度缓冲(Depth Buffer)，并检查完整性<br>[...]<br><br></code></pre></td></tr></table></figure>
+<p>由于我们使用了多渲染目标，我们需要显式告诉OpenGL我们需要使用glDrawBuffers渲染的是和GBuffer关联的哪个颜色缓冲。同样需要注意的是，我们使用RGB纹理来储存位置和法线的数据，因为每个对象只有三个分量；但是我们将颜色和镜面强度数据合并到一起，存储到一个单独的RGBA纹理里面，这样我们就不需要声明一个额外的颜色缓冲纹理了。随着你的延迟渲染管线变得越来越复杂，需要更多的数据的时候，你就会很快发现新的方式来组合数据到一个单独的纹理当中。</p>
+<p>接下来我们需要渲染它们到G缓冲中。假设每个对象都有漫反射，一个法线和一个镜面强度纹理，我们会想使用一些像下面这个片段着色器的东西来渲染它们到G缓冲中去。</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><code class="hljs glsl"><span class="hljs-meta">#version 330 core</span><br><span class="hljs-keyword">layout</span> (<span class="hljs-keyword">location</span> = <span class="hljs-number">0</span>) <span class="hljs-keyword">out</span> <span class="hljs-type">vec3</span> gPosition;<br><span class="hljs-keyword">layout</span> (<span class="hljs-keyword">location</span> = <span class="hljs-number">1</span>) <span class="hljs-keyword">out</span> <span class="hljs-type">vec3</span> gNormal;<br><span class="hljs-keyword">layout</span> (<span class="hljs-keyword">location</span> = <span class="hljs-number">2</span>) <span class="hljs-keyword">out</span> <span class="hljs-type">vec4</span> gAlbedoSpec;<br><br><span class="hljs-keyword">in</span> <span class="hljs-type">vec2</span> TexCoords;<br><span class="hljs-keyword">in</span> <span class="hljs-type">vec3</span> FragPos;<br><span class="hljs-keyword">in</span> <span class="hljs-type">vec3</span> Normal;<br><br><span class="hljs-keyword">uniform</span> <span class="hljs-type">sampler2D</span> texture_diffuse1;<br><span class="hljs-keyword">uniform</span> <span class="hljs-type">sampler2D</span> texture_specular1;<br><br><span class="hljs-type">void</span> main()<br>&#123;    <br>    <span class="hljs-comment">// 存储第一个G缓冲纹理中的片段位置向量</span><br>    gPosition = FragPos;<br>    <span class="hljs-comment">// 同样存储对每个逐片段法线到G缓冲中</span><br>    gNormal = <span class="hljs-built_in">normalize</span>(Normal);<br>    <span class="hljs-comment">// 和漫反射对每个逐片段颜色</span><br>    gAlbedoSpec.rgb = <span class="hljs-built_in">texture</span>(texture_diffuse1, TexCoords).rgb;<br>    <span class="hljs-comment">// 存储镜面强度到gAlbedoSpec的alpha分量</span><br>    gAlbedoSpec.a = <span class="hljs-built_in">texture</span>(texture_specular1, TexCoords).r;<br>&#125;  <br></code></pre></td></tr></table></figure>
+<p>因为我们使用了多渲染目标，这个布局指示符(Layout Specifier)告诉了OpenGL我们需要渲染到当前的活跃帧缓冲中的哪一个颜色缓冲。注意我们并没有储存镜面强度到一个单独的颜色缓冲纹理中，因为我们可以储存它单独的浮点值到其它颜色缓冲纹理的alpha分量中。</p>
+<p>如果我们现在想要渲染一大堆纳米装战士对象到gBuffer帧缓冲中，并通过一个一个分别投影它的颜色缓冲到铺屏四边形中尝试将他们显示出来，我们会看到向下面这样的东西：</p>
+<p>尝试想象世界空间位置和法向量都是正确的。比如说，指向右侧的法向量将会被更多地对齐到红色上，从场景原点指向右侧的位置矢量也同样是这样。一旦你对G缓冲中的内容满意了，我们就该进入到下一步：光照处理阶段了。</p>
+<p>##延迟光照处理阶段</p>
+<p>现在我们已经有了一大堆的片段数据储存在G缓冲中供我们处置，我们可以选择通过一个像素一个像素地遍历各个G缓冲纹理，并将储存在它们里面的内容作为光照算法的输入，来完全计算场景最终的光照颜色。由于所有的G缓冲纹理都代表的是最终变换的片段值，我们只需要对每一个像素执行一次昂贵的光照运算就行了。这使得延迟光照非常高效，特别是在需要调用大量重型片段着色器的复杂场景中。</p>
+<p>对于这个光照处理阶段，我们将会渲染一个2D全屏的方形(有一点像后期处理效果)并且在每个像素上运行一个昂贵的光照片段着色器。</p>
+<figure class="highlight scss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs scss"><span class="hljs-built_in">glClear</span>(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);<br>shaderLightingPass<span class="hljs-selector-class">.Use</span>();<br><span class="hljs-built_in">glActiveTexture</span>(GL_TEXTURE0);<br><span class="hljs-built_in">glBindTexture</span>(GL_TEXTURE_2D, gPosition);<br><span class="hljs-built_in">glActiveTexture</span>(GL_TEXTURE1);<br><span class="hljs-built_in">glBindTexture</span>(GL_TEXTURE_2D, gNormal);<br><span class="hljs-built_in">glActiveTexture</span>(GL_TEXTURE2);<br><span class="hljs-built_in">glBindTexture</span>(GL_TEXTURE_2D, gAlbedoSpec);<br><span class="hljs-comment">// 同样发送光照相关的uniform</span><br><span class="hljs-built_in">SendAllLightUniformsToShader</span>(shaderLightingPass);<br><span class="hljs-built_in">glUniform3fv</span>(glGetUniformLocation(shaderLightingPass.Program, &quot;viewPos&quot;), <span class="hljs-number">1</span>, &amp;camera<span class="hljs-selector-class">.Position</span><span class="hljs-selector-attr">[0]</span>);<br><span class="hljs-built_in">RenderQuad</span>();  <br><br></code></pre></td></tr></table></figure>
+
+<p>我们在渲染之前绑定了G缓冲中所有相关的纹理，并且发送光照相关的uniform变量到着色器中。</p>
+<p>光照处理阶段的片段着色器和我们之前一直在用的光照教程着色器是非常相似的，除了我们添加了一个新的方法，从而使我们能够获取光照的输入变量，当然这些变量我们会从G缓冲中直接采样。</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><code class="hljs glsl"><span class="hljs-meta">#version 330 core</span><br><span class="hljs-keyword">out</span> <span class="hljs-type">vec4</span> FragColor;<br><span class="hljs-keyword">in</span> <span class="hljs-type">vec2</span> TexCoords;<br><br><span class="hljs-keyword">uniform</span> <span class="hljs-type">sampler2D</span> gPosition;<br><span class="hljs-keyword">uniform</span> <span class="hljs-type">sampler2D</span> gNormal;<br><span class="hljs-keyword">uniform</span> <span class="hljs-type">sampler2D</span> gAlbedoSpec;<br><br>struct Light &#123;<br>    <span class="hljs-type">vec3</span> Position;<br>    <span class="hljs-type">vec3</span> Color;<br>&#125;;<br><span class="hljs-keyword">const</span> <span class="hljs-type">int</span> NR_LIGHTS = <span class="hljs-number">32</span>;<br><span class="hljs-keyword">uniform</span> Light lights[NR_LIGHTS];<br><span class="hljs-keyword">uniform</span> <span class="hljs-type">vec3</span> viewPos;<br><br><span class="hljs-type">void</span> main()<br>&#123;             <br>    <span class="hljs-comment">// 从G缓冲中获取数据</span><br>    <span class="hljs-type">vec3</span> FragPos = <span class="hljs-built_in">texture</span>(gPosition, TexCoords).rgb;<br>    <span class="hljs-type">vec3</span> Normal = <span class="hljs-built_in">texture</span>(gNormal, TexCoords).rgb;<br>    <span class="hljs-type">vec3</span> Albedo = <span class="hljs-built_in">texture</span>(gAlbedoSpec, TexCoords).rgb;<br>    <span class="hljs-type">float</span> Specular = <span class="hljs-built_in">texture</span>(gAlbedoSpec, TexCoords).a;<br><br>    <span class="hljs-comment">// 然后和往常一样地计算光照</span><br>    <span class="hljs-type">vec3</span> lighting = Albedo * <span class="hljs-number">0.1</span>; <span class="hljs-comment">// 硬编码环境光照分量</span><br>    <span class="hljs-type">vec3</span> viewDir = <span class="hljs-built_in">normalize</span>(viewPos - FragPos);<br>    <span class="hljs-keyword">for</span>(<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; NR_LIGHTS; ++i)<br>    &#123;<br>        <span class="hljs-comment">// 漫反射</span><br>        <span class="hljs-type">vec3</span> lightDir = <span class="hljs-built_in">normalize</span>(lights[i].Position - FragPos);<br>        <span class="hljs-type">vec3</span> diffuse = <span class="hljs-built_in">max</span>(<span class="hljs-built_in">dot</span>(Normal, lightDir), <span class="hljs-number">0.0</span>) * Albedo * lights[i].Color;<br>        lighting += diffuse;<br>    &#125;<br><br>    FragColor = <span class="hljs-type">vec4</span>(lighting, <span class="hljs-number">1.0</span>);<br>&#125;  <br></code></pre></td></tr></table></figure>
+
+<p>光照处理阶段着色器接受三个uniform纹理，代表G缓冲，它们包含了我们在几何处理阶段储存的所有数据。如果我们现在再使用当前片段的纹理坐标采样这些数据，我们将会获得和之前完全一样的片段值，这就像我们在直接渲染几何体。在片段着色器的一开始，我们通过一个简单的纹理查找从G缓冲纹理中获取了光照相关的变量。注意我们从gAlbedoSpec纹理中同时获取了Albedo颜色和Spqcular强度。</p>
+<p>因为我们现在已经有了必要的逐片段变量(和相关的uniform变量)来计算布林-冯氏光照(Blinn-Phong Lighting)，我们不需要对光照代码做任何修改了。我们在延迟着色法中唯一需要改的就是获取光照输入变量的方法。</p>
+<p>运行一个包含32个小光源的简单Demo会是像这样子的：</p>
+<p><img src="/2021/05/20/deferred-shading/deferred_shading.png" srcset="/img/loading.gif" lazyload alt="d"></p>
+<p>你可以在以下位置找到Demo的完整源代码，和几何渲染阶段的顶点和片段着色器，还有光照渲染阶段的顶点和片段着色器。</p>
+<p>延迟着色法的其中一个缺点就是它不能进行混合(Blending)，因为G缓冲中所有的数据都是从一个单独的片段中来的，而混合需要对多个片段的组合进行操作。延迟着色法另外一个缺点就是它迫使你对大部分场景的光照使用相同的光照算法，你可以通过包含更多关于材质的数据到G缓冲中来减轻这一缺点。</p>
+<p>为了克服这些缺点(特别是混合)，我们通常分割我们的渲染器为两个部分：一个是延迟渲染的部分，另一个是专门为了混合或者其他不适合延迟渲染管线的着色器效果而设计的的正向渲染的部分。为了展示这是如何工作的，我们将会使用正向渲染器渲染光源为一个小立方体，因为光照立方体会需要一个特殊的着色器(会输出一个光照颜色)。</p>
+<p>##结合延迟渲染与正向渲染</p>
+<p>现在我们想要渲染每一个光源为一个3D立方体，并放置在光源的位置上随着延迟渲染器一起发出光源的颜色。很明显，我们需要做的第一件事就是在延迟渲染方形之上正向渲染所有的光源，它会在延迟渲染管线的最后进行。所以我们只需要像正常情况下渲染立方体，只是会在我们完成延迟渲染操作之后进行。代码会像这样：</p>
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs stata"><span class="hljs-comment">// 延迟渲染光照渲染阶段</span><br>[...]<br>RenderQuad();<br><br><span class="hljs-comment">// 现在像正常情况一样正向渲染所有光立方体</span><br>shaderLightBox.<span class="hljs-keyword">Use</span>();<br>glUniformMatrix4fv(locProjection, 1, GL_FALSE, <span class="hljs-keyword">glm</span>::value_ptr(projection));<br>glUniformMatrix4fv(locView, 1, GL_FALSE, <span class="hljs-keyword">glm</span>::value_ptr(<span class="hljs-keyword">view</span>));<br><span class="hljs-keyword">for</span> (GLuint i = 0; i &lt; lightPositions.size(); i++)<br>&#123;<br>    model = <span class="hljs-keyword">glm</span>::mat4();<br>    model = <span class="hljs-keyword">glm</span>::<span class="hljs-keyword">translate</span>(model, lightPositions[i]);<br>    model = <span class="hljs-keyword">glm</span>::scale(model, <span class="hljs-keyword">glm</span>::vec3(0.25f));<br>    glUniformMatrix4fv(locModel, 1, GL_FALSE, <span class="hljs-keyword">glm</span>::value_ptr(model));<br>    glUniform3fv(locLightcolor, 1, &amp;lightColors[i][0]);<br>    RenderCube();<br>&#125;<br><br></code></pre></td></tr></table></figure>
+
+<p>然而，这些渲染出来的立方体并没有考虑到我们储存的延迟渲染器的几何深度(Depth)信息，并且结果是它被渲染在之前渲染过的物体之上，这并不是我们想要的结果。</p>
+<p><img src="/2021/05/20/deferred-shading/deferred_lights_no_depth.png" srcset="/img/loading.gif" lazyload alt="d"></p>
+<p>我们需要做的就是首先复制出在几何渲染阶段中储存的深度信息，并输出到默认的帧缓冲的深度缓冲，然后我们才渲染光立方体。这样之后只有当它在之前渲染过的几何体上方的时候，光立方体的片段才会被渲染出来。我们可以使用glBlitFramebuffer复制一个帧缓冲的内容到另一个帧缓冲中，这个函数我们也在抗锯齿的教程中使用过，用来还原多重采样的帧缓冲。glBlitFramebuffer这个函数允许我们复制一个用户定义的帧缓冲区域到另一个用户定义的帧缓冲区域。</p>
+<p>我们储存所有延迟渲染阶段中所有物体的深度信息在gBuffer这个FBO中。如果我们仅仅是简单复制它的深度缓冲内容到默认帧缓冲的深度缓冲中，那么光立方体就会像是场景中所有的几何体都是正向渲染出来的一样渲染出来。就像在抗锯齿教程中介绍的那样，我们需要指定一个帧缓冲为读帧缓冲(Read Framebuffer)，并且类似地指定一个帧缓冲为写帧缓冲(Write Framebuffer)：</p>
+<figure class="highlight scss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs scss"><span class="hljs-built_in">glBindFramebuffer</span>(GL_READ_FRAMEBUFFER, gBuffer);<br><span class="hljs-built_in">glBindFramebuffer</span>(GL_DRAW_FRAMEBUFFER, <span class="hljs-number">0</span>); <span class="hljs-comment">// 写入到默认帧缓冲</span><br><span class="hljs-built_in">glBlitFramebuffer</span>(<br>  <span class="hljs-number">0</span>, <span class="hljs-number">0</span>, SCR_WIDTH, SCR_HEIGHT, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>, SCR_WIDTH, SCR_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST<br>);<br><span class="hljs-built_in">glBindFramebuffer</span>(GL_FRAMEBUFFER, <span class="hljs-number">0</span>);<br><span class="hljs-comment">// 现在像之前一样渲染光立方体</span><br><span class="hljs-selector-attr">[...]</span>  <br></code></pre></td></tr></table></figure>
+<p>在这里我们复制整个读帧缓冲的深度缓冲信息到默认帧缓冲的深度缓冲，对于颜色缓冲和模板缓冲我们也可以这样处理。现在如果我们接下来再渲染光立方体，场景里的几何体将会看起来很真实了，而不只是简单地粘贴立方体到2D方形之上：</p>
+<p><img src="/2021/05/20/deferred-shading/deferred_lights_depth.png" srcset="/img/loading.gif" lazyload alt="d"></p>
+<p>有了这种方法，我们就能够轻易地结合延迟着色法和正向着色法了。这真是太棒了，我们现在可以应用混合或者渲染需要特殊着色器效果的物体了，这在延迟渲染中是不可能做到的。</p>
+<h2 id="更多的光源"><a href="#更多的光源" class="headerlink" title="更多的光源"></a>更多的光源</h2><p>延迟渲染一直被称赞的原因就是它能够渲染大量的光源而不消耗大量的性能。然而，延迟渲染它本身并不能支持非常大量的光源，因为我们仍然必须要对场景中每一个光源计算每一个片段的光照分量。真正让大量光源成为可能的是我们能够对延迟渲染管线引用的一个非常棒的优化：光体积(Light Volumes)</p>
+<p>通常情况下，当我们渲染一个复杂光照场景下的片段着色器时，我们会计算场景中每一个光源的贡献，不管它们离这个片段有多远。很大一部分的光源根本就不会到达这个片段，所以为什么我们还要浪费这么多光照运算呢？</p>
+<p>隐藏在光体积背后的想法就是计算光源的半径，或是体积，也就是光能够到达片段的范围。由于大部分光源都使用了某种形式的衰减(Attenuation)，我们可以用它来计算光源能够到达的最大路程，或者说是半径。我们接下来只需要对那些在一个或多个光体积内的片段进行繁重的光照运算就行了。这可以给我们省下来很可观的计算量，因为我们现在只在需要的情况下计算光照。</p>
+<p>这个方法的难点基本就是找出一个光源光体积的大小，或者是半径。</p>
+<p>计算一个光源的体积或半径<br>为了获取一个光源的体积半径，我们需要解一个对于一个我们认为是黑暗(Dark)的亮度(Brightness)的衰减方程，它可以是0.0，或者是更亮一点的但仍被认为黑暗的值，像是0.03。为了展示我们如何计算光源的体积半径，我们将会使用一个在投光物这节中引入的一个更加复杂，但非常灵活的衰减方程：<br>Flight&#x3D;IKc+Kl∗d+Kq<br>我们现在想要在Flight<br>等于0的前提下解这个方程，也就是说光在该距离完全是黑暗的。然而这个方程永远不会真正等于0.0，所以它没有解。所以，我们不会求表达式等于0.0时候的解，相反我们会求当亮度值靠近于0.0的解，这时候它还是能被看做是黑暗的。在这个教程的演示场景中，我们选择5&#x2F;256<br>作为一个合适的光照值；除以256是因为默认的8-bit帧缓冲可以每个分量显示这么多强度值(Intensity)。</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/render/" class="category-chain-item">render</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/lighting/" class="print-no-link">#lighting</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>deferred_shading</div>
+      <div>http://example.com/2021/05/20/deferred-shading/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>bergzha</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2021年5月20日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a class="print-no-link" target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/01/15/forward-plus-shading/" title="forward_plus_shading">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">forward_plus_shading</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/04/12/vscode%E9%85%8D%E7%BD%AEcpp%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83/" title="vscode配置cpp调试环境">
+                        <span class="hidden-mobile">vscode配置cpp调试环境</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.4/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.20.1/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

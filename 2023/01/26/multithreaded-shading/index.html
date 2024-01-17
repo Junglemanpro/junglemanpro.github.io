@@ -1,0 +1,653 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/berg.jpeg">
+  <link rel="icon" href="/img/berg.jpeg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="bergzha">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="Vulkan 视角下的多线程渲染首先我们需要从vulkan api的顶层框架上来看一下，它在哪些地方可以让我们并行。 Vulkan API的基本框架Vulkan不同于Gles只有一个（不被API暴露出来的）单一链条的cmdbuffer处理，它最大的特点是允许多个、多种类型的cmdbuffer同时在多个设备和线程上被处理 上图可以看到vk拥有多个physical device（或gpu，当然也可以是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="multithreaded_shading">
+<meta property="og:url" content="http://example.com/2023/01/26/multithreaded-shading/index.html">
+<meta property="og:site_name" content="小小博客站">
+<meta property="og:description" content="Vulkan 视角下的多线程渲染首先我们需要从vulkan api的顶层框架上来看一下，它在哪些地方可以让我们并行。 Vulkan API的基本框架Vulkan不同于Gles只有一个（不被API暴露出来的）单一链条的cmdbuffer处理，它最大的特点是允许多个、多种类型的cmdbuffer同时在多个设备和线程上被处理 上图可以看到vk拥有多个physical device（或gpu，当然也可以是">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-26T05:14:00.000Z">
+<meta property="article:modified_time" content="2024-01-17T05:05:30.448Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="vulkan">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>multithreaded_shading - 小小博客站</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.9.7","typing":{"enable":false,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":false,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":{"measurement_id":null},"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml","include_content_in_search":true};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 45vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>专业野人</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/" target="_self">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/" target="_self">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/" target="_self">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/" target="_self">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/" target="_self">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle">multithreaded_shading</span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-01-26 13:14" pubdate>
+          2023年1月26日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          4k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          34 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <h1 id="seo-header">multithreaded_shading</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="Vulkan-视角下的多线程渲染"><a href="#Vulkan-视角下的多线程渲染" class="headerlink" title="Vulkan 视角下的多线程渲染"></a>Vulkan 视角下的多线程渲染</h2><p>首先我们需要从vulkan api的顶层框架上来看一下，它在哪些地方可以让我们并行。</p>
+<p>Vulkan API的基本框架<br>Vulkan不同于Gles只有一个（不被API暴露出来的）单一链条的cmdbuffer处理，它最大的特点是允许多个、多种类型的cmdbuffer同时在多个设备和线程上被处理</p>
+<p>上图可以看到vk拥有多个physical device（或gpu，当然也可以是支持的其他处理器），只要是同一个physical device group中的physical device，就可以联合起来一起来创建出一个device（就是你的app 实例），而每个physical device上又有多个queue，这些queue属于三种queuefamily（gfx，cs，translate），每个queuefamily Qn都可以创建一个command pool Pn，每个Pn又可以创建一些cmdbuffer，这些cmdbuffer可以独自被处理，独自被提交给Qn的任意一个queue上。cmdbuffer是vk显示暴露的数据结构，它是cpu同gpu传输信息的桥梁，cpu将渲染指令记录到cmdbuffer上，然后通过提交给queue交由gpu执行。在一个cmdbuffer内部又包含了renderpass，指令被记录在renderpass里面或外面，记录在renderpass里面的指令还可以被封装成次级cmdbuffer，即secondarycmdbuffer的形式被主cmdbuffer执行。。。</p>
+<p>总的来说，vulkan里面有并行的GPU设备，并行的queue，并行的cmdbuffer。</p>
+<p>那么哪些阶段可以被并行执行？</p>
+<p>Cpu一侧有两个主要的可被并行处理的阶段：</p>
+<ol>
+<li>Cmdbuffer的Record：所有vkcmd***类型的API都可以认为在进行cmdbuffer的record。我们可以拆解出多个独立的cmdbuffer，由不同的RHI线程进行api调用。（这其实是一般游戏的主要瓶颈，即drawcall数量瓶颈）</li>
+<li>Cmdbuffer的submit：不同的cmdbuffer可以被提交到各自单独的queue中。可以根据设备提供的queue的数量，创建多个queue，在不同的rhi线程中将不同的cmdbuffer submit到不同的queue。（在实际项目中submit占用的时间非常短，少于1ms，且多数情况一帧只需要提交1次，做这个优化性价比不高）</li>
+<li>将cmdbuffer的record和submit并行，submit和record两个步骤又可以在不同线程执行，cmdbuffer在当前帧record，在下一帧submit。（同样因为submit不是瓶颈，且又需要延迟一帧渲染，性价比不高）</li>
+<li>为Translate，Gfx，CS独立各自单独的queue和cmdbuffer，这样，图形drawcall，cs的dispatch，图形资源的准备这三种不同工作将在不同的线程上处理，减少drawcall被其他工作block的机会。（这个是有意义的，ue新版本有async compute shader，实际上就是使用了同gfx不同的cs queue，至于translate，则可以将很多非dc性质的api调用同dc的分离，提高dc的吞吐效率，这个在gles也可以模拟实现，可以见<a target="_blank" rel="noopener" href="https://km.woa.com/group/24861/articles/show/489959%EF%BC%8C%E5%8F%AA%E4%B8%8D%E8%BF%87vk%E4%B8%8B%E5%8F%AF%E4%BB%A5%E5%BE%80%E4%B8%80%E4%B8%AA%E5%8D%95%E7%8B%AC%E7%9A%84queue%E5%8E%BB%E6%8F%90%E4%BA%A4%E3%80%82%EF%BC%89">https://km.woa.com/group/24861/articles/show/489959，只不过vk下可以往一个单独的queue去提交。）</a></li>
+</ol>
+<p>本文主要讨论cmdbuffer的并行record，他用来解决大量drawcall的api瓶颈。<br>结构如下，我们在多个线程调用api填充cmdbuffer，全部cmdbuffer准备好后从一个线程进行最终的submit。</p>
+<h3 id="并行粒度"><a href="#并行粒度" class="headerlink" title="并行粒度"></a>并行粒度</h3><p>讨论这个问题前我们需要了解vulkan API的一些设计限制。Vulkan有如下的API规范：</p>
+<p>一个renderpass必须被包含在同一个cmdbuffer中 （即renderpass不能跨越cmdbuffer）</p>
+<p>这意味着我们不能将一个renderpass中的drawcall拆分到多个cmdbuffer中，而移动端游戏为了带宽的最小化，都是尽量减少合并renderpass的，既然这样是不是意味着在控制带宽（renderpass数量）和并行drawcall之间难以兼得？</p>
+<p>不是的，vulkan考虑了这个问题，并引入secondarycommandbuffer的概念来解决这个问题，下面会详细讲述。</p>
+<p>我们的设计支持两种类型的并行。</p>
+<ol>
+<li>整个pass级别的并行（本文称为Async Pass）<br>每个cmdbuffer里面封装1个或几个renderpass，renderpass完整的嵌入在一个cmdbuffer里面。如下图，每个thread上的cmdbuffer上有完整的renderpass，每个renderpass并行的调用API。因为renderpass之间相互隔离，它的实现最为简单，每个thread上就是正常的启动，结束一个pass和drawcall。</li>
+</ol>
+<p>但是当一个renderpass里面的drawcall太多时，我们就必须实现drawcall级别的并行了。</p>
+<ol start="2">
+<li>支持draw call级别的并行（本文称为Async Drawcall）</li>
+</ol>
+<p>正如前面提到的vulkan API限制renderpass不能跨越cmdbuffer，所以需要依靠secondary command buffer支持。</p>
+<p>Secondary command buffer是中特殊的command buffer：</p>
+<p>它内部不能执行renderpass相关的操作，只能执行drawcall相关的API。<br>它不能直接submmit给queue，只能被正常的command buffer（或称为primary command buffer）通过vkexecutecmdbuffer的形式执行<br>Vkexecutecmdbuffer必须在该primary commandbuffer结束记录状态前（vkendcommandbuffer）执行<br>这种级别的并行实现上就显得比较复杂，如下图，对thread1上的renderpass中的300个drawcall进行等分拆分到3个线程上。1.1-1.3的线程上都使用的secondary cmd buffer，他们填充好后，交给1线程的primary cmdbuffer execute，最后1线程才能执行endcmdbuffer。</p>
+<p>但是这是不是说1线程要依赖1.1-1.3三个线程执行完才能继续下去？为了解决这个问题，可以在1线程上创建多个primary cmdbuffer，只有内嵌了secondary cmd buffer的那个primary cmdbuffer才需要等待，每当1线程上的一个primary cmd buffer (n)需要内嵌secondary cmd buffer时，就再重新开辟一个新的primary cmd buffer (n+1)即可，这样1线程上后续的dc在primary cmd buffer (n+1)上记录，primary cmd buffer (n)则负责等待它的所有secondary thread完成再end，我们最终在提交的时候只要保证在提交列表中primary cmd buffer (n)在primary cmd buffer (n+1)之前即可保证渲染顺序。</p>
+<p>基于secondary cmdbuffer，可以将drawcall的并行拆到最细，理论上所有的drawcall都可以并行，只需要在最终submit之前保证所有thread的工作完成即可。</p>
+<h2 id="UE4现有的多线程渲染框架与改造目标"><a href="#UE4现有的多线程渲染框架与改造目标" class="headerlink" title="UE4现有的多线程渲染框架与改造目标"></a>UE4现有的多线程渲染框架与改造目标</h2><p>现有的UE4多线程渲染框架<br>逻辑，渲染指令生成和API调用三大任务分开</p>
+<p>项目引擎之前在UE4现有版本加入了auxiliary rhi机制<br>将资源生成类型的任务放到一个单独的rhi线程，允许与小核，减少资源准备类api对drawcall 类api的block</p>
+<p>现在新的目标是，在vulkan下将drawcall类API并行处理：<br>依然保留主rhi（main rhi thread），用来进行那些不适合拆分到子线程的api以及做最终的submit和present。<br>对于相对独立，无法前后复用的pass，做并行的async render pass处理<br>对于其他pass，如果体量较大，将其中的部分分拆出来做async draw call 处理<br>为了能够异步的填充rhi command，每个rhi thread也要对应一个单独的render thread，即render thread 本身也被拆开并行<br>移动端对于线程数目的考量：<br>我们常说对于移动端不要肆意的使用多线程优化，因为最好的android设备也就4个大核，所以前面我们描绘的架构虽然可以让你拥有无限多的线程，任意分拆drawcall，但那是脱离实际的完美情况。</p>
+<p>因为考虑到已经存在的game，main render，main rhi3个大线程，所以最终我们手机上实际上只会增多一个异步的rhi线程（本文称task rhi thread）和一个异步的render 线程（本文称task render thread），更多的异步线程数量测试上都会导致效率变差。也就是说我们其实只是给原有单链条的渲染API增加了一条新路，变成两条而已。</p>
+<p>最终版本移动端的vulkan多线程渲染框架如下</p>
+<p>在上图中，实时的csm shadow作为async pass放在了task上（因为他永远是单独的pass，是的因为drawcall变的廉价，甚至可以尝试不用csm shadow cache～），而static mesh部分因为原本就有可能同其他部分共用pass而被作为async drawcall放在task上。</p>
+<p>3 render thread 和rhi thread改造的更多细节<br>vk的secondary command buffer相关机制支持：<br>secondary command buffer的创建：和primary 不一样，创建时需要一个特殊的flag，需要为它维护一个单独的cmdbuffer pool</p>
+<p>secondary command buffer的begin，这里涉及到vulkan的如下设计规范：</p>
+<p>secondary cmdbuffer在begin的时候就要传入它所被嵌入的renderpass</p>
+<p>和primary cmdbuffer不一样的是，secondary cmd buffer在begin的时候需要指定它所在的renderpass，这意味着虽然primary和secondary是在各自独立的线程记录，但是renderpass这个信息是api record的时候唯一必备的外部信息（事实上文档上说如果能提供primary的framebuffer则更有利于优化，不提供也可），而在目前ue的框架下，renderpass是有可能在primary的cmd beginrenderpass时才创建的，所以secondary cmd buffer的执行至少要在primary command buffer的begin pass 执行之后执行，这是一个同步点。但是如果我们有了rendergraph之类的，能够在一帧开始前就先验的知道这帧要用到的所有renderpass，这里面就不需要这个等待了。</p>
+<p>此外Secondary command buffer begin的时候还需要设置begin flag为renderpass_continue_bit,(表示它作为一个secondary buffer，完全在另一个cmdbuffer的pass内执行</p>
+<p>secondary command buffer内部的渲染状态，这里涉及到vulkan的如下设计规范：<br>secondary cmdbuffer内部不能感知包含它的primarycmdbuffer的渲染状态</p>
+<p>vulkan并没有在官方文档很明显的地方提到这个问题，只在一些角落暗示过，实际上它意味着你在primary cmdbuffer级别里面设置的各种渲染状态，如shader，stencil什么的，对于它里面包含的secondary cmdbuffer是无效的，你必须在secondary cmdbuffer里面重新设置过。</p>
+<p>  这要求你在record一个secondary cmd buffer的时候要能在程序中获取到它所处的primary 的一些外部渲染环境，设置进去，在程序实现的时候这可能是要特别小心的。</p>
+<p>需要灵活支持一个 renderpass是subpass_content_secondary还是subpass_content_inline状态，这是非常麻烦的一个改造。这里又涉及到vulkan的一个设计规范：<br>Vulkan的renderpass在一个subpass之内只能处于以下两种模式之一：要么里面完全只能执行secondary cmdbuffer（所有非vkexecutesecondary的api皆为非法），要么里面完全不能执行secondary cmd buffer。</p>
+<p>看下面的这个图，第一种情况是ok的，subpass之内都是统一的内容状态，但是第二种是不行的，因为它杂糅了普通drawcall和secondaryexecute </p>
+<p>这是非常麻烦的一个点，为什么这样说？</p>
+<p>通常我们移动端游戏为了减少render pass的切换，需要尽量复用一个renderpass，而一个大的renderpass它可能只是部分drawcall需要被拆出来到task rhi上异步执行，那就不可避免的出现这种“杂糅”状况。</p>
+<p>为了解决这种杂糅，一种是如上图第一种形式插入更多的nextsubpass，用subpass做篱笆将不同种类分开，但是这是有损gpu性能的，我们不能确定硬件在切subpass的时候对于相同的rt情况下是否有优化，有可能将产生rt内容的load&#x2F;store。另一种是如下图所示，只要一个renderpass中有任何一个drawcall被拆出来放到taskrhi上，那么整个renderpass的所有drawcall都需要被拆成secondary cmd buffer的形式在，只是说有个secondary cmd buffer在task上异步填充，有的依然在当前primary的main rhi上填充。</p>
+<p>从上面这个图能够看出来，pass内部全都是vkexecutesecondary了，注意这里不意味着secondary4 要等待异步线程吧secondary 2和3处理完，他们依然是并行的，你只需要记住在4前面还有个2和3，只需要在最终submmit的之前end这个pass，在endpass的时候按照1 2 3 4的顺序执行这个execute就可以的。</p>
+<pre><code class="hljs">  带有async drawcall的renderpass的end
+</code></pre>
+<p>对于内嵌了secondary的renderpass在end的时候有个新的问题，因为executesecondary必须要发生在endpass之前，而mainrhi想endpass的时候task rhi可能还没有执行完，这会导致asyn rhi对main rhi的阻塞，因为main rhi还有后续的renderpass要begin。</p>
+<p>一种解决方案是，此时重新begin一个新的primary cmd buffer，用于begin后续的renderpass，而之前的那个primary cmd buffer会等待它的secondary都执行完。这意味着我们的设计思路是：所有的renderpass都会延迟到最终submmit之前才进行帧的endpass（endpass前要按顺序execute secondary），每当一个renderpass被要求endpass的时候，如果他内含secondary，就马上启动一个新的的primary cmd buffer记录后续renderpass。</p>
+<p>如上面图所示endpass只是加了一个mark，后面会开启新的primary cmd buffer，我们知道一次submit的时候可以submit多个primay cmd buffer，你只需要保证他们在submitinfo中的列表顺序就能保证他们的渲染顺序。</p>
+<p>这样原本ue4中submmit的一个单一的primary cmd buffer可能被碎解成多个，因此vkcmdbuffer的结构也需要做些改造，里面增加了previous cmd buffer的数组，此外因为primary cmdbuffer还可能包含一些secondary cmd buffer，所以还增加了一个children 数组。</p>
+<p>改造后的结构是如下：</p>
+<p>Primary Cmd buffer的Submmit提交，提交是最终的一步操作，也是整个结构唯一需要同步等待所有线程工作完成的地方，在main rhi上对于每个primary cmd buffer，依次调用vkexecutecmdbuffer执行它的每个secondary cmd buffer（这个执行顺序很重要，它就是gpu的处理顺序），再执行相应的nextsubpass，endpass，endcmdbuffer这操作，当然primary cmdbuffer要按照渲染顺序放入submitinfo中。<br>Thread-safe<br>首先考虑到任何renderthread上的逻辑都有可能被在异步执行，所以一些不thread-safe的渲染线程代码都要改造，例如去掉一些单例的使用。</p>
+<p>Task render和main Render 之间的关系<br>在每帧render结束前，main render会等待task render执行完毕，所以要合适的分配main 和task的任务，尽量让main的工作量稍多一些。</p>
+<p>4 其他问题<br>负载均衡<br>我们需要很好的平衡main 和task 两个渲染线程间的任务量，让main的任务稍多与task一点点，最好的方式是基于frame graph预先知道当前帧需要绘制哪些东西，才能做到最佳的负载均衡</p>
+<p>GPU负载同HSR失效</p>
+<p>我们发现在一些Adreno设备上，当使用secondary command buffer进行多线程提交时，gpu时间会大大增长，很像是硬件的深度筛选（即adreno的LRZ技术）失效，导致了更多的overdraw。</p>
+<p>通过翻阅官方文档，确实找到了官方的说法，在文档<a target="_blank" rel="noopener" href="https://blogs.igalia.com/dpiliaiev/adreno-lrz/%E5%92%8Chttps://developer.qualcomm.com/sites/default/files/docs/adreno-gpu/developer-guide/gpu/overview.html#lrz%E4%B8%AD%E9%83%BD%E6%9C%89%E6%98%8E%E7%A1%AE%E6%8F%90%E5%88%B0%EF%BC%9A">https://blogs.igalia.com/dpiliaiev/adreno-lrz/和https://developer.qualcomm.com/sites/default/files/docs/adreno-gpu/developer-guide/gpu/overview.html#lrz中都有明确提到：</a></p>
+<p>在sdp 855及以下的设备上，因为lrz机制基于的ztest方向跟踪是在cpu一侧做的，并行的api提交会让他紊乱，这样会导致lrz失效，进而gpu不能准确找到每个pixel最靠前的primitive进行渲染，出现更多的overdraw。而865以后因为在gpu上进行跟踪，所以解决了这个问题。但是我们的实际测试数据发现一些865 870的设备依然存在这个问题，保险起见，secondary cmd buffer只能运行在888及以上的设备上，这真的是一个令人悲伤的事情，说明硬件的发展还没有很好的为vulkan做好优化啊。</p>
+<p>但是好消息是mali的所有设备不存在这个问题！～～</p>
+<p>5 性能分析</p>
+<p>从android的trace上可以看到有两条并行提交的队列，相比只有一条提交队列，总的渲染的cpu耗时被大大缩减，在我们项目中大部分情况下rhi线程的时间被缩短30%左右，有意思的一点是在大部分设备上，gpu的耗时也略微减少，目前还不能很好的解释。</p>
+<p>6.结语<br>Vulkan作为现代的图形API，有着更加强大复杂的特性，同gles相比，更像是C++对比lua，它可以使我们从更底层的视角去看待图形编程，自己掌握多线程，内存分配，同步等，我们就不能像应用古老的gles一样去搭建渲染框架，那样就只是用着vulkan的皮囊而没有发挥它真正的威力，不过这对编程人员是没有那么友好的，且移动端的前人经验不多，就需要深入分析vulkan的文档，多尝试，另外vulkan作为一个追求性能的api，不太在api层次做校验，这导致对api的调用极易引起gpu的device lost，必须擅用它的validation layer及时发现潜在的问题。</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/render/" class="category-chain-item">render</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/vulkan/" class="print-no-link">#vulkan</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>multithreaded_shading</div>
+      <div>http://example.com/2023/01/26/multithreaded-shading/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>bergzha</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年1月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a class="print-no-link" target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/05/16/fullscreen-quad-rendering/" title="fullscreen_quad_rendering">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">fullscreen_quad_rendering</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/01/15/clustered_shading/" title="clustered_shading">
+                        <span class="hidden-mobile">clustered_shading</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.4/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.20.1/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
