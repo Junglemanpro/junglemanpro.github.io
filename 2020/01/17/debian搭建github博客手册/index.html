@@ -16,15 +16,15 @@
   <meta name="author" content="bergzha">
   <meta name="keywords" content="">
   
-    <meta name="description" content="安装npm node.js  1sudo apt install node.js npm 创建blog仓库  12mkdir blog_repo_namecd blog_repo_name 安装 hexo  1234npm install hexo验证 hexohexo -v  安装主题   12#此方法安装的主题文件位于node_modules，亦可下载主题包放在themes文件下,效果一致n">
+    <meta name="description" content="安装npm node.js  1sudo apt install node.js npm 创建blog仓库  12mkdir blog_repo_namecd blog_repo_name 安装 hexo  12345#非root用户需要加sudosudo npm install -g hexo-cli#验证 hexohexo -v  安装主题   12#此方法安装的主题文件位于node_mod">
 <meta property="og:type" content="article">
 <meta property="og:title" content="debian搭建github博客手册">
 <meta property="og:url" content="http://example.com/2020/01/17/debian%E6%90%AD%E5%BB%BAgithub%E5%8D%9A%E5%AE%A2%E6%89%8B%E5%86%8C/index.html">
 <meta property="og:site_name" content="小小博客站">
-<meta property="og:description" content="安装npm node.js  1sudo apt install node.js npm 创建blog仓库  12mkdir blog_repo_namecd blog_repo_name 安装 hexo  1234npm install hexo验证 hexohexo -v  安装主题   12#此方法安装的主题文件位于node_modules，亦可下载主题包放在themes文件下,效果一致n">
+<meta property="og:description" content="安装npm node.js  1sudo apt install node.js npm 创建blog仓库  12mkdir blog_repo_namecd blog_repo_name 安装 hexo  12345#非root用户需要加sudosudo npm install -g hexo-cli#验证 hexohexo -v  安装主题   12#此方法安装的主题文件位于node_mod">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2020-01-17T06:22:56.000Z">
-<meta property="article:modified_time" content="2024-01-17T07:13:53.814Z">
+<meta property="article:modified_time" content="2024-03-13T14:50:26.859Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="debian">
 <meta property="article:tag" content="blog">
@@ -83,7 +83,7 @@
 
 
   
-<meta name="generator" content="Hexo 7.0.0"></head>
+<meta name="generator" content="Hexo 7.1.1"></head>
 
 
 <body>
@@ -221,7 +221,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          252 字
+          262 字
         
       </span>
     
@@ -284,12 +284,11 @@
 <li><p>创建blog仓库</p>
  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-built_in">mkdir</span> blog_repo_name<br><span class="hljs-built_in">cd</span> blog_repo_name<br></code></pre></td></tr></table></figure></li>
 <li><p>安装 hexo</p>
- <figure class="highlight cmake"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs cmake">npm <span class="hljs-keyword">install</span> hexo<br><br>验证 hexo<br>hexo -v<br></code></pre></td></tr></table></figure>
+ <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment">#非root用户需要加sudo</span><br>sudo npm install -g hexo-cli<br><br><span class="hljs-comment">#验证 hexo</span><br>hexo -v<br></code></pre></td></tr></table></figure>
 </li>
 <li><p>安装主题 </p>
  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment">#此方法安装的主题文件位于node_modules，亦可下载主题包放在themes文件下,效果一致</span><br>npm install --save hexo-theme-fluid <br></code></pre></td></tr></table></figure></li>
-<li><p>使用主题</p>
-<p> 修改_config.yml</p>
+<li><p>使用主题<br> hexo修改_config.yml</p>
  <figure class="highlight avrasm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs avrasm"><span class="hljs-meta">#将主题指定为所需主题</span><br><span class="hljs-symbol">theme:</span> fluid<br></code></pre></td></tr></table></figure></li>
 <li><p>配置主题</p>
 <p> 根据需要修改 node_modules&#x2F;hexo-theme-fluid&#x2F;_config.yml</p>
@@ -304,7 +303,7 @@
 <li><p>修改 _config.yml</p>
   <figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">deploy:</span><br><span class="hljs-symbol">    type:</span> git<br><span class="hljs-symbol">    repo:</span> <span class="hljs-params">&lt;repository url&gt;</span> <span class="hljs-meta">#https:<span class="hljs-comment">//bitbucket.org/JohnSmith/johnsmith.bitbucket.io</span></span><br><span class="hljs-symbol">    branch:</span> [branch]<br></code></pre></td></tr></table></figure></li>
 <li><p>提交</p>
- <figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs nginx"><span class="hljs-comment">#本地查看网页满意后提交</span><br><span class="hljs-attribute">hexo</span> d<br></code></pre></td></tr></table></figure></li>
+ <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment">#本地查看网页满意后提交</span><br>hexo d<br></code></pre></td></tr></table></figure></li>
 </ul>
 </li>
 <li><p>更改域名</p>
