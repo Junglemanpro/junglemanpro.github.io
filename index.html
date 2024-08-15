@@ -232,7 +232,7 @@
       
       <a class="index-excerpt index-excerpt__noimg" href="/2024/01/16/archetype_based_ECS/" target="_self">
         <div>
-          
+          Archetype based ECS内存布局
         </div>
       </a>
 
@@ -285,67 +285,6 @@
     <article class="col-12 col-md-12 mx-auto index-info">
       <h2 class="index-header">
         
-        <a href="/2024/01/16/render-graph/" target="_self">
-          render_graph
-        </a>
-      </h2>
-
-      
-      <a class="index-excerpt index-excerpt__noimg" href="/2024/01/16/render-graph/" target="_self">
-        <div>
-          
-        </div>
-      </a>
-
-      <div class="index-btm post-metas">
-        
-          <div class="post-meta mr-3">
-            <i class="iconfont icon-date"></i>
-            <time datetime="2024-01-16 04:12" pubdate>
-              2024-01-16
-            </time>
-          </div>
-        
-        
-          <div class="post-meta mr-3 d-flex align-items-center">
-            <i class="iconfont icon-category"></i>
-            
-
-<span class="category-chains">
-  
-  
-    
-      <span class="category-chain">
-        
-  <a href="/categories/render/" class="category-chain-item">render</a>
-  
-  
-
-      </span>
-    
-  
-</span>
-
-          </div>
-        
-        
-          <div class="post-meta">
-            <i class="iconfont icon-tags"></i>
-            
-              <a href="/tags/%E6%A1%86%E6%9E%B6/">#框架</a>
-            
-          </div>
-        
-      </div>
-    </article>
-  </div>
-
-  <div class="row mx-auto index-card">
-    
-    
-    <article class="col-12 col-md-12 mx-auto index-info">
-      <h2 class="index-header">
-        
         <a href="/2024/01/16/cascade-shadow-mapping/" target="_self">
           cascade_shadow_mapping
         </a>
@@ -354,7 +293,7 @@
       
       <a class="index-excerpt index-excerpt__noimg" href="/2024/01/16/cascade-shadow-mapping/" target="_self">
         <div>
-          
+          让我们近距离观察一下:  阴影的质量不高,因为这种块效应，将其称为透视锯齿，视图空间中的大量像素被映射到阴影贴图中的同一像素，这意味着所有这些像素要么处于阴影中，要么处于光亮中，从而产生块状感。换句话说，由于阴影贴图的分辨率不够高，因此无法充分覆盖视图空间。解决这个问题的一个明显方法是增加阴影贴图的分辨率，但这会增加我们应用程序的内存占用，因此它可能不是最好的做法。 处理此问题的另一种方法是注意靠
         </div>
       </a>
 
@@ -531,13 +470,13 @@
     <article class="col-12 col-md-12 mx-auto index-info">
       <h2 class="index-header">
         
-        <a href="/2022/01/15/clustered_shading/" target="_self">
-          clustered_shading
+        <a href="/2022/01/15/clustered_forward_shading/" target="_self">
+          clustered_forward_shading
         </a>
       </h2>
 
       
-      <a class="index-excerpt index-excerpt__noimg" href="/2022/01/15/clustered_shading/" target="_self">
+      <a class="index-excerpt index-excerpt__noimg" href="/2022/01/15/clustered_forward_shading/" target="_self">
         <div>
           基本概念cluster shading是将相机的Frustum按x y z切块成cluster，记录每个cluster 受哪些实时光源影响，再对有效的cluster进行光照计算。 痛点解决tbdr和观察物体有强关联，在深度不连续的地方，会导致开销增大的问题。file:&#x2F;&#x2F;&#x2F;home&#x2F;berg&#x2F;code&#x2F;junglemanpro&#x2F;
         </div>
@@ -830,13 +769,70 @@
     </article>
   </div>
 
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h2 class="index-header">
+        
+        <a href="/2020/01/17/debian%E6%90%AD%E5%BB%BAgithub%E5%8D%9A%E5%AE%A2%E6%89%8B%E5%86%8C/" target="_self">
+          debian搭建github博客手册
+        </a>
+      </h2>
+
+      
+      <a class="index-excerpt index-excerpt__noimg" href="/2020/01/17/debian%E6%90%AD%E5%BB%BAgithub%E5%8D%9A%E5%AE%A2%E6%89%8B%E5%86%8C/" target="_self">
+        <div>
+          安装npm node.js  1sudo apt install node.js npm  安装 hexo  1234npm install hexo验证 hexohexo -v  创建blog仓库  123mkdir blog_repo_namecd blog_repo_namehexo init  安装主题   12#此方法安装的主题文件位于node_modules，亦可下载主题包放在the
+        </div>
+      </a>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2020-01-17 14:22" pubdate>
+              2020-01-17
+            </time>
+          </div>
+        
+        
+          <div class="post-meta mr-3 d-flex align-items-center">
+            <i class="iconfont icon-category"></i>
+            
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/config/" class="category-chain-item">config</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+          </div>
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/debian/">#debian</a>
+            
+              <a href="/tags/blog/">#blog</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
 
 
-  <nav aria-label="navigation">
-    <span class="pagination" id="pagination">
-      <span class="page-number current">1</span><a class="page-number" href="/page/2/#board">2</a><a class="extend next" rel="next" href="/page/2/#board"><i class="iconfont icon-arrowright"></i></a>
-    </span>
-  </nav>
 
 
 
