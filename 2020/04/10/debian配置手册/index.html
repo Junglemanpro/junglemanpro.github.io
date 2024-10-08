@@ -16,16 +16,16 @@
   <meta name="author" content="bergzha">
   <meta name="keywords" content="">
   
-    <meta name="description" content="配置clash   网络代理配置  设置-&gt;网络-&gt;网络代理  123http 127.0.0.1 7890https 127.0.0.1 7890socket 127.0.0.1 7891     开机自启   1sudo nano &#x2F;etc&#x2F;systemd&#x2F;system&#x2F;clash.service    123456789101112[Unit]Description&#x3D;A rul">
+    <meta name="description" content="配置clash  网络代理配置  设置-&gt;网络-&gt;网络代理  123http 127.0.0.1 7890https 127.0.0.1 7890socket 127.0.0.1 7891     开机自启   1sudo nano &#x2F;etc&#x2F;systemd&#x2F;system&#x2F;clash.service    123456789101112[Unit]Description&#x3D;A rule">
 <meta property="og:type" content="article">
 <meta property="og:title" content="debian配置手册">
 <meta property="og:url" content="http://example.com/2020/04/10/debian%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/index.html">
 <meta property="og:site_name" content="小小博客站">
-<meta property="og:description" content="配置clash   网络代理配置  设置-&gt;网络-&gt;网络代理  123http 127.0.0.1 7890https 127.0.0.1 7890socket 127.0.0.1 7891     开机自启   1sudo nano &#x2F;etc&#x2F;systemd&#x2F;system&#x2F;clash.service    123456789101112[Unit]Description&#x3D;A rul">
+<meta property="og:description" content="配置clash  网络代理配置  设置-&gt;网络-&gt;网络代理  123http 127.0.0.1 7890https 127.0.0.1 7890socket 127.0.0.1 7891     开机自启   1sudo nano &#x2F;etc&#x2F;systemd&#x2F;system&#x2F;clash.service    123456789101112[Unit]Description&#x3D;A rule">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/2020/04/10/debian%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/net_setting.png">
 <meta property="article:published_time" content="2020-04-09T20:13:36.000Z">
-<meta property="article:modified_time" content="2024-01-17T07:13:14.393Z">
+<meta property="article:modified_time" content="2024-10-08T11:09:38.790Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="debian">
 <meta name="twitter:card" content="summary_large_image">
@@ -84,7 +84,7 @@
 
 
   
-<meta name="generator" content="Hexo 7.0.0"></head>
+<meta name="generator" content="Hexo 7.3.0"></head>
 
 
 <body>
@@ -222,7 +222,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          379 字
+          566 字
         
       </span>
     
@@ -233,7 +233,7 @@
         
         
         
-          4 分钟
+          5 分钟
         
       </span>
     
@@ -280,8 +280,7 @@
               <div class="markdown-body">
                 
                 <ol>
-<li>配置clash</li>
-</ol>
+<li><p>配置clash</p>
 <ul>
 <li><p>网络代理配置</p>
 <ul>
@@ -294,11 +293,11 @@
 
   <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs bash">[Unit]<br>Description=A rule based proxy <span class="hljs-keyword">in</span> Go <span class="hljs-keyword">for</span> %i.<br>After=network.target<br><br>[Service]<br>Type=simple<br>User=berg<br>Restart=on-abort<br>ExecStart=/home/berg/.clash/clash -d /home/berg/.clash/<br><br>[Install]<br>WantedBy=multi-user.target<br></code></pre></td></tr></table></figure>
 
-  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash">sudo systemctl <span class="hljs-built_in">enable</span> clash<br><span class="hljs-comment">#查看状态</span><br>sudo systemctl status clash<br></code></pre></td></tr></table></figure></li>
+  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment">#开启</span><br>sudo systemctl start clash<br><span class="hljs-comment">#开机自启</span><br>sudo systemctl <span class="hljs-built_in">enable</span> clash<br><span class="hljs-comment">#查看状态</span><br>sudo systemctl status clash<br></code></pre></td></tr></table></figure></li>
 </ul>
-<ol start="2">
+</li>
 <li><p>修改默认文件名</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-built_in">cd</span> ~<br><span class="hljs-built_in">mkdir</span> Desktop Download Templates Public Documents Music Pictures Videos<br><span class="hljs-built_in">rm</span> -rf 公共 模板 视频 图片 文档 下载 音乐 桌面<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> DESKTOP ~/Desktop<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> DOWNLOAD ~/Download<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> TEMPLATES ~/Templates<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> PUBLICSHARE ~/Public<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> DOCUMENTS ~/Documents<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> MUSIC ~/Music<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> PICTURES ~/Pictures<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> VIDEOS ~/Videos<br></code></pre></td></tr></table></figure>
+ <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-built_in">cd</span> ~<br><span class="hljs-built_in">mkdir</span> downloads templates public documents<br><span class="hljs-built_in">rm</span> -rf 公共 模板 视频 图片 文档 下载 音乐 桌面<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> DESKTOP ~/<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> DOWNLOAD ~/downloads<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> TEMPLATES ~/templates<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> PUBLICSHARE ~/public<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> DOCUMENTS ~/documents<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> MUSIC ~/<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> PICTURES ~/<br>xdg-user-dirs-update --<span class="hljs-built_in">set</span> VIDEOS ~/<br></code></pre></td></tr></table></figure>
 </li>
 <li><p>安装oh-my-zsh</p>
 </li>
@@ -338,11 +337,40 @@
 <li><p>放置主题文件</p>
   <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash">sudo <span class="hljs-built_in">mkdir</span> /usr/share/grub/themes/vimix<br>sudo <span class="hljs-built_in">cp</span> /your/path/vimix /usr/share/grub/themes/vimix -rf<br></code></pre></td></tr></table></figure></li>
 <li><p>修改系统配置</p>
-  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">sudo vim /etc/default/grub<br></code></pre></td></tr></table></figure>
+  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">sudo nano /etc/default/grub<br></code></pre></td></tr></table></figure>
   <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">GRUB_THEME=<span class="hljs-string">&quot;/usr/share/grub/themes/vimix/theme.txt&quot;</span><br></code></pre></td></tr></table></figure></li>
 <li><p>更新配置</p>
   <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">sudo update-grub<br></code></pre></td></tr></table></figure></li>
 </ul>
+<ol start="5">
+<li><p>安装nvidia驱动<br> sudo apt install linux-header-amd64 dkms<br> sudo apt install nvidia-driver</p>
+</li>
+<li><p>Nvidia改wayland</p>
+<ol>
+<li>sudo nano &#x2F;etc&#x2F;default&#x2F;grub<br> GRUB_CMDLINE_LINUX_DEFAULT<br> #添加 nvidia-drm.modeset&#x3D;1<br> GRUB_CMDLINE_LINUX_DEFAULT&#x3D;”quiet nvidia-drm.modeset&#x3D;1”</li>
+<li>&#x2F;etc&#x2F;gdm3&#x2F;daemon.conf或者&#x2F;etc&#x2F;gdm&#x2F;custom.conf之类的conf<br> 将 #WaylandEnable&#x3D;false 改为WaylandEnable&#x3D;true</li>
+<li>屏蔽 ln -s &#x2F;dev&#x2F;null &#x2F;etc&#x2F;udev&#x2F;rules.d&#x2F;61-gdm.rules</li>
+</ol>
+</li>
+<li><p>gnome 缩放因子 %125++…<br> gsettings set org.gnome.mutter experimental-features “[‘scale-monitor-framebuffer’]”</p>
+</li>
+<li><p>安装字体渲染-infinality</p>
+<ul>
+<li>sudo nano &#x2F;etc&#x2F;apt&#x2F;sources.list.d&#x2F;infinality.list</li>
+</ul>
+<p> deb <a target="_blank" rel="noopener" href="http://ppa.launchpad.net/no1wantdthisname/ppa/ubuntu">http://ppa.launchpad.net/no1wantdthisname/ppa/ubuntu</a> trusty main<br> #deb-src <a target="_blank" rel="noopener" href="http://ppa.launchpad.net/no1wantdthisname/ppa/ubuntu">http://ppa.launchpad.net/no1wantdthisname/ppa/ubuntu</a> trusty main</p>
+<ul>
+<li><p>sudo apt-key adv –keyserver keyserver.ubuntu.com –recv-keys E985B27B</p>
+</li>
+<li><p>apt-get update<br>  apt-get install fontconfig-infinality</p>
+</li>
+</ul>
+</li>
+<li><p>配置系统渲染风格<br> sudo bash &#x2F;etc&#x2F;fonts&#x2F;infinality&#x2F;infctl.sh setstyle</p>
+</li>
+<li><p>安装ubuntu字体</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs bash">wget http://mirrors.kernel.org/ubuntu/pool/main/u/ubuntu-font-family-sources/ttf-ubuntu-font-family_0.80-0ubuntu6_all.deb<br><br>sudo <span class="hljs-built_in">mv</span> ./ttf-ubuntu-font-family_0.80-0ubuntu6_all.deb /tmp<br><br>sudo apt install ./ttf-ubuntu-font-family_0.80-0ubuntu6_all.deb<br><br></code></pre></td></tr></table></figure></li>
+</ol>
 
                 
               </div>
