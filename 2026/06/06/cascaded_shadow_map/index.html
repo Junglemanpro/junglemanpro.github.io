@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+<!-- 标题 -->
+<title>级联阴影映射（Cascaded Shadow Map） | 萤虫之光</title>
+
+<!-- 网站描述 -->
+<meta name="description" content="个人博客">
+<meta name="keywords" content="Shadow">
+<meta name="author" content="Berg Zha">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="级联阴影映射（Cascaded Shadow Map）">
+<meta property="og:description" content="个人博客">
+<meta property="og:url" content="http://junglemanpro.com/2026/06/06/cascaded_shadow_map/index.html">
+<meta property="og:site_name" content="萤虫之光">
+
+
+<!-- Favicon -->
+
+<link rel="icon" href="../../../../img/berg.jpg">
+
+
+<!-- 预连接 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- 字体 -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- 样式表 -->
+
+<link rel="stylesheet" href="../../../../css/style.css">
+
+
+<!-- RSS -->
+
+
+<!-- 规范链接 -->
+<link rel="canonical" href="http://junglemanpro.com/2026/06/06/cascaded_shadow_map/index.html">
+
+<!-- 主题色 -->
+<meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
+
+<!-- 自定义样式变量 -->
+<style>
+  :root {
+    --primary-color: #2563eb;
+  }
+</style>
+
+<meta name="generator" content="Hexo 8.1.2"></head>
+<body>
+  <header class="site-header">
+  <div class="header-container">
+    <!-- Logo / 站点标题 -->
+    <div class="site-brand">
+      <a href="../../../../index.html" class="site-logo">
+        
+          <span class="site-title">萤虫之光</span>
+        
+      </a>
+    </div>
+
+    <!-- 导航菜单 -->
+    <nav class="site-nav">
+      <ul class="nav-list">
+        
+          <li class="nav-item">
+            <a href="../../../../index.html" 
+               class="nav-link ">
+              首页
+            </a>
+          </li>
+        
+          <li class="nav-item">
+            <a href="../../../../archives" 
+               class="nav-link ">
+              归档
+            </a>
+          </li>
+        
+          <li class="nav-item">
+            <a href="../../../../tags" 
+               class="nav-link ">
+              标签
+            </a>
+          </li>
+        
+          <li class="nav-item">
+            <a href="../../../../docs/" 
+               class="nav-link ">
+              文档
+            </a>
+          </li>
+        
+          <li class="nav-item">
+            <a href="../../../../about" 
+               class="nav-link ">
+              关于
+            </a>
+          </li>
+        
+      </ul>
+    </nav>
+
+    <!-- 工具栏 -->
+    <div class="header-tools">
+      <!-- 搜索按钮 -->
+      
+        <button class="tool-btn search-toggle" aria-label="搜索" title="搜索">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 主题切换 -->
+      
+        <button class="tool-btn theme-toggle" aria-label="切换主题" title="切换主题">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 移动端菜单按钮 -->
+      <button class="tool-btn menu-toggle" aria-label="菜单" title="菜单">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" x2="20" y1="12" y2="12"></line>
+          <line x1="4" x2="20" y1="6" y2="6"></line>
+          <line x1="4" x2="20" y1="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 移动端导航 -->
+  <div class="mobile-nav">
+    <ul class="mobile-nav-list">
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../index.html" 
+             class="mobile-nav-link ">
+            首页
+          </a>
+        </li>
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../archives" 
+             class="mobile-nav-link ">
+            归档
+          </a>
+        </li>
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../tags" 
+             class="mobile-nav-link ">
+            标签
+          </a>
+        </li>
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../docs/" 
+             class="mobile-nav-link ">
+            文档
+          </a>
+        </li>
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../about" 
+             class="mobile-nav-link ">
+            关于
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</header>
+
+  
+  <main class="main-content">
+    <div class="container">
+      <div class="page-layout post-layout">
+  <article class="post-article">
+    <!-- 文章头部 -->
+    <header class="post-header">
+      <h1 class="post-title">级联阴影映射（Cascaded Shadow Map）</h1>
+      
+      <!-- 元信息 -->
+      <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-06-06">
+      2026-06-06
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+    <span class="meta-item meta-updated">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+      </svg>
+      <time datetime="2026-08-06">
+        更新于 2026-08-06
+      </time>
+    </span>
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      2.2k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 8 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+</div>
+
+      
+      <!-- 封面图 -->
+      
+    </header>
+
+    <!-- 文章内容 -->
+    <div class="post-content markdown-body">
+      <p>让我们近距离观察一下:</p>
+<p><img src="worse_shadows.jpg" alt="阴影锯齿"> </p>
+<p>阴影的质量不高,因为这种块效应，将其称为透视锯齿，视图空间中的大量像素被映射到阴影贴图中的同一像素，这意味着所有这些像素要么处于阴影中，要么处于光亮中，从而产生块状感。换句话说，由于阴影贴图的分辨率不够高，因此无法充分覆盖视图空间。解决这个问题的一个明显方法是增加阴影贴图的分辨率，但这会增加我们应用程序的内存占用，因此它可能不是最好的做法。</p>
+<p>处理此问题的另一种方法是注意靠近相机的阴影比远处物体的阴影重要得多。无论如何，远处的物体都较小，通常眼睛会聚焦于附近发生的事情，而将其余的视为“背景”。如果我们能找到一种方法，对较近的物体使用专用的阴影贴图，对远处的物体使用不同的阴影贴图，那么第一个阴影贴图将只需要覆盖较小的区域，从而减少我们上面讨论的比率。简而言之，这就是级联阴影贴图（又名 CSM）的全部内容。CSM 被认为是处理透视锯齿的最佳方法之一。让我们看看如何实现它。</p>
+<p>从高层视图来看，我们将把视锥体分割成几个级联（因为它不需要像前面的示例中那样只有两个）。出于本教程的目的，我们将使用三个级联：近、中和远。该算法本身非常通用，因此如果您愿意，可以使用更多级联。每个级联都会被渲染成它自己的私有阴影贴图。阴影算法本身将保持不变，但在从阴影贴图采样深度时，我们需要根据距观察者的距离选择适当的贴图。让我们看一下通用的视锥体：</p>
+<p><img src="frustum_3d.png"><br>像往常一样，我们有一个小的近平面和一个更大的远平面。现在让我们从上面看一下同一个平截头体：<br><img src="frustum_2d.png"> </p>
+<p>下一步是将近平面到远平面的范围分成三部分。我们将其称为近、中、远。另外，我们添加光线方向（右侧的箭头）：<br><img src="frustum_cascade.png"> </p>
+<p>那么我们如何将每个级联渲染成它自己的私有阴影贴图呢？让我们考虑一下阴影贴图算法中的阴影阶段。我们设置一些东西来从光的角度渲染场景。这意味着使用对象的世界变换、基于光线的视图变换和投影矩阵创建一个 WVP 矩阵。由于本教程基于处理定向光阴影的教程 47，因此投影矩阵将是正交的。一般来说，CSM 在主要光源通常是太阳的户外场景中更有意义，因此在这里使用定向光是很自然的。如果您查看上面的 WVP 矩阵，您会发现所有级联的前两个部分（世界和视图）都是相同的。毕竟，物体在世界中的位置以及基于光源的相机的方向与将视锥体分裂成级联无关。这里重要的只是投影矩阵，因为它定义了最终渲染区域的范围。由于正交投影是使用盒子定义的，我们需要定义三个不同的盒子，它们将被转换为三个不同的正交投影矩阵。这些投影矩阵将用于创建三个 WVP 矩阵，以将每个级联渲染为其自己的阴影贴图。</p>
+<p>最合乎逻辑的做法是使这些框尽可能小，以保持视图像素与阴影贴图像素的比率尽可能低。这意味着为每个级联创建一个沿光方向矢量定向的边界框。让我们为第一个级联创建一个这样的边界框：<br><img src="frustum_cascade_bounds_1.png"><br>现在让我们为第二个级联创建一个边界框：<br><img src="frustum_cascade_bounds_2.png"><br>最后是最后一个级联的边界框：<br><img src="frustum_cascade_bounds_3.png"></p>
+<p>正如您所看到的，由于光线的方向，边界框存在一些重叠，这意味着某些像素将被渲染到多个阴影贴图中。只要单个级联的所有像素完全位于单个阴影贴图中，就没有问题。在着色器中用于阴影计算的阴影贴图的选择将基于像素与实际观看者的距离。</p>
+<p>作为阴影阶段正投影的基础的边界框的计算是该算法中最复杂的部分。这些盒子必须在光空间中描述，因为投影发生在世界和视图变换之后（此时光从原点“起源”并沿正 Z 轴指向）。由于框将被计算为所有三个轴上的最小&#x2F;最大值，因此它们将在光线方向上对齐，这就是我们投影所需的。为了计算边界框，我们需要知道每个级联在光空间中的样子。为此，我们需要执行以下步骤：</p>
+<p>计算视图空间中每个级联的八个角。这很简单，需要简单的三角函数：</p>
+<p><img src="frustum1.png"></p>
+<p>上图表示任意级联（因为每个级联本身基本上是一个截锥体，并且与其他级联共享相同的视场角）。请注意，我们是从上往下看 XZ 平面。我们需要计算 X 1和 X 2：<br><img src="calc1.png"><br><img src="calc2.png"></p>
+<p>这为我们提供了视图空间中级联的八个坐标的 X 和 Z 分量。对垂直视场角使用类似的数学运算，我们可以获得 Y 分量并最终确定坐标。</p>
+<p>现在我们需要将级联坐标从视图空间转换回世界空间。假设观察者的方向使得在世界空间中的截锥体看起来像这样（红色箭头是光线方向，但现在忽略它）：</p>
+<p><img src="frustum2.png"></p>
+<p>为了从世界空间转换到视图空间，我们将世界位置向量乘以视图矩阵（基于相机位置和旋转）。这意味着，如果我们已经有了视图空间中级联的坐标，我们必须将它们乘以视图矩阵的逆矩阵，以便将它们转换到世界空间：</p>
+<p><img src="calc3.png"></p>
+<p>通过世界空间中的视锥体坐标，我们现在可以像任何其他对象一样将它们转换为光空间。请记住，光空间与视图空间完全相同，但我们使用光源代替相机。由于我们处理的是没有原点的定向光，因此我们只需要旋转世界，使光方向与正 Z 轴对齐。光的原点可以简单地是光空间坐标系的原点（这意味着我们不需要任何平移）。如果我们使用上图（红色箭头是光方向）来做到这一点，光空间中的级联平截头体应该如下所示：</p>
+<p><img src="frustum_3.png"><br>对于最终在光空间中的级联坐标，我们只需要通过获取八个坐标的 X&#x2F;Y&#x2F;Z 分量的最小&#x2F;最大值来为其生成一个边界框。该边界框提供正交投影的值，用于将此级联渲染到其阴影贴图中。通过分别为每个级联生成正交投影，我们现在可以将每个级联渲染为不同的阴影贴图。在光照阶段，我们将通过根据距观察者的距离选择阴影贴图来计算阴影系数。</p>
+
+    </div>
+
+    <!-- 标签 -->
+    
+      <div class="post-tags">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+          <path d="M7 7h.01"></path>
+        </svg>
+        
+          <a href="../../../../tags/Shadow/" class="tag-link">Shadow</a>
+        
+      </div>
+    
+
+    <!-- 版权信息 -->
+    
+      <div class="post-copyright">
+        <p><strong>本文作者：</strong>Berg Zha</p>
+        <p><strong>本文链接：</strong><a href="http://junglemanpro.com/2026/06/06/cascaded_shadow_map/">http://junglemanpro.com/2026/06/06/cascaded_shadow_map/</a></p>
+        <p><strong>版权声明：</strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！</p>
+      </div>
+    
+
+    <!-- 上一篇 / 下一篇 -->
+    <nav class="post-nav">
+      
+        <a href="../deferred_shading/" class="post-nav-item prev">
+          <span class="post-nav-label">上一篇</span>
+          <span class="post-nav-title">延迟渲染（Deferred Shading）</span>
+        </a>
+      
+      
+      
+        <a href="../forward_plus_shading/" class="post-nav-item next">
+          <span class="post-nav-label">下一篇</span>
+          <span class="post-nav-title">前向多光照改进渲染(Forward Plus Shading)</span>
+        </a>
+      
+    </nav>
+  </article>
+
+  <!-- TOC 目录 -->
+  
+    <aside class="post-toc">
+      <div class="toc-wrapper">
+        <h3 class="toc-title">目录</h3>
+        <div class="toc-content">
+          
+        </div>
+      </div>
+    </aside>
+  
+</div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-content">
+      <!-- 版权信息 -->
+      <div class="footer-copyright">
+        <p>
+          &copy; 
+          
+            2024 - 
+          
+          2026 
+          <a href="../../../../index.html">Berg Zha</a>
+        </p>
+      </div>
+
+      <!-- 社交链接 -->
+      
+        <div class="footer-social">
+          
+          
+          
+        </div>
+      
+
+      <!-- 技术支持 -->
+      <div class="footer-powered">
+        <p>
+          Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a>
+          <span class="separator">|</span>
+          Theme Starter
+        </p>
+      </div>
+
+      <!-- 备案信息 -->
+      
+
+      <!-- 自定义内容 -->
+      
+    </div>
+  </div>
+</footer>
+
+  
+  <!-- 搜索模态框 -->
+  
+    <div id="search-modal" class="search-modal">
+  <div class="search-container">
+    <!-- 搜索头部 -->
+    <div class="search-header">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="搜索文章、文档..." 
+          autocomplete="off"
+          autofocus
+        >
+        <button class="search-close" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="search-shortcut">
+        <kbd>ESC</kbd> 关闭
+        <span class="shortcut-divider">|</span>
+        <kbd>↑</kbd><kbd>↓</kbd> 导航
+        <span class="shortcut-divider">|</span>
+        <kbd>Enter</kbd> 打开
+      </div>
+    </div>
+
+    <!-- 搜索结果 -->
+    <div id="search-results" class="search-results">
+      <div class="search-tip">输入关键词开始搜索</div>
+    </div>
+
+    <!-- 搜索页脚 -->
+    <div class="search-footer">
+      <span class="search-footer-text">
+        <kbd>Ctrl</kbd> + <kbd>K</kbd> 快速搜索
+      </span>
+    </div>
+  </div>
+</div>
+
+  
+
+  <!-- 站点配置 -->
+  <script>
+    window.STARTER_CONFIG = {
+      root: '/',
+      searchEnabled: true
+    };
+  </script>
+
+  <!-- 主脚本 -->
+  
+<script src="../../../../js/main.js"></script>
+
+  
+  
+    
+<script src="../../../../js/search.js"></script>
+
+  
+  
+  
+    
+<script src="../../../../js/doc-sidebar.js"></script>
+
+  
+</body>
+</html>
