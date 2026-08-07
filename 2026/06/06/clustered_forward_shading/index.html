@@ -6,16 +6,16 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>集群前向多光照渲染（Clustered Forward Shading） | 萤虫之光</title>
+<title>深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
-<meta name="keywords" content="Lighting">
+<meta name="keywords" content="Graphics Pipeline,Lighting,Clustered Shading,Forward Plus,Compute Shader">
 <meta name="author" content="Berg Zha">
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="集群前向多光照渲染（Clustered Forward Shading）">
+<meta property="og:title" content="深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2026/06/06/clustered_forward_shading/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -54,6 +54,17 @@
     --primary-color: #2563eb;
   }
 </style>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
@@ -203,7 +214,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">集群前向多光照渲染（Clustered Forward Shading）</h1>
+      <h1 class="post-title">深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -227,8 +238,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-06">
-        更新于 2026-08-06
+      <time datetime="2026-08-07">
+        更新于 2026-08-07
       </time>
     </span>
   
@@ -242,7 +253,7 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      1.9k 字
+      6.7k 字
     </span>
   
 
@@ -254,7 +265,7 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       
-      约 7 分钟
+      约 23 分钟
     </span>
   
 
@@ -269,41 +280,230 @@
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
-      <ul>
-<li>基本概念<br>cluster shading是将相机的Frustum按x y z切块成cluster，记录每个cluster 受哪些实时光源影响，再对有效的cluster进行光照计算。</li>
-</ul>
-<p><img src="frustum.png"></p>
+      <h1
+id="深入解析集群前向渲染clustered-forward-shading">深入解析集群前向渲染（Clustered
+Forward Shading）</h1>
+<p>在实时图形渲染管线演进的过程中，处理海量实时动态光源一直是最核心的挑战之一。虽然
+Tiled Forward（Forward+）通过屏幕 2D
+网格切割有效降低了光照计算复杂度，但它在面对深度跨度极大或深度不连续的场景时依然存在严重的算力浪费。</p>
+<p><strong>集群前向渲染（Clustered Forward Shading）</strong>
+通过将相机的视锥体（Frustum）在 X、Y 轴以及 Z
+轴（深度）三个维度上同时切块，形成三维体素集群（Clusters）。本文将详细解构
+Clustered Shading 的数学原理、五步管线工作流、Compute Shader 代码实现
+以及工业级性能调优方向。</p>
+<hr />
+<h2 id="一-核心痛点与范式演进">一、 核心痛点与范式演进</h2>
+<h3 id="tiled-forward-forward-的深度跨度缺陷">1. Tiled Forward
+(Forward+) 的深度跨度缺陷</h3>
+<p>在 Tiled Forward（Forward+）管线中，屏幕被分割为 <span
+class="math inline">\(16 \times 16\)</span> 像素的 2D Tile。每个 Tile
+依靠内部像素的最小与最大深度值 <span
+class="math inline">\([Z_{\text{min}}, Z_{\text{max}}]\)</span>
+构建视锥包围体。</p>
+<p>然而，当场景存在<strong>深度不连续（Depth
+Discontinuity）</strong>时（例如前景有一个电线杆，背景是几百米外的天空或大楼），Tile
+的 <span class="math inline">\([Z_{\text{min}}, Z_{\text{max}}]\)</span>
+范围会被拉得极长。这会导致位于近景与远景之间空旷区域的大量光源被误判为“与
+Tile 相交”，从而强行参与片元着色器的光照累加，造成极大的算力浪费。</p>
+<h3 id="clustered-shading-的三维体素解耦">2. Clustered Shading
+的三维体素解耦</h3>
+<p>Clustered Shading
+将视锥体在三维空间中划分成若干个小立方体网格（Cluster / Voxel）。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">              相 机 视 锥 体 3 D 切 割 (Clusters)</span><br><span class="line">             +-----------------------------------+</span><br><span class="line">            /   Cluster (x, y, z)               /|</span><br><span class="line">           +-----------------------------------+ |</span><br><span class="line">          /                                   /  |</span><br><span class="line">(0,0,0)  +-----------------------------------+   |  (X, Y, Z_max)</span><br><span class="line"> Camera  |   Tile (X,Y)   |   ...            |   +</span><br><span class="line">   o---&gt; |----------------+                  |  /</span><br><span class="line">         |   ...          |                  | /</span><br><span class="line">         +-----------------------------------+/</span><br></pre></td></tr></table></figure>
 <ul>
-<li><p>痛点<br>解决tbdr和观察物体有强关联，在深度不连续的地方，会导致开销增大的问题。</p>
-</li>
-<li><p>基本步骤</p>
-<ol>
-<li><p>pre depth,只渲染不透明物体<br>  计算保存 有效的cluster<br>  根据lighting(pos,range)计算得到lighting bounds,并根据lighting bounds得到每个cluster命中的lighting count<br>  遍历所有cluster的lighting count,累加至lighting total,并记录每个cluster在lighting total累加时的总量，记作offset<br>  遍历所有lighting,根据lighting bounds遍历其中的有效cluster,累加当前cluster count和总的offset将light index记录在light list中<br>  根据offset和lighting count读取cluster光照信息进行光照计算<br>  基本实现<br>  pre depth 此为优化项，搭配ssao msaa食用更美味。</p>
-</li>
-<li><p>计算保存 有效的cluster</p>
-</li>
-</ol>
-<p>  点位： 世界坐标系 转换到 相机坐标系 ，由相机坐标系 点位 得到深度信息<br>  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vec4 view_pos = ubo_in.view * world_pos_in;</span><br></pre></td></tr></table></figure><br>  将frag_pos.xy view_pos.z转换得到当前点位的分簇 x y z坐标</p>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">uvec3 view_pos_to_grid_coord(vec2 frag_pos, float view_z)</span><br><span class="line">&#123;</span><br><span class="line">    vec3 c;</span><br><span class="line">    c.xy = (frag_pos-0.5f) / ubo_in.tile_size;</span><br><span class="line">    c.z = min(float(GRID_DIM_Z - 1), max(0.f, float(GRID_DIM_Z) * log((-view_z -   CAM_NEAR) / (ubo_in.cam_far - CAM_NEAR) + 1.f)));</span><br><span class="line">    return uvec3(c);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol start="3">
-<li>将当前fragpos的分簇 x y z坐标转化为cluster id</li>
-</ol>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">uint grid_coord_to_grid_idx(uvec3 c)</span><br><span class="line">&#123;</span><br><span class="line">    return ubo_in.grid_dim.x * ubo_in.grid_dim.y * c.z + ubo_in.grid_dim.x * c.y + c.x;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<ol start="4">
-<li>保存 有效的cluster</li>
-</ol>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">imageStore(grid_flags, int(grid_idx), uvec4(1, 0, 0, 0));</span><br></pre></td></tr></table></figure>
-<ol start="5">
-<li>记录有效的cluster<br>  <img src="cluster_flags.png"><br>  tips: gl_FragCoord<br>  当viewport 范围 为（0，0，800，600）时， x, y 的取值范围为（0.5, 0.5, 799.5, 599.5）<br>  计算lighting bounds和cluster命中的lighting count</li>
-</ol>
-<p>  将light pos转化到相机坐标系，根据light range的到最小值和最大值，剔除不在该camera frustum下的lighting,将有效的light pos转化为frag<br>  grid_light_counts 累加每一个cluster对应的count<br>  记录每个cluster在lighting list中的offset<br>  numgroup x y z 设置每个group的size为16<br>  compute_shader对应的线程组<br>  <img src="compute_offset.png"></p>
-<ol start="6">
-<li>生成光照列表<br>  遍历light bounds, 读取有效的cluster的偏移量,<br>  <img src="lighting_list.png"></li>
-</ol>
-</li>
-<li><p>优化方向<br>资源类型：访问具有空间连续性，使用buffer和贴图有更好的cache命中率。随机访问的特性更强使用ubo减少访问贴图采样次数，如light vec。<br>贴图格式：根据实际需求，使用最小的texture格式减少带宽，如uvec2使用uint r16b16或者uint r8b8等。<br>是否带阴影的灯光 在第一张表格中进行区分？如果在光源信息中标识是否带阴影会在shader中多引入动态分支，而在第一张表格中区分可以省去此动态分支，但是需要更大的带宽，需要衡量。</p>
-</li>
+<li><strong>彻底解决深度不连续问题</strong>：因为 Z
+轴也被切分成多个区间，近景与远景被划分至不同的 Z-Slice（Z
+切片）。光源仅会被记录在它真正覆盖的 3D Cluster 中，不会影响同一 2D Tile
+下其他深度级别的像素。</li>
+<li><strong>解耦渲染与场景复杂度</strong>：与观察物体的几何结构解除强关联，大幅提升了多光源场景下的渲染帧率稳定性。</li>
 </ul>
+<hr />
+<h2 id="二-基本步骤clustered-渲染五步管线">二、 基本步骤：Clustered
+渲染五步管线</h2>
+<p>Clustered Forward Shading
+的完整执行流程可以划分为以下五个核心阶段：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">+--------------------+     +--------------------+     +--------------------+</span><br><span class="line">| 1. 深度预Pass     |     | 2. 计算光源包围体   |     | 3. 前缀和累加      |</span><br><span class="line">| (Pre-Depth Pass)   |====&gt;| (Light Bounds)     |====&gt;| (Prefix Sum Offset)|</span><br><span class="line">| 标记有效 Clusters  |     | 计算集群光照 Count |     | 记录地址偏移量     |</span><br><span class="line">+--------------------+     +--------------------+     +--------------------+</span><br><span class="line">                                                                |</span><br><span class="line">+--------------------+     +--------------------+               |</span><br><span class="line">| 5. 片元光照计算    |     | 4. 填充光源列表    |               |</span><br><span class="line">| (Shading Pass)     |&lt;====| (Build Light List) |&lt;--------------+</span><br><span class="line">| 读取 Cluster 光照  |     | 构建全局 Index 数组|</span><br><span class="line">+--------------------+     +--------------------+</span><br></pre></td></tr></table></figure>
+<ol type="1">
+<li><strong>深度预计算 (Pre-Depth Pass)</strong>：仅渲染不透明物体生成
+Depth Buffer。在此基础上标记出屏幕中真正包含有效片元的 3D
+Clusters（此步骤为可选优化项，搭配 SSAO、MSAA 使用效果更佳）。</li>
+<li><strong>计算光照边界 (Light Bounds &amp;
+Count)</strong>：根据每个光源的位置与作用半径计算其包围体，遍历与之重叠的
+Clusters，递增累加每个 Cluster 命中的光源数量（Lighting Count）。</li>
+<li><strong>累加偏移量 (Prefix Sum Offset)</strong>：遍历所有 Cluster 的
+Lighting Count 进行前缀和累加，计算出全局总光源数（Lighting
+Total），并记录每个 Cluster
+在全局数组中的起始写入偏移量（Offset）。</li>
+<li><strong>记录光源列表 (Build Light
+List)</strong>：再次遍历光源包围体覆盖的有效 Cluster，结合该 Cluster 的
+Count 与 Offset，将其对应的 Light Index 依次存入全局 Light List
+中。</li>
+<li><strong>片元光照计算 (Forward Shading Pass)</strong>：在正向渲染
+Pass 中，片元着色器根据当前像素计算出所属的 Cluster ID，依据 Offset 和
+Count 读取对应 Light List 并完成光照累加。</li>
+</ol>
+<hr />
+<h2 id="三-具体实现细节与坐标转换">三、 具体实现细节与坐标转换</h2>
+<h3 id="视图空间转换与-z-轴对数分片">1. 视图空间转换与 Z 轴对数分片</h3>
+<p>在着色器中，首先将片元的世界坐标转换至相机视图空间（View Space）：
+<span class="math display">\[\mathbf{P}_{\text{view}} = \mathbf{V} \cdot
+\mathbf{P}_{\text{world}}\]</span></p>
+<p>由于透视投影的非线性特性，为了让近处拥有更高的空间切割精度、远处分割相对稀疏，Z
+轴方向通常采用<strong>对数切割（Logarithmic Splitting）</strong>。</p>
+<p>根据屏幕坐标 <code>frag_pos.xy</code> 与视图空间深度
+<code>view_z</code> 计算 Cluster 三维网格坐标 <span
+class="math inline">\((c_x, c_y, c_z)\)</span> 的 GLSL 实现如下：</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uvec3</span> view_pos_to_grid_coord(<span class="type">vec2</span> frag_pos, <span class="type">float</span> view_z)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">vec3</span> c;</span><br><span class="line">    <span class="comment">// XY 维度按 Tile 尺寸线性均匀划分</span></span><br><span class="line">    c.xy = (frag_pos - <span class="number">0.5</span>f) / ubo_in.tile_size;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// Z 维度按照对数公式进行非线性划分</span></span><br><span class="line">    c.z = <span class="built_in">min</span>(<span class="type">float</span>(GRID_DIM_Z - <span class="number">1</span>), </span><br><span class="line">          <span class="built_in">max</span>(<span class="number">0.</span>f, <span class="type">float</span>(GRID_DIM_Z) * <span class="built_in">log</span>((-view_z - CAM_NEAR) / (ubo_in.cam_far - CAM_NEAR) + <span class="number">1.</span>f)));</span><br><span class="line">          </span><br><span class="line">    <span class="keyword">return</span> <span class="type">uvec3</span>(c);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p><strong>Tips</strong>：关于 <code>gl_FragCoord</code>，当 Viewport
+范围为 <span class="math inline">\((0, 0, 800, 600)\)</span>
+时，<code>x, y</code> 的中心点取值范围为 <span
+class="math inline">\((0.5, 0.5)\)</span> 至 <span
+class="math inline">\((799.5, 599.5)\)</span>。因此计算时需要减去
+<code>0.5f</code> 偏移。</p>
+</blockquote>
+<hr />
+<h3 id="d-坐标折叠与有效-cluster-存储">2. 3D 坐标折叠与有效 Cluster
+存储</h3>
+<p>为了高效存储与读取，需要将三维网格坐标 <span
+class="math inline">\((c_x, c_y, c_z)\)</span> 转换为一维展平索引（1D
+Grid Index）：</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint</span> grid_coord_to_grid_idx(<span class="type">uvec3</span> c)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> ubo_in.grid_dim.x * ubo_in.grid_dim.y * c.z + ubo_in.grid_dim.x * c.y + c.x;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在 Pre-Depth 阶段，通过 Compute Shader 或片段着色器将包含有效像素的
+Cluster 标记写入位图或 Image 缓冲区：</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 保存当前 Cluster 为有效状态 (Active Flag)</span></span><br><span class="line"><span class="built_in">imageStore</span>(grid_flags, <span class="type">int</span>(grid_idx), <span class="type">uvec4</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>));</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">             有效 Cluster 标记 (Grid Flags Storage)</span><br><span class="line">+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+</span><br><span class="line">| 1 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | ...</span><br><span class="line">+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+</span><br><span class="line">  ^           ^</span><br><span class="line">  |           +-- 标记为 1 代表该 Cluster 包含可见片元</span><br><span class="line">  +-------------- 标记为 0 代表空 Cluster，剔除后续求交计算</span><br></pre></td></tr></table></figure>
+<hr />
+<h3 id="光源求交与前缀和-offset-计算">3. 光源求交与前缀和 Offset
+计算</h3>
+<p>在 Compute Shader 阶段计算光源影响范围： 1.
+将光源位置变换至相机视图空间，结合 Light Range 得到包围盒（AABB）。 2.
+剔除完全位于相机视锥体之外的光源。 3. 转换为对应的 Cluster
+坐标范围，递增对应 Cluster 的 <code>grid_light_counts</code>。 4. 设置
+Compute Shader 的线程组大小（<code>numgroup</code> 的 X, Y, Z 设置每个
+Group Size 为 16）以并行计算前缀和 Offset。</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Compute Shader 伪代码：前缀和累加与 Light List 生成</span></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">local_size_x</span> = <span class="number">16</span>, <span class="keyword">local_size_y</span> = <span class="number">1</span>, <span class="keyword">local_size_z</span> = <span class="number">1</span>) <span class="keyword">in</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">    <span class="type">uint</span> cluster_idx = <span class="built_in">gl_GlobalInvocationID</span>.x;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 读取当前 Cluster 命中的光源数量</span></span><br><span class="line">    <span class="type">uint</span> count = grid_light_counts[cluster_idx];</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 执行前缀和扫描 (Prefix Sum / Exclusive Scan) 得到 offset</span></span><br><span class="line">    <span class="type">uint</span> <span class="keyword">offset</span> = <span class="built_in">atomicAdd</span>(global_light_total, count);</span><br><span class="line">    grid_offsets[cluster_idx] = <span class="keyword">offset</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h2 id="四-工业级工程优化方向">四、 工业级工程优化方向</h2>
+<p>在实际引擎工程开发中，针对内存访问效率与硬件特性，Clustered Shading
+有以下重要的优化手段：</p>
+<h3 id="资源类型与-cache-命中率优化">1. 资源类型与 Cache 命中率优化</h3>
+<ul>
+<li><strong>空间连续性与缓存</strong>：光照数据的访问具有极强的空间局部性（Spatial
+Locality）。使用 Buffer 或 Texture 能够提供更高的 L1/L2 Cache
+命中率。</li>
+<li><strong>UBO vs SSBO</strong>：对于随机访问特性更强的通用数据，使用
+UBO（Uniform Buffer Object）可以减少纹理采样的开销（如存储光源基础向量
+<code>light vec</code>）。</li>
+</ul>
+<h3 id="贴图格式与显存带宽压缩">2. 贴图格式与显存带宽压缩</h3>
+<ul>
+<li>为了降低显存带宽消耗，应根据实际数据取值范围选用最小的贴图格式。</li>
+<li>例如，存储 <code>Offset</code> 与 <code>Count</code> 的
+<code>uvec2</code> 变量，可以使用压缩格式如 <code>uint r16g16</code> 或
+<code>uint r8g8</code> 来替代全精度的 32-bit 格式。</li>
+</ul>
+<h3 id="阴影分支处理权衡-shadow-branching-strategy">3. 阴影分支处理权衡
+(Shadow Branching Strategy)</h3>
+<p>在 Clustered
+架构中，处理带阴影（Shadowed）与无阴影（Unshadowed）的光源有两个主流方向，开发者需要根据硬件瓶颈进行权衡：</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">方案</th>
+<th style="text-align: left;">实现方式</th>
+<th style="text-align: left;">优点</th>
+<th style="text-align: left;">缺点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>光源信息标记分支</strong></td>
+<td style="text-align: left;">在统一的光源列表中增加
+<code>bool isShadowed</code> 属性</td>
+<td style="text-align: left;">带宽占用小，数据结构简单</td>
+<td style="text-align: left;">片段着色器中引入动态分支（Dynamic
+Branching），可能导致 Thread Divergence</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>物理分表存储</strong></td>
+<td style="text-align: left;">在构建 Light List
+时拆分为“无阴影光源列表”与“带阴影光源列表”</td>
+<td style="text-align: left;">着色器无需动态分支判断，执行效率高</td>
+<td style="text-align: left;">需要更大的内存与显存带宽</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="五-渲染管线对比总结">五、 渲染管线对比总结</h2>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">渲染管线特性</th>
+<th style="text-align: left;">Forward (正向)</th>
+<th style="text-align: left;">Deferred (延迟)</th>
+<th style="text-align: left;">Forward+ (Tiled Forward)</th>
+<th style="text-align: left;">Clustered Forward</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>空间划分维度</strong></td>
+<td style="text-align: left;">无划分</td>
+<td style="text-align: left;">全屏像素</td>
+<td style="text-align: left;">2D Tile (<span class="math inline">\(16
+\times 16\)</span>)</td>
+<td style="text-align: left;"><strong>3D Cluster (<span
+class="math inline">\(X \times Y \times Z\)</span>)</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>深度跨度问题</strong></td>
+<td style="text-align: left;">严重 Overdraw</td>
+<td style="text-align: left;">严重 Overdraw</td>
+<td style="text-align: left;">产生光源误判与无效计算</td>
+<td style="text-align: left;"><strong>彻底解决</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>半透明/MSAA 支持</strong></td>
+<td style="text-align: left;">原生支持</td>
+<td style="text-align: left;">限制极大</td>
+<td style="text-align: left;">原生支持</td>
+<td style="text-align: left;"><strong>原生完美支持</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>显存带宽消耗</strong></td>
+<td style="text-align: left;">极低</td>
+<td style="text-align: left;">极高 (G-Buffer)</td>
+<td style="text-align: left;">较低</td>
+<td style="text-align: left;"><strong>低 (仅需 Light List)</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="六-总结">六、 总结</h2>
+<p>集群前向渲染（Clustered Forward Shading）通过 <strong>3D
+体素化视锥切割</strong>，成功破解了 Tiled Forward
+面对深度不连续场景时的光照误判难题： *
+<strong>核心突破</strong>：利用对数 Z 轴切割（Logarithmic
+Z-Splitting）与三维网格映射，实现了高效的 <span
+class="math inline">\(O(1)\)</span> 级空间光照查找； *
+<strong>工程落脚点</strong>：依靠 Pre-Depth Pass 剔除无效 Cluster，结合
+Compute Shader 完成前缀和 Offset 累加与 Light List 填充； *
+<strong>优化精髓</strong>：通过压榨带宽格式（R16G16）、合理规划 UBO/SSBO
+缓存以及平衡阴影分支，为现代引擎提供了支持成千上万个实时动态光源的强大支撑。</p>
 
     </div>
 
@@ -315,7 +515,15 @@
           <path d="M7 7h.01"></path>
         </svg>
         
+          <a href="../../../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
+        
           <a href="../../../../tags/Lighting/" class="tag-link">Lighting</a>
+        
+          <a href="../../../../tags/Clustered-Shading/" class="tag-link">Clustered Shading</a>
+        
+          <a href="../../../../tags/Forward-Plus/" class="tag-link">Forward Plus</a>
+        
+          <a href="../../../../tags/Compute-Shader/" class="tag-link">Compute Shader</a>
         
       </div>
     
@@ -334,14 +542,14 @@
       
         <a href="../forward_plus_shading/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">前向多光照改进渲染(Forward Plus Shading)</span>
+          <span class="post-nav-title">深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化</span>
         </a>
       
       
       
         <a href="../../../../2025/05/05/%E9%81%AE%E8%94%BD/" class="post-nav-item next">
           <span class="post-nav-label">下一篇</span>
-          <span class="post-nav-title">遮蔽_AO</span>
+          <span class="post-nav-title">深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践</span>
         </a>
       
     </nav>
@@ -353,7 +561,14 @@
       <div class="toc-wrapper">
         <h3 class="toc-title">目录</h3>
         <div class="toc-content">
-          
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E9%9B%86%E7%BE%A4%E5%89%8D%E5%90%91%E6%B8%B2%E6%9F%93clustered-forward-shading"><span class="toc-text">深入解析集群前向渲染（Clustered
+Forward Shading）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E6%A0%B8%E5%BF%83%E7%97%9B%E7%82%B9%E4%B8%8E%E8%8C%83%E5%BC%8F%E6%BC%94%E8%BF%9B"><span class="toc-text">一、 核心痛点与范式演进</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#tiled-forward-forward-%E7%9A%84%E6%B7%B1%E5%BA%A6%E8%B7%A8%E5%BA%A6%E7%BC%BA%E9%99%B7"><span class="toc-text">1. Tiled Forward
+(Forward+) 的深度跨度缺陷</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#clustered-shading-%E7%9A%84%E4%B8%89%E7%BB%B4%E4%BD%93%E7%B4%A0%E8%A7%A3%E8%80%A6"><span class="toc-text">2. Clustered Shading
+的三维体素解耦</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-%E5%9F%BA%E6%9C%AC%E6%AD%A5%E9%AA%A4clustered-%E6%B8%B2%E6%9F%93%E4%BA%94%E6%AD%A5%E7%AE%A1%E7%BA%BF"><span class="toc-text">二、 基本步骤：Clustered
+渲染五步管线</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82%E4%B8%8E%E5%9D%90%E6%A0%87%E8%BD%AC%E6%8D%A2"><span class="toc-text">三、 具体实现细节与坐标转换</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%86%E5%9B%BE%E7%A9%BA%E9%97%B4%E8%BD%AC%E6%8D%A2%E4%B8%8E-z-%E8%BD%B4%E5%AF%B9%E6%95%B0%E5%88%86%E7%89%87"><span class="toc-text">1. 视图空间转换与 Z 轴对数分片</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#d-%E5%9D%90%E6%A0%87%E6%8A%98%E5%8F%A0%E4%B8%8E%E6%9C%89%E6%95%88-cluster-%E5%AD%98%E5%82%A8"><span class="toc-text">2. 3D 坐标折叠与有效 Cluster
+存储</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%89%E6%BA%90%E6%B1%82%E4%BA%A4%E4%B8%8E%E5%89%8D%E7%BC%80%E5%92%8C-offset-%E8%AE%A1%E7%AE%97"><span class="toc-text">3. 光源求交与前缀和 Offset
+计算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E5%B7%A5%E4%B8%9A%E7%BA%A7%E5%B7%A5%E7%A8%8B%E4%BC%98%E5%8C%96%E6%96%B9%E5%90%91"><span class="toc-text">四、 工业级工程优化方向</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B5%84%E6%BA%90%E7%B1%BB%E5%9E%8B%E4%B8%8E-cache-%E5%91%BD%E4%B8%AD%E7%8E%87%E4%BC%98%E5%8C%96"><span class="toc-text">1. 资源类型与 Cache 命中率优化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B4%B4%E5%9B%BE%E6%A0%BC%E5%BC%8F%E4%B8%8E%E6%98%BE%E5%AD%98%E5%B8%A6%E5%AE%BD%E5%8E%8B%E7%BC%A9"><span class="toc-text">2. 贴图格式与显存带宽压缩</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B4%E5%BD%B1%E5%88%86%E6%94%AF%E5%A4%84%E7%90%86%E6%9D%83%E8%A1%A1-shadow-branching-strategy"><span class="toc-text">3. 阴影分支处理权衡
+(Shadow Branching Strategy)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF%E5%AF%B9%E6%AF%94%E6%80%BB%E7%BB%93"><span class="toc-text">五、 渲染管线对比总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E6%80%BB%E7%BB%93"><span class="toc-text">六、 总结</span></a></li></ol></li></ol>
         </div>
       </div>
     </aside>

@@ -55,6 +55,17 @@
   }
 </style>
 
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
   <header class="site-header">
@@ -211,7 +222,7 @@
           <div class="post-card-content">
             <!-- 标题 -->
             <h2 class="post-title">
-              <a href="2026/06/06/fullscreen-quad_rendering/">全屏四边形渲染（Fullscreen Quad Rendering）</a>
+              <a href="2026/08/06/indirectDraw/">深入解析 Vulkan Indirect Draw（间接绘制）：从 GPU-Driven 管线、Multi-Draw Indirect 到无绑定（Bindless）工程实践</a>
             </h2>
             
             <!-- 元信息 -->
@@ -224,8 +235,8 @@
       <line x1="8" x2="8" y1="2" y2="6"></line>
       <line x1="3" x2="21" y1="10" y2="10"></line>
     </svg>
-    <time datetime="2026-06-06">
-      2026-06-06
+    <time datetime="2026-08-06">
+      2026-08-06
     </time>
   </span>
 
@@ -241,7 +252,7 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      2.2k 字
+      15.0k 字
     </span>
   
 
@@ -253,7 +264,7 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       
-      约 8 分钟
+      约 51 分钟
     </span>
   
 
@@ -265,7 +276,11 @@
         <path d="M7 7h.01"></path>
       </svg>
       
-        <a href="tags/PostProcessing/">PostProcessing</a>
+        <a href="tags/Vulkan/">Vulkan</a>
+      
+        <a href="tags/Compute-Shader/">Compute Shader</a>
+      
+        <a href="tags/Indirect-Draw/">Indirect Draw</a>
       
     </span>
   
@@ -275,13 +290,18 @@
             <!-- 摘要 -->
             <div class="post-excerpt">
               
-                渲染全屏四边形（或填充整个屏幕的东西）是 3D 实时图形中的一项常见任务，因为许多效果依赖于在 [0..1] 范围内使用适当的 uv 坐标在整个屏幕上渲染纹理。这适用于后期处理（光照计算、ssao）、延迟着色或程序生成的输出。
-渲染此类全屏四边形的最先进方法是设置包含顶点（可选纹理坐标）和索引的缓冲区，用于渲染由两个三角形组成的四边形，绑定这些缓冲区并将它们作为着色器的输入属性。虽然这在 Open...
+                深入解析 Vulkan Indirect
+Draw（间接绘制）
+在传统的图形渲染管线中，CPU 负责每帧计算可见性、调度
+LOD、更新常量缓冲并将绘制命令（Draw Call）下发给
+GPU。随着场景复杂度的几何级数增长（如数百万个独立
+Instance、海量植被与建筑），CPU 端遍历场景树与频繁触发 Draw Call 带来的
+API 开销成为了制约渲染性能的最大瓶颈（CPU Bo...
               
             </div>
             
             <!-- 阅读更多 -->
-            <a href="2026/06/06/fullscreen-quad_rendering/" class="read-more">
+            <a href="2026/08/06/indirectDraw/" class="read-more">
               阅读全文
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M5 12h14"></path>
@@ -298,7 +318,294 @@
           <div class="post-card-content">
             <!-- 标题 -->
             <h2 class="post-title">
-              <a href="2026/06/06/deferred_shading/">延迟渲染（Deferred Shading）</a>
+              <a href="2026/08/06/%E5%90%8E%E5%A4%84%E7%90%86/">深入解析现代图形管线中的后处理架构：从 Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化</a>
+            </h2>
+            
+            <!-- 元信息 -->
+            <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-08-06">
+      2026-08-06
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      14.9k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 50 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+    <span class="meta-item meta-tags">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+        <path d="M7 7h.01"></path>
+      </svg>
+      
+        <a href="tags/Vulkan/">Vulkan</a>
+      
+        <a href="tags/Graphics-Pipeline/">Graphics Pipeline</a>
+      
+        <a href="tags/PostProcessing/">PostProcessing</a>
+      
+    </span>
+  
+</div>
+
+            
+            <!-- 摘要 -->
+            <div class="post-excerpt">
+              
+                深入解析现代图形管线中的后处理架构：从
+Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化
+后处理（Post-Processing）是现代 3D
+实时渲染管线中连接“三维物理着色”与“二维屏幕呈现”的关键桥梁。在完成场景的
+G-Buffer 绘制、光照计算与阴影叠加后，帧缓冲（Frame
+Buffer）中存储的是处于高动态范围（HD...
+              
+            </div>
+            
+            <!-- 阅读更多 -->
+            <a href="2026/08/06/%E5%90%8E%E5%A4%84%E7%90%86/" class="read-more">
+              阅读全文
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
+            </a>
+          </div>
+        </article>
+      
+        <article class="post-card">
+          <!-- 封面图 -->
+          
+          
+          <div class="post-card-content">
+            <!-- 标题 -->
+            <h2 class="post-title">
+              <a href="2026/08/06/SSSAO/">深入解析屏幕空间环境光遮蔽（SSAO）：数学半球积分、采样核优化、深度不连续瑕疵与双边滤波工程实现</a>
+            </h2>
+            
+            <!-- 元信息 -->
+            <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-08-06">
+      2026-08-06
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      10.9k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 37 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+    <span class="meta-item meta-tags">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+        <path d="M7 7h.01"></path>
+      </svg>
+      
+        <a href="tags/Graphics-Pipeline/">Graphics Pipeline</a>
+      
+        <a href="tags/SSAO/">SSAO</a>
+      
+        <a href="tags/PostProcessing/">PostProcessing</a>
+      
+    </span>
+  
+</div>
+
+            
+            <!-- 摘要 -->
+            <div class="post-excerpt">
+              
+                深入解析屏幕空间环境光遮蔽（Screen-Space
+Ambient Occlusion, SSAO）
+在实时 3D 图形渲染管线中，间接光照（Indirect
+Illumination）的计算是决定场景空间感与真实感的核心关键。然而，完整求解全局光照（Global
+Illumination, GI）的渲染方程开销极大。环境光遮蔽（Ambient
+Occlusion, AO）
+作为一个...
+              
+            </div>
+            
+            <!-- 阅读更多 -->
+            <a href="2026/08/06/SSSAO/" class="read-more">
+              阅读全文
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
+            </a>
+          </div>
+        </article>
+      
+        <article class="post-card">
+          <!-- 封面图 -->
+          
+          
+          <div class="post-card-content">
+            <!-- 标题 -->
+            <h2 class="post-title">
+              <a href="2026/08/06/Layout/">深入解析移动端 TBDR 架构与 Vulkan Subpass：片上 Layout Transition 的硬件物理机制与工程实践</a>
+            </h2>
+            
+            <!-- 元信息 -->
+            <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-08-06">
+      2026-08-06
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      10.4k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 35 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+    <span class="meta-item meta-tags">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+        <path d="M7 7h.01"></path>
+      </svg>
+      
+        <a href="tags/Vulkan/">Vulkan</a>
+      
+        <a href="tags/TBDR/">TBDR</a>
+      
+        <a href="tags/Mobile-GPU/">Mobile GPU</a>
+      
+    </span>
+  
+</div>
+
+            
+            <!-- 摘要 -->
+            <div class="post-excerpt">
+              
+                深入解析移动端
+TBDR 架构与 Vulkan Subpass：片上 Layout Transition
+的硬件物理机制与工程实践
+在 Vulkan 渲染管线设计中，VkRenderPass 与
+VkSubpass 是面向现代 GPU 架构（尤其是移动端 Tile-Based
+Deferred Rendering, TBDR 硬件）的核心抽象。在桌面端 Instant Mode
+Ren...
+              
+            </div>
+            
+            <!-- 阅读更多 -->
+            <a href="2026/08/06/Layout/" class="read-more">
+              阅读全文
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
+            </a>
+          </div>
+        </article>
+      
+        <article class="post-card">
+          <!-- 封面图 -->
+          
+          
+          <div class="post-card-content">
+            <!-- 标题 -->
+            <h2 class="post-title">
+              <a href="2026/06/06/fullscreen_quad_rendering/">深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践</a>
             </h2>
             
             <!-- 元信息 -->
@@ -328,7 +635,296 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      9.8k 字
+      7.0k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 24 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+    <span class="meta-item meta-tags">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+        <path d="M7 7h.01"></path>
+      </svg>
+      
+        <a href="tags/Vulkan/">Vulkan</a>
+      
+        <a href="tags/Graphics-Pipeline/">Graphics Pipeline</a>
+      
+        <a href="tags/PostProcessing/">PostProcessing</a>
+      
+    </span>
+  
+</div>
+
+            
+            <!-- 摘要 -->
+            <div class="post-excerpt">
+              
+                深入解析全屏无缓冲区渲染（Fullscreen
+Triangle Rendering）
+在实时 3D
+图形渲染管线中，渲染覆盖整个屏幕的区域是一项高频且基础的任务。无论是后处理（Post-Processing）、延迟着色（Deferred
+Lighting
+Pass）、屏幕空间环境光遮蔽（SSAO）、屏幕空间反射（SSR），还是程序化纹理生成，都需要在
+\([0, 1]\) 范围的 U...
+              
+            </div>
+            
+            <!-- 阅读更多 -->
+            <a href="2026/06/06/fullscreen_quad_rendering/" class="read-more">
+              阅读全文
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
+            </a>
+          </div>
+        </article>
+      
+        <article class="post-card">
+          <!-- 封面图 -->
+          
+          
+          <div class="post-card-content">
+            <!-- 标题 -->
+            <h2 class="post-title">
+              <a href="2026/06/06/deferred_shading/">深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化</a>
+            </h2>
+            
+            <!-- 元信息 -->
+            <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-06-06">
+      2026-06-06
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      10.1k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 34 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+    <span class="meta-item meta-tags">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+        <path d="M7 7h.01"></path>
+      </svg>
+      
+        <a href="tags/Vulkan/">Vulkan</a>
+      
+        <a href="tags/Graphics-Pipeline/">Graphics Pipeline</a>
+      
+        <a href="tags/Lighting/">Lighting</a>
+      
+    </span>
+  
+</div>
+
+            
+            <!-- 摘要 -->
+            <div class="post-excerpt">
+              
+                深入解析延迟渲染（Deferred
+Shading）
+延迟渲染（Deferred Shading）是现代图形渲染引擎（如 Unreal
+Engine、Unity HDRP 及自定义 Vulkan/DirectX12
+引擎）中处理多光源场景的核心渲染范式。本文将从基本原理、G-Buffer
+设计、Vulkan Subpass
+工程实践、混合渲染工作流到进阶光照优化进行全面解构与扩展。
+...
+              
+            </div>
+            
+            <!-- 阅读更多 -->
+            <a href="2026/06/06/deferred_shading/" class="read-more">
+              阅读全文
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
+            </a>
+          </div>
+        </article>
+      
+        <article class="post-card">
+          <!-- 封面图 -->
+          
+          
+          <div class="post-card-content">
+            <!-- 标题 -->
+            <h2 class="post-title">
+              <a href="2026/06/06/cascaded_shadow_map/">深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化</a>
+            </h2>
+            
+            <!-- 元信息 -->
+            <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-06-06">
+      2026-06-06
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      10.8k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 37 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+    <span class="meta-item meta-tags">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+        <path d="M7 7h.01"></path>
+      </svg>
+      
+        <a href="tags/Shadow/">Shadow</a>
+      
+        <a href="tags/Cascaded-Shadow-Map/">Cascaded Shadow Map</a>
+      
+        <a href="tags/Graphics-Pipeline/">Graphics Pipeline</a>
+      
+    </span>
+  
+</div>
+
+            
+            <!-- 摘要 -->
+            <div class="post-excerpt">
+              
+                深入解析级联阴影映射（Cascaded
+Shadow Map, CSM）
+在实时图形学与 3D
+渲染管线中，阴影渲染不仅是提升场景空间感与真实感的核心技术，也是性能与画质消耗的主要痛点之一。级联阴影映射（Cascaded
+Shadow Map，简称 CSM） 是目前工业级渲染引擎（如 Unreal
+Engine、Unity 及主流 AAA
+游戏引擎）解决大场景平行光（如太阳光）透视锯齿...
+              
+            </div>
+            
+            <!-- 阅读更多 -->
+            <a href="2026/06/06/cascaded_shadow_map/" class="read-more">
+              阅读全文
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"></path>
+                <path d="m12 5 7 7-7 7"></path>
+              </svg>
+            </a>
+          </div>
+        </article>
+      
+        <article class="post-card">
+          <!-- 封面图 -->
+          
+          
+          <div class="post-card-content">
+            <!-- 标题 -->
+            <h2 class="post-title">
+              <a href="2026/06/06/forward_plus_shading/">深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化</a>
+            </h2>
+            
+            <!-- 元信息 -->
+            <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-06-06">
+      2026-06-06
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      9.6k 字
     </span>
   
 
@@ -362,185 +958,12 @@
             <!-- 摘要 -->
             <div class="post-excerpt">
               
-                1. 基本概念正向渲染下，是否丢弃某片元的操作是在各种测试之后，如果在frag阶段做大量算法（如光照计算），而后进行的测试将该片元舍弃，等于做了无用功。当光照数量可观时，严重消耗了算力。    而延迟渲染下，先渲染场景一次，记录有效的 位置向量(Position Vector)、颜色向量(Color Vector)、法向量(Normal Vector)和&#x2F;或镜面值(Specular Va...
-              
-            </div>
-            
-            <!-- 阅读更多 -->
-            <a href="2026/06/06/deferred_shading/" class="read-more">
-              阅读全文
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            </a>
-          </div>
-        </article>
-      
-        <article class="post-card">
-          <!-- 封面图 -->
-          
-          
-          <div class="post-card-content">
-            <!-- 标题 -->
-            <h2 class="post-title">
-              <a href="2026/06/06/cascaded_shadow_map/">级联阴影映射（Cascaded Shadow Map）</a>
-            </h2>
-            
-            <!-- 元信息 -->
-            <div class="post-meta">
-  <!-- 发布日期 -->
-  <span class="meta-item meta-date">
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
-      <line x1="16" x2="16" y1="2" y2="6"></line>
-      <line x1="8" x2="8" y1="2" y2="6"></line>
-      <line x1="3" x2="21" y1="10" y2="10"></line>
-    </svg>
-    <time datetime="2026-06-06">
-      2026-06-06
-    </time>
-  </span>
-
-  <!-- 更新日期 -->
-  
-
-  <!-- 字数统计 -->
-  
-    <span class="meta-item meta-wordcount">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 6.1H3"></path>
-        <path d="M21 12.1H3"></path>
-        <path d="M15.1 18H3"></path>
-      </svg>
-      
-      2.2k 字
-    </span>
-  
-
-  <!-- 阅读时间 -->
-  
-    <span class="meta-item meta-readtime">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <polyline points="12 6 12 12 16 14"></polyline>
-      </svg>
-      
-      约 8 分钟
-    </span>
-  
-
-  <!-- 标签（仅在列表页显示前几个） -->
-  
-    <span class="meta-item meta-tags">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
-        <path d="M7 7h.01"></path>
-      </svg>
-      
-        <a href="tags/Shadow/">Shadow</a>
-      
-    </span>
-  
-</div>
-
-            
-            <!-- 摘要 -->
-            <div class="post-excerpt">
-              
-                让我们近距离观察一下:
- 
-阴影的质量不高,因为这种块效应，将其称为透视锯齿，视图空间中的大量像素被映射到阴影贴图中的同一像素，这意味着所有这些像素要么处于阴影中，要么处于光亮中，从而产生块状感。换句话说，由于阴影贴图的分辨率不够高，因此无法充分覆盖视图空间。解决这个问题的一个明显方法是增加阴影贴图的分辨率，但这会增加我们应用程序的内存占用，因此它可能不是最好的做法。
-处理此问题的另一种方法是注意...
-              
-            </div>
-            
-            <!-- 阅读更多 -->
-            <a href="2026/06/06/cascaded_shadow_map/" class="read-more">
-              阅读全文
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            </a>
-          </div>
-        </article>
-      
-        <article class="post-card">
-          <!-- 封面图 -->
-          
-          
-          <div class="post-card-content">
-            <!-- 标题 -->
-            <h2 class="post-title">
-              <a href="2026/06/06/forward_plus_shading/">前向多光照改进渲染(Forward Plus Shading)</a>
-            </h2>
-            
-            <!-- 元信息 -->
-            <div class="post-meta">
-  <!-- 发布日期 -->
-  <span class="meta-item meta-date">
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
-      <line x1="16" x2="16" y1="2" y2="6"></line>
-      <line x1="8" x2="8" y1="2" y2="6"></line>
-      <line x1="3" x2="21" y1="10" y2="10"></line>
-    </svg>
-    <time datetime="2026-06-06">
-      2026-06-06
-    </time>
-  </span>
-
-  <!-- 更新日期 -->
-  
-
-  <!-- 字数统计 -->
-  
-    <span class="meta-item meta-wordcount">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 6.1H3"></path>
-        <path d="M21 12.1H3"></path>
-        <path d="M15.1 18H3"></path>
-      </svg>
-      
-      1.5k 字
-    </span>
-  
-
-  <!-- 阅读时间 -->
-  
-    <span class="meta-item meta-readtime">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <polyline points="12 6 12 12 16 14"></polyline>
-      </svg>
-      
-      约 5 分钟
-    </span>
-  
-
-  <!-- 标签（仅在列表页显示前几个） -->
-  
-    <span class="meta-item meta-tags">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
-        <path d="M7 7h.01"></path>
-      </svg>
-      
-        <a href="tags/Lighting/">Lighting</a>
-      
-    </span>
-  
-</div>
-
-            
-            <!-- 摘要 -->
-            <div class="post-excerpt">
-              
-                Tiled-based Deferred Shading在进入正题之前，我们先回顾一下Intel在SIGGRAPH Courses 2010里提到的Tiled-based Deferred Shading。它的算法框架是：
-
-生成G-Buffer，这一步和传统deferred shading一样。
-把G-Buffer划分成许多16×16的tile，每个tile根据depth得到bounding b...
+                深入解析
+Forward+ 渲染（Forward Plus / Tiled Forward Shading）
+随着现代实时渲染引擎中场景光源数量从几十个激增至成千上万个，传统正向渲染（Forward
+Rendering）和延迟渲染（Deferred
+Shading）的局限性逐渐显现。Forward+ Shading（又称
+Tiled Forward Shading）由 AMD 工程师 T...
               
             </div>
             
@@ -562,7 +985,7 @@
           <div class="post-card-content">
             <!-- 标题 -->
             <h2 class="post-title">
-              <a href="2026/06/06/clustered_forward_shading/">集群前向多光照渲染（Clustered Forward Shading）</a>
+              <a href="2026/06/06/clustered_forward_shading/">深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践</a>
             </h2>
             
             <!-- 元信息 -->
@@ -592,7 +1015,7 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      1.9k 字
+      6.7k 字
     </span>
   
 
@@ -604,7 +1027,7 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       
-      约 7 分钟
+      约 23 分钟
     </span>
   
 
@@ -616,7 +1039,11 @@
         <path d="M7 7h.01"></path>
       </svg>
       
+        <a href="tags/Graphics-Pipeline/">Graphics Pipeline</a>
+      
         <a href="tags/Lighting/">Lighting</a>
+      
+        <a href="tags/Clustered-Shading/">Clustered Shading</a>
       
     </span>
   
@@ -626,16 +1053,12 @@
             <!-- 摘要 -->
             <div class="post-excerpt">
               
-                
-基本概念cluster shading是将相机的Frustum按x y z切块成cluster，记录每个cluster 受哪些实时光源影响，再对有效的cluster进行光照计算。
-
-
-
-痛点解决tbdr和观察物体有强关联，在深度不连续的地方，会导致开销增大的问题。
-
-基本步骤
-
-pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lighting(pos,range)计...
+                深入解析集群前向渲染（Clustered
+Forward Shading）
+在实时图形渲染管线演进的过程中，处理海量实时动态光源一直是最核心的挑战之一。虽然
+Tiled Forward（Forward+）通过屏幕 2D
+网格切割有效降低了光照计算复杂度，但它在面对深度跨度极大或深度不连续的场景时依然存在严重的算力浪费。
+集群前向渲染（Clustered Forward Shading）...
               
             </div>
             
@@ -657,7 +1080,7 @@ pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lightin
           <div class="post-card-content">
             <!-- 标题 -->
             <h2 class="post-title">
-              <a href="2025/05/05/%E9%81%AE%E8%94%BD/">遮蔽_AO</a>
+              <a href="2025/05/05/%E9%81%AE%E8%94%BD/">深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践</a>
             </h2>
             
             <!-- 元信息 -->
@@ -687,7 +1110,7 @@ pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lightin
         <path d="M15.1 18H3"></path>
       </svg>
       
-      431 字
+      6.9k 字
     </span>
   
 
@@ -699,7 +1122,7 @@ pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lightin
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       
-      约 2 分钟
+      约 24 分钟
     </span>
   
 
@@ -710,6 +1133,10 @@ pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lightin
         <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
         <path d="M7 7h.01"></path>
       </svg>
+      
+        <a href="tags/Graphics-Pipeline/">Graphics Pipeline</a>
+      
+        <a href="tags/SSAO/">SSAO</a>
       
         <a href="tags/PostProcessing/">PostProcessing</a>
       
@@ -721,394 +1148,18 @@ pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lightin
             <!-- 摘要 -->
             <div class="post-excerpt">
               
-                遮蔽是一个重要的暗化因素, 用于在各种尺度下重建阴影:
-小尺度: 微遮蔽, 用于处理折痕, 裂缝和空洞
-中等尺度: 宏遮蔽, 用于处理物体自身几何遮蔽或法线贴图(砖块等)中烘焙几何体的遮蔽.
-大尺度: 遮蔽来自物体之间的接触, 或来自物体自身的几何.
-微遮蔽: 在漫反射贴图中预先烘焙漫反射微遮蔽, 并在反射纹理中预先烘焙镜面微遮蔽. 在我们的系统中, 微遮蔽可以简单地在基色图中烘焙. 这必须在知道...
+                深入解析环境光遮蔽（Ambient
+Occlusion, AO）
+环境光遮蔽（Ambient Occlusion, AO）是实时图形学与
+PBR（基于物理的渲染）管线中至关重要的视觉要素，它通过模拟漫反射光线被周围几何体遮挡的程度，作为一种重要的暗化因素在各种尺度下重建阴影
+。
+本文将从 多尺度遮蔽分级 、屏幕空间 AO
+算法演进（SSAO/HBAO/GTAO） 、PBR 镜面遮蔽（S...
               
             </div>
             
             <!-- 阅读更多 -->
             <a href="2025/05/05/%E9%81%AE%E8%94%BD/" class="read-more">
-              阅读全文
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            </a>
-          </div>
-        </article>
-      
-        <article class="post-card">
-          <!-- 封面图 -->
-          
-          
-          <div class="post-card-content">
-            <!-- 标题 -->
-            <h2 class="post-title">
-              <a href="2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/">延迟渲染-deferred_shading</a>
-            </h2>
-            
-            <!-- 元信息 -->
-            <div class="post-meta">
-  <!-- 发布日期 -->
-  <span class="meta-item meta-date">
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
-      <line x1="16" x2="16" y1="2" y2="6"></line>
-      <line x1="8" x2="8" y1="2" y2="6"></line>
-      <line x1="3" x2="21" y1="10" y2="10"></line>
-    </svg>
-    <time datetime="2025-05-05">
-      2025-05-05
-    </time>
-  </span>
-
-  <!-- 更新日期 -->
-  
-
-  <!-- 字数统计 -->
-  
-    <span class="meta-item meta-wordcount">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 6.1H3"></path>
-        <path d="M21 12.1H3"></path>
-        <path d="M15.1 18H3"></path>
-      </svg>
-      
-      171 字
-    </span>
-  
-
-  <!-- 阅读时间 -->
-  
-    <span class="meta-item meta-readtime">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <polyline points="12 6 12 12 16 14"></polyline>
-      </svg>
-      
-      约 1 分钟
-    </span>
-  
-
-  <!-- 标签（仅在列表页显示前几个） -->
-  
-    <span class="meta-item meta-tags">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
-        <path d="M7 7h.01"></path>
-      </svg>
-      
-        <a href="tags/Lighting/">Lighting</a>
-      
-    </span>
-  
-</div>
-
-            
-            <!-- 摘要 -->
-            <div class="post-excerpt">
-              
-                以高通骁龙8 elite为例：在手机任务场景里，大2缓的架构设计，表现得最佳！其实手机端的进程通常都是独立的，很少会出现大规模的并发任务数量，也不存在一堆前台并行运行处理的APP，因此，大多数的手机任务，只要请求的进程数不超过核簇规模，就无需3缓做核间通信，3缓面积留给2缓的架构设计，让巨大的2缓带来最大化的单核能效，多核场景就直接调用。
-...
-              
-            </div>
-            
-            <!-- 阅读更多 -->
-            <a href="2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/" class="read-more">
-              阅读全文
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            </a>
-          </div>
-        </article>
-      
-        <article class="post-card">
-          <!-- 封面图 -->
-          
-          
-          <div class="post-card-content">
-            <!-- 标题 -->
-            <h2 class="post-title">
-              <a href="2025/05/05/debian%E6%90%AD%E5%BB%BAgithub%E5%8D%9A%E5%AE%A2%E6%89%8B%E5%86%8C/">debian搭建github博客手册</a>
-            </h2>
-            
-            <!-- 元信息 -->
-            <div class="post-meta">
-  <!-- 发布日期 -->
-  <span class="meta-item meta-date">
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
-      <line x1="16" x2="16" y1="2" y2="6"></line>
-      <line x1="8" x2="8" y1="2" y2="6"></line>
-      <line x1="3" x2="21" y1="10" y2="10"></line>
-    </svg>
-    <time datetime="2025-05-05">
-      2025-05-05
-    </time>
-  </span>
-
-  <!-- 更新日期 -->
-  
-
-  <!-- 字数统计 -->
-  
-    <span class="meta-item meta-wordcount">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 6.1H3"></path>
-        <path d="M21 12.1H3"></path>
-        <path d="M15.1 18H3"></path>
-      </svg>
-      
-      896 字
-    </span>
-  
-
-  <!-- 阅读时间 -->
-  
-    <span class="meta-item meta-readtime">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <polyline points="12 6 12 12 16 14"></polyline>
-      </svg>
-      
-      约 3 分钟
-    </span>
-  
-
-  <!-- 标签（仅在列表页显示前几个） -->
-  
-    <span class="meta-item meta-tags">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
-        <path d="M7 7h.01"></path>
-      </svg>
-      
-        <a href="tags/Blog/">Blog</a>
-      
-    </span>
-  
-</div>
-
-            
-            <!-- 摘要 -->
-            <div class="post-excerpt">
-              
-                
-安装npm node.js
- 1234sudo apt install node.js npm安装 hexonpm install hexo
-
-验证 hexo
- 123456hexo -v创建blog仓库mkdir blog_repo_namecd blog_repo_namehexo init
-安装主题
- 12#此方法安装的主题文件位于node_modules，亦可下载主题包放在themes文...
-              
-            </div>
-            
-            <!-- 阅读更多 -->
-            <a href="2025/05/05/debian%E6%90%AD%E5%BB%BAgithub%E5%8D%9A%E5%AE%A2%E6%89%8B%E5%86%8C/" class="read-more">
-              阅读全文
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            </a>
-          </div>
-        </article>
-      
-        <article class="post-card">
-          <!-- 封面图 -->
-          
-          
-          <div class="post-card-content">
-            <!-- 标题 -->
-            <h2 class="post-title">
-              <a href="2024/04/04/debian%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/">debian配置手册</a>
-            </h2>
-            
-            <!-- 元信息 -->
-            <div class="post-meta">
-  <!-- 发布日期 -->
-  <span class="meta-item meta-date">
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
-      <line x1="16" x2="16" y1="2" y2="6"></line>
-      <line x1="8" x2="8" y1="2" y2="6"></line>
-      <line x1="3" x2="21" y1="10" y2="10"></line>
-    </svg>
-    <time datetime="2024-04-04">
-      2024-04-04
-    </time>
-  </span>
-
-  <!-- 更新日期 -->
-  
-
-  <!-- 字数统计 -->
-  
-    <span class="meta-item meta-wordcount">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 6.1H3"></path>
-        <path d="M21 12.1H3"></path>
-        <path d="M15.1 18H3"></path>
-      </svg>
-      
-      3.2k 字
-    </span>
-  
-
-  <!-- 阅读时间 -->
-  
-    <span class="meta-item meta-readtime">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <polyline points="12 6 12 12 16 14"></polyline>
-      </svg>
-      
-      约 11 分钟
-    </span>
-  
-
-  <!-- 标签（仅在列表页显示前几个） -->
-  
-    <span class="meta-item meta-tags">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
-        <path d="M7 7h.01"></path>
-      </svg>
-      
-        <a href="tags/OS/">OS</a>
-      
-    </span>
-  
-</div>
-
-            
-            <!-- 摘要 -->
-            <div class="post-excerpt">
-              
-                
-配置clash
-
-
-网络代理配置
-  设置-&gt;网络-&gt;网络代理
-  http 127.0.0.1 7890  https 127.0.0.1 7890  socket 127.0.0.1 7891
-  
-
-开机自启
-
-创建
-
-  1sudo nano /etc/systemd/system/clash.service
-
-配置
-
-  123456789101112[Unit]Descr...
-              
-            </div>
-            
-            <!-- 阅读更多 -->
-            <a href="2024/04/04/debian%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/" class="read-more">
-              阅读全文
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            </a>
-          </div>
-        </article>
-      
-        <article class="post-card">
-          <!-- 封面图 -->
-          
-          
-          <div class="post-card-content">
-            <!-- 标题 -->
-            <h2 class="post-title">
-              <a href="2024/04/04/oh-my-posh%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/">oh-my-posh配置手册</a>
-            </h2>
-            
-            <!-- 元信息 -->
-            <div class="post-meta">
-  <!-- 发布日期 -->
-  <span class="meta-item meta-date">
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
-      <line x1="16" x2="16" y1="2" y2="6"></line>
-      <line x1="8" x2="8" y1="2" y2="6"></line>
-      <line x1="3" x2="21" y1="10" y2="10"></line>
-    </svg>
-    <time datetime="2024-04-04">
-      2024-04-04
-    </time>
-  </span>
-
-  <!-- 更新日期 -->
-  
-
-  <!-- 字数统计 -->
-  
-    <span class="meta-item meta-wordcount">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 6.1H3"></path>
-        <path d="M21 12.1H3"></path>
-        <path d="M15.1 18H3"></path>
-      </svg>
-      
-      1.1k 字
-    </span>
-  
-
-  <!-- 阅读时间 -->
-  
-    <span class="meta-item meta-readtime">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <polyline points="12 6 12 12 16 14"></polyline>
-      </svg>
-      
-      约 4 分钟
-    </span>
-  
-
-  <!-- 标签（仅在列表页显示前几个） -->
-  
-    <span class="meta-item meta-tags">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
-        <path d="M7 7h.01"></path>
-      </svg>
-      
-        <a href="tags/Shell/">Shell</a>
-      
-    </span>
-  
-</div>
-
-            
-            <!-- 摘要 -->
-            <div class="post-excerpt">
-              
-                
-安装oh-my-posh
- 1winget install JanDeDobbeleer.OhMyPosh -s winget
-
-配置
- 1code $PROFILE
-
-按需求配置 PROFILE
-
- 1234567891011121314151617#根据爱好设置主题名(exp:robbyrussell)oh-my-posh init pwsh --config $env:POSH_THEME...
-              
-            </div>
-            
-            <!-- 阅读更多 -->
-            <a href="2024/04/04/oh-my-posh%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/" class="read-more">
               阅读全文
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M5 12h14"></path>
@@ -1176,11 +1227,11 @@ pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lightin
     <p class="author-desc">个人博客</p>
     <div class="author-stats">
       <div class="stat-item">
-        <span class="stat-count">11</span>
+        <span class="stat-count">15</span>
         <span class="stat-label">文章</span>
       </div>
       <div class="stat-item">
-        <span class="stat-count">7</span>
+        <span class="stat-count">35</span>
         <span class="stat-label">标签</span>
       </div>
       <div class="stat-item">
@@ -1207,50 +1258,74 @@ pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lightin
                   Graphics
                 </span>
                 <span class="category-count">
-                  <i class="far fa-file-alt"></i> 7
+                  <i class="far fa-file-alt"></i> 11
                 </span>
               </summary>
               <ul class="category-post-list">
                 
                   <li>
-                    <a href="2026/06/06/fullscreen-quad_rendering/" title="全屏四边形渲染（Fullscreen Quad Rendering）">
-                      全屏四边形渲染（Fullscreen Quad Rendering）
+                    <a href="2026/08/06/indirectDraw/" title="深入解析 Vulkan Indirect Draw（间接绘制）：从 GPU-Driven 管线、Multi-Draw Indirect 到无绑定（Bindless）工程实践">
+                      深入解析 Vulkan Indirect Draw（间接绘制）：从 GPU-Driven 管线、Multi-Draw Indirect 到无绑定（Bindless）工程实践
                     </a>
                   </li>
                 
                   <li>
-                    <a href="2026/06/06/deferred_shading/" title="延迟渲染（Deferred Shading）">
-                      延迟渲染（Deferred Shading）
+                    <a href="2026/08/06/%E5%90%8E%E5%A4%84%E7%90%86/" title="深入解析现代图形管线中的后处理架构：从 Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化">
+                      深入解析现代图形管线中的后处理架构：从 Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化
                     </a>
                   </li>
                 
                   <li>
-                    <a href="2026/06/06/cascaded_shadow_map/" title="级联阴影映射（Cascaded Shadow Map）">
-                      级联阴影映射（Cascaded Shadow Map）
+                    <a href="2026/08/06/SSSAO/" title="深入解析屏幕空间环境光遮蔽（SSAO）：数学半球积分、采样核优化、深度不连续瑕疵与双边滤波工程实现">
+                      深入解析屏幕空间环境光遮蔽（SSAO）：数学半球积分、采样核优化、深度不连续瑕疵与双边滤波工程实现
                     </a>
                   </li>
                 
                   <li>
-                    <a href="2026/06/06/forward_plus_shading/" title="前向多光照改进渲染(Forward Plus Shading)">
-                      前向多光照改进渲染(Forward Plus Shading)
+                    <a href="2026/08/06/Layout/" title="深入解析移动端 TBDR 架构与 Vulkan Subpass：片上 Layout Transition 的硬件物理机制与工程实践">
+                      深入解析移动端 TBDR 架构与 Vulkan Subpass：片上 Layout Transition 的硬件物理机制与工程实践
                     </a>
                   </li>
                 
                   <li>
-                    <a href="2026/06/06/clustered_forward_shading/" title="集群前向多光照渲染（Clustered Forward Shading）">
-                      集群前向多光照渲染（Clustered Forward Shading）
+                    <a href="2026/06/06/fullscreen_quad_rendering/" title="深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践">
+                      深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践
                     </a>
                   </li>
                 
                   <li>
-                    <a href="2025/05/05/%E9%81%AE%E8%94%BD/" title="遮蔽_AO">
-                      遮蔽_AO
+                    <a href="2026/06/06/deferred_shading/" title="深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化">
+                      深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化
                     </a>
                   </li>
                 
                   <li>
-                    <a href="2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/" title="延迟渲染-deferred_shading">
-                      延迟渲染-deferred_shading
+                    <a href="2026/06/06/cascaded_shadow_map/" title="深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化">
+                      深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化
+                    </a>
+                  </li>
+                
+                  <li>
+                    <a href="2026/06/06/forward_plus_shading/" title="深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化">
+                      深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化
+                    </a>
+                  </li>
+                
+                  <li>
+                    <a href="2026/06/06/clustered_forward_shading/" title="深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践">
+                      深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践
+                    </a>
+                  </li>
+                
+                  <li>
+                    <a href="2025/05/05/%E9%81%AE%E8%94%BD/" title="深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践">
+                      深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践
+                    </a>
+                  </li>
+                
+                  <li>
+                    <a href="2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/" title="深入解析移动端架构与渲染优化：从骁龙 8 Elite 缓存设计到 TBDR 延迟渲染实践">
+                      深入解析移动端架构与渲染优化：从骁龙 8 Elite 缓存设计到 TBDR 延迟渲染实践
                     </a>
                   </li>
                 
@@ -1307,32 +1382,144 @@ pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lightin
       <h3 class="widget-title">标签</h3>
       <div class="sidebar-tags">
         
+          <a href="tags/Ambient-Occlusion/" class="sidebar-tag">
+            Ambient Occlusion<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Bindless/" class="sidebar-tag">
+            Bindless<span class="tag-count">1</span>
+          </a>
+        
           <a href="tags/Blog/" class="sidebar-tag">
             Blog<span class="tag-count">1</span>
           </a>
         
+          <a href="tags/Bloom/" class="sidebar-tag">
+            Bloom<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Cache/" class="sidebar-tag">
+            Cache<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Cascaded-Shadow-Map/" class="sidebar-tag">
+            Cascaded Shadow Map<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Clustered-Shading/" class="sidebar-tag">
+            Clustered Shading<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Compute-Shader/" class="sidebar-tag">
+            Compute Shader<span class="tag-count">2</span>
+          </a>
+        
+          <a href="tags/Culling/" class="sidebar-tag">
+            Culling<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Deferred-Shading/" class="sidebar-tag">
+            Deferred Shading<span class="tag-count">2</span>
+          </a>
+        
+          <a href="tags/Forward-Plus/" class="sidebar-tag">
+            Forward Plus<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/GLSL/" class="sidebar-tag">
+            GLSL<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/GPU-Driven/" class="sidebar-tag">
+            GPU-Driven<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/GTAO/" class="sidebar-tag">
+            GTAO<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Graphics-Pipeline/" class="sidebar-tag">
+            Graphics Pipeline<span class="tag-count">8</span>
+          </a>
+        
+          <a href="tags/Hardware-Architecture/" class="sidebar-tag">
+            Hardware Architecture<span class="tag-count">2</span>
+          </a>
+        
+          <a href="tags/Indirect-Draw/" class="sidebar-tag">
+            Indirect Draw<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Layout-Transition/" class="sidebar-tag">
+            Layout Transition<span class="tag-count">1</span>
+          </a>
+        
           <a href="tags/Lighting/" class="sidebar-tag">
-            Lighting<span class="tag-count">4</span>
+            Lighting<span class="tag-count">3</span>
+          </a>
+        
+          <a href="tags/Mobile-GPU/" class="sidebar-tag">
+            Mobile GPU<span class="tag-count">2</span>
           </a>
         
           <a href="tags/OS/" class="sidebar-tag">
             OS<span class="tag-count">1</span>
           </a>
         
+          <a href="tags/PBR/" class="sidebar-tag">
+            PBR<span class="tag-count">2</span>
+          </a>
+        
           <a href="tags/PostProcessing/" class="sidebar-tag">
-            PostProcessing<span class="tag-count">2</span>
+            PostProcessing<span class="tag-count">4</span>
+          </a>
+        
+          <a href="tags/Rasterization/" class="sidebar-tag">
+            Rasterization<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/SSAO/" class="sidebar-tag">
+            SSAO<span class="tag-count">2</span>
+          </a>
+        
+          <a href="tags/Shader/" class="sidebar-tag">
+            Shader<span class="tag-count">3</span>
           </a>
         
           <a href="tags/Shadow/" class="sidebar-tag">
             Shadow<span class="tag-count">1</span>
           </a>
         
+          <a href="tags/Shadow-Map/" class="sidebar-tag">
+            Shadow Map<span class="tag-count">1</span>
+          </a>
+        
           <a href="tags/Shell/" class="sidebar-tag">
             Shell<span class="tag-count">1</span>
           </a>
         
+          <a href="tags/Subpass/" class="sidebar-tag">
+            Subpass<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/TAA/" class="sidebar-tag">
+            TAA<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/TBDR/" class="sidebar-tag">
+            TBDR<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Tone-Mapping/" class="sidebar-tag">
+            Tone Mapping<span class="tag-count">1</span>
+          </a>
+        
           <a href="tags/VScode/" class="sidebar-tag">
             VScode<span class="tag-count">1</span>
+          </a>
+        
+          <a href="tags/Vulkan/" class="sidebar-tag">
+            Vulkan<span class="tag-count">5</span>
           </a>
         
       </div>
@@ -1345,6 +1532,13 @@ pre depth,只渲染不透明物体  计算保存 有效的cluster  根据lightin
       <h3 class="widget-title">归档</h3>
       <ul class="archives-list">
         
+        
+          <li class="archive-item">
+            <a href="/archives/2026/08/">
+              <span class="archive-date">2026-08</span>
+              <span class="archive-count">(4)</span>
+            </a>
+          </li>
         
           <li class="archive-item">
             <a href="/archives/2026/06/">

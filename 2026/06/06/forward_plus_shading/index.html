@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>前向多光照改进渲染(Forward Plus Shading) | 萤虫之光</title>
+<title>深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
@@ -15,7 +15,7 @@
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="前向多光照改进渲染(Forward Plus Shading)">
+<meta property="og:title" content="深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2026/06/06/forward_plus_shading/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -54,6 +54,17 @@
     --primary-color: #2563eb;
   }
 </style>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
@@ -203,7 +214,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">前向多光照改进渲染(Forward Plus Shading)</h1>
+      <h1 class="post-title">深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -227,8 +238,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-06">
-        更新于 2026-08-06
+      <time datetime="2026-08-07">
+        更新于 2026-08-07
       </time>
     </span>
   
@@ -242,7 +253,7 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      1.5k 字
+      9.6k 字
     </span>
   
 
@@ -254,7 +265,7 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       
-      约 5 分钟
+      约 33 分钟
     </span>
   
 
@@ -269,34 +280,214 @@
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
-      <h3 id="Tiled-based-Deferred-Shading"><a href="#Tiled-based-Deferred-Shading" class="headerlink" title="Tiled-based Deferred Shading"></a>Tiled-based Deferred Shading</h3><p>在进入正题之前，我们先回顾一下Intel在SIGGRAPH Courses 2010里提到的Tiled-based Deferred Shading。它的算法框架是：</p>
-<ul>
-<li>生成G-Buffer，这一步和传统deferred shading一样。</li>
-<li>把G-Buffer划分成许多16×16的tile，每个tile根据depth得到bounding box。</li>
-<li>对于每个tile，把它的bounding box和light求交，得到对这个tile有贡献的light序列。</li>
-<li>对于G-Buffer的每个pixel，用它所在tile的light序列累加计算shading。</li>
-<li>在原先的deferred框架下，每个light需要画一个light volume，以决定它会影响到哪些pixel（也就是light culling）。而用tiled based的方法，只需要一个pass就可以对所有的光源进行求交。如果用了AMD在Mecha demo中用到的OIT方法，还可以做一个per-tile linked list，直接把light序列存在链表里。</li>
-</ul>
-<h3 id="Forward-Rendering"><a href="#Forward-Rendering" class="headerlink" title="Forward+ Rendering"></a>Forward+ Rendering</h3><p>有了Tiled-based Deferred Shading的基础，理解Forward+就变得简单多了。Forward+ Shading和Tiled-based Deferred Shading的关系就好比原先的Forward Shading和Deferred Shading，所以我们可以照猫画虎一次：</p>
-<ul>
-<li>Z-prepass，很多forward shading都会用这个作为优化，而在forward+中，这个变成了必然步骤。</li>
-<li>把Z-Buffer划分成许多16×16的tile，每个tile根据depth得到bounding box。</li>
-<li>对于每个tile，把它的bounding box和light求交，得到对这个tile有贡献的light序列。</li>
-<li>对于每个物体，在PS中用该pixel所在tile的light序列累加计算shading。</li>
-</ul>
-<p>从这里可以看出，前两步与Tiled-based deferred shading大同小异，但只需要Z-Buffer，而不需要很消耗带宽的G-Buffer（G-Buffer最小也要32bit color + 32bit depth）。第三步是完全一样的。第四步由于用了forward，可以有forward的各种好处：</p>
-<ul>
-<li>支持复杂材质</li>
-<li>支持硬件AA（虽然我一直认为硬件AA多算了很多东西，是一种巨大的浪费）</li>
-<li>带宽利用率高</li>
-<li>支持透明物体</li>
-<li>由于light已经在步骤3中cache了，所以也可以不像传统的forward那样，把材质和光源搅在一起。加上shader中动态分支的能力，不难实现类似deferred那样的巨量光源支持。由于带宽省了很多，Forward+的速度能比Deferred快。在原paper里的性能比较足以说明这个问题。</li>
-</ul>
-<p><img src="Forward+VSDeferred.png"></p>
-<h3 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h3><ul>
-<li>透明物体的渲染。第一步生成Z-prepass的时候，可以采用双Z-Buffer的办法，一个放不透明物体的Z，另一个放透明物体的Z。在第二步计算tile bounding box的时候，不管透不透明都放在一起计算一个总的bounding box。后面步骤不变，就能原生支持透明物体。</li>
-<li>由于有了Z-Buffer，其他原先对Deferred有利的效果，比如GI、SSR，都可以直接应用。SSAO、SSVO之类的方法，如果需要考虑pixel normal，就需要适当的修改才能应用上。</li>
-</ul>
+      <h1
+id="深入解析-forward-渲染forward-plus-tiled-forward-shading">深入解析
+Forward+ 渲染（Forward Plus / Tiled Forward Shading）</h1>
+<p>随着现代实时渲染引擎中场景光源数量从几十个激增至成千上万个，传统正向渲染（Forward
+Rendering）和延迟渲染（Deferred
+Shading）的局限性逐渐显现。<strong>Forward+ Shading</strong>（又称
+<strong>Tiled Forward Shading</strong>）由 AMD 工程师 Takahiro Harada
+等人提出，它结合了 <strong>Tile-Based 光照裁剪</strong> 与
+<strong>正向渲染管线</strong>
+的双重优势，在支持海量动态光源的同时，保留了材质多样性与硬件抗锯齿（MSAA）等重要特性。</p>
+<p>本文将从 <strong>Tiled Deferred 演进脉络</strong>、<strong>Forward+
+管线架构</strong>、<strong>Compute Shader
+光照裁剪</strong>、<strong>性能对比</strong> 到
+<strong>工程挑战与现代演进</strong> 进行深度解构。</p>
+<hr />
+<h2 id="一-演进脉络从-tiled-based-deferred-到-forward">一、 演进脉络：从
+Tiled-based Deferred 到 Forward+</h2>
+<p>在探讨 Forward+ 之前，有必要回顾 Intel 在 SIGGRAPH Courses 2010
+中提出的 <strong>Tiled-based Deferred Shading</strong> 算法。</p>
+<h3 id="tiled-based-deferred-shading-回顾">1. Tiled-based Deferred
+Shading 回顾</h3>
+<p>传统延迟渲染（Deferred
+Shading）需要为每个光源绘制一个几何体代理（Light Volume Proxy
+Mesh，如球体或锥体）来决定受光覆盖的屏幕区域。而 Intel 提出的
+Tiled-based 方法将其优化为一个单 Pass 的 Compute Shader 裁剪过程：</p>
+<ol type="1">
+<li><strong>生成 G-Buffer</strong>：与传统 Deferred Shading
+一样，首先渲染场景几何体，生成存储位置、法线、材质等属性的 G-Buffer
+附件。</li>
+<li><strong>屏幕 Tile 划分</strong>：将 G-Buffer 划分为许多小块（如
+<span class="math inline">\(16  imes 16\)</span> 像素的 Tile），并根据
+Depth Buffer 得到每个 Tile 内像素的最大/最小深度值（Min/Max
+Depth），从而构建出该 Tile 的视锥体包围盒（Tile Bounding
+Frustum）。</li>
+<li><strong>Tile 级光源裁剪（Light Culling）</strong>：对每个
+Tile，将其包围盒与场景中的光源进行求交测试，筛选出对当前 Tile
+产生光照贡献的光源列表（Light Index List）。</li>
+<li><strong>像素级 Shading 累加</strong>：对 G-Buffer
+中的每个像素，直接读取所在 Tile 的光源列表，累加计算光照。</li>
+</ol>
+<p><strong>优点</strong>：彻底摆脱了为每个光源提交几何体代理（Light
+Volumes）的绘制开销（Draw Call），在单个 Compute Shader Pass
+中即可高效完成上千光源的求交与光照累加。如果结合
+OIT（顺序无关半透明）链表技术，还能进一步优化光照索引存储。</p>
+<hr />
+<h3 id="forward-的范式转换">2. Forward+ 的范式转换</h3>
+<p>有了 Tiled-based Deferred Shading 的基础，理解 Forward+
+的思想就变得十分顺理成章。Forward+ 与 Tiled-based Deferred
+的关系，正如传统 Forward Shading 与 Deferred Shading 的关系：</p>
+<p><strong>核心变动</strong>：Forward+
+<strong>丢弃了体积庞大、极耗显存带宽的
+G-Buffer</strong>，将最后的光照累加过程重新放回标准的正向着色器（Forward
+Fragment Shader）中执行。</p>
+<hr />
+<h2 id="二-forward-渲染管线三阶段">二、 Forward+ 渲染管线三阶段</h2>
+<p>Forward+ 的标准管线主要包含以下三个核心步骤：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">+------------------+     +-------------------------------+     +------------------+</span><br><span class="line">|  Pass 1: Depth   |     |  Pass 2: Tile Light Culling   |     |  Pass 3: Forward |</span><br><span class="line">|     Prepass      |====&gt;|       (Compute Shader)        |====&gt;|     Shading      |</span><br><span class="line">| (Writes Depth Z) |     |  (Build Tile Light Index List)|     | (Read Light List)|</span><br><span class="line">+------------------+     +-------------------------------+     +------------------+</span><br></pre></td></tr></table></figure>
+<h3 id="第一阶段深度预-pass-z-prepass">1. 第一阶段：深度预 Pass
+(Z-Prepass)</h3>
+<p>在许多传统 Forward Shading 中，Z-Prepass
+常被作为优化手段（提前剔除不可见片元）。而在 Forward+ 中，Z-Prepass
+变成了<strong>必不可少的关键步骤</strong>： *
+<strong>核心作用</strong>：它填充了深度缓冲区（Depth
+Buffer/Z-Buffer），提供每个像素的精确深度数据。只有有了完整的
+Z-Buffer，第二阶段的 Compute Shader 才能提取出每个 Tile 的 Min/Max
+深度边界。</p>
+<h3 id="第二阶段tile-划分与光源裁剪-light-culling">2. 第二阶段：Tile
+划分与光源裁剪 (Light Culling)</h3>
+<p>该阶段完全在 Compute Shader 中并行执行： 1.
+<strong>网格切割</strong>：将 Z-Buffer 划分为 <span
+class="math inline">\(16  imes 16\)</span> 像素网格（Tile）。 2.
+<strong>深度极值归并</strong>：计算该 Tile 内部所有像素的最大深度 <span
+class="math inline">\(Z_{ ext{max}}\)</span> 和最小深度 <span
+class="math inline">\(Z_{   ext{min}}\)</span>。 3.
+<strong>创建视锥包围体</strong>：利用屏幕 Tile 坐标与 <span
+class="math inline">\([Z_{  ext{min}}, Z_{  ext{max}}]\)</span>
+构建出视锥裁剪体（Tile Frustum AABB）。 4.
+<strong>求交测试</strong>：将场景中的点光源/聚光灯包围球与该 Tile
+视锥体求交。 5. <strong>索引写出</strong>：将与当前 Tile
+相交的光源索引写入全局显存缓冲区（SSBO / StructuredBuffer）中，形成按
+Tile 索引的光源列表。</p>
+<h3 id="第三阶段正向着色阶段-forward-shading-pass">3.
+第三阶段：正向着色阶段 (Forward Shading Pass)</h3>
+<p>在标准正向绘制 Pass 中： * 逐个绘制场景物体的几何体。 *
+片元着色器（Fragment Shader）利用当前像素的屏幕坐标算出其所属的 Tile
+ID。 * 从 SSBO 中读取该 Tile
+对应的光源索引列表，循环累加所有有效光源的光照贡献。</p>
+<hr />
+<h2 id="三-技术特性对比forward-vs-deferred-vs-traditional-forward">三、
+技术特性对比：Forward+ vs Deferred vs Traditional Forward</h2>
+<p>Forward+ 兼顾了正向渲染的材质灵活性与延迟渲染的多光源扩展性：</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">评估维度</th>
+<th style="text-align: left;">传统正向 (Forward)</th>
+<th style="text-align: left;">延迟渲染 (Deferred)</th>
+<th style="text-align: left;">Forward+ (Tiled Forward)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>显存带宽</strong></td>
+<td style="text-align: left;">极低</td>
+<td style="text-align: left;">极高 (至少需 32bit Color + 32bit Depth
+G-Buffer)</td>
+<td style="text-align: left;">较低 (仅需 Depth Prepass 与帧缓冲)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>多光源扩展</strong></td>
+<td style="text-align: left;">极差 (受限于着色器变体与多 Pass)</td>
+<td style="text-align: left;">强 (光照解耦)</td>
+<td style="text-align: left;">极强 (凭借 Compute Shader Cache 索引)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>半透明渲染</strong></td>
+<td style="text-align: left;">原生完美支持</td>
+<td style="text-align: left;">无法原生支持 (需正向 Pass 补漏)</td>
+<td style="text-align: left;">原生/扩展支持 (可结合深度范围优化)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>硬件 MSAA</strong></td>
+<td style="text-align: left;">原生完美支持</td>
+<td style="text-align: left;">无法原生使用 (耗显存/依赖后处理)</td>
+<td style="text-align: left;">原生完美支持</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>复杂材质支持</strong></td>
+<td style="text-align: left;">极其灵活 (Shader 可自由编写)</td>
+<td style="text-align: left;">受限 (须将材质参数编码入 G-Buffer)</td>
+<td style="text-align: left;">极其灵活 (支持复杂 BRDF 与动态分支)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>带宽效率提升</strong>：Forward+ 无需频繁读写体积庞大的
+G-Buffer，因此在显存带宽受限的硬件（如移动端 GPU 及中低端 PC
+显卡）上，Forward+ 的实际渲染速度往往能超越传统 Deferred Shading。</p>
+<hr />
+<h2 id="四-核心代码实现">四、 核心代码实现</h2>
+<h3 id="compute-shader-光照裁剪示例-glsl">1. Compute Shader 光照裁剪示例
+(GLSL)</h3>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 450</span></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">local_size_x</span> = <span class="number">16</span>, <span class="keyword">local_size_y</span> = <span class="number">16</span>, <span class="keyword">local_size_z</span> = <span class="number">1</span>) <span class="keyword">in</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 深度纹理输入</span></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> <span class="type">sampler2D</span> depthMap;</span><br><span class="line"></span><br><span class="line">struct PointLight &#123;</span><br><span class="line">    <span class="type">vec4</span> position; <span class="comment">// xyz: 位置, w: 半径</span></span><br><span class="line">    <span class="type">vec4</span> color;    <span class="comment">// rgb: 颜色, w: 强度</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">std430</span>, <span class="keyword">binding</span> = <span class="number">1</span>) <span class="keyword">buffer</span> LightBuffer &#123;</span><br><span class="line">    PointLight lights[];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 输出：每个 Tile 的光源索引列表</span></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">std430</span>, <span class="keyword">binding</span> = <span class="number">2</span>) <span class="keyword">buffer</span> TileLightList &#123;</span><br><span class="line">    <span class="type">uint</span> tileLightIndices[]; <span class="comment">// 结构: [Tile_Count * MAX_LIGHTS_PER_TILE]</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">shared</span> <span class="type">uint</span> minDepthInt;</span><br><span class="line"><span class="keyword">shared</span> <span class="type">uint</span> maxDepthInt;</span><br><span class="line"><span class="keyword">shared</span> <span class="type">uint</span> visibleLightCount;</span><br><span class="line"><span class="keyword">shared</span> <span class="type">uint</span> visibleLightIndices[<span class="number">1024</span>];</span><br><span class="line"></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">mat4</span> inverseProjection;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">vec2</span> screenSize;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">    <span class="type">ivec2</span> pixelCoord = <span class="type">ivec2</span>(<span class="built_in">gl_GlobalInvocationID</span>.xy);</span><br><span class="line">    <span class="type">ivec2</span> tileID = <span class="type">ivec2</span>(<span class="built_in">gl_WorkGroupID</span>.xy);</span><br><span class="line">    <span class="type">uint</span> localIndex = <span class="built_in">gl_LocalInvocationIndex</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 初始化共享内存</span></span><br><span class="line">    <span class="keyword">if</span> (localIndex == <span class="number">0</span>) &#123;</span><br><span class="line">        minDepthInt = <span class="number">0xFFFFFFFF</span>;</span><br><span class="line">        maxDepthInt = <span class="number">0</span>;</span><br><span class="line">        visibleLightCount = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">barrier</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 归并计算当前 Tile 的 Min/Max Depth</span></span><br><span class="line">    <span class="type">vec2</span> uvs = <span class="type">vec2</span>(pixelCoord) / screenSize;</span><br><span class="line">    <span class="type">float</span> depth = <span class="built_in">texture</span>(depthMap, uvs).r;</span><br><span class="line">    <span class="type">uint</span> depthInt = <span class="built_in">floatBitsToUint</span>(depth);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">atomicMin</span>(minDepthInt, depthInt);</span><br><span class="line">    <span class="built_in">atomicMax</span>(maxDepthInt, depthInt);</span><br><span class="line">    <span class="built_in">barrier</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3. 由 localIndex 0 计算 Tile 包围视锥体 (Frustum Planes)</span></span><br><span class="line">    <span class="type">float</span> minDepth = <span class="built_in">uintBitsToFloat</span>(minDepthInt);</span><br><span class="line">    <span class="type">float</span> maxDepth = <span class="built_in">uintBitsToFloat</span>(maxDepthInt);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 4. 并行求交测试 (每个线程测试一部分光源)</span></span><br><span class="line">    <span class="type">uint</span> totalLights = lights.<span class="built_in">length</span>();</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">uint</span> i = localIndex; i &lt; totalLights; i += <span class="number">256</span>) &#123;</span><br><span class="line">        <span class="type">vec3</span> lightPos = lights[i].position.xyz;</span><br><span class="line">        <span class="type">float</span> radius  = lights[i].position.w;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 与 Tile Frustum 进行球体/平面求交测试</span></span><br><span class="line">        <span class="keyword">if</span> (sphereIntersectsTileFrustum(lightPos, radius, tileID, minDepth, maxDepth)) &#123;</span><br><span class="line">            <span class="type">uint</span> <span class="keyword">index</span> = <span class="built_in">atomicAdd</span>(visibleLightCount, <span class="number">1</span>);</span><br><span class="line">            <span class="keyword">if</span> (<span class="keyword">index</span> &lt; <span class="number">1024</span>) &#123;</span><br><span class="line">                visibleLightIndices[<span class="keyword">index</span>] = i;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">barrier</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 5. 将当前 Tile 的裁剪结果写入全局 SSBO</span></span><br><span class="line">    <span class="type">uint</span> tileFlatIndex = tileID.y * (<span class="type">uint</span>(screenSize.x) / <span class="number">16</span>) + tileID.x;</span><br><span class="line">    <span class="type">uint</span> <span class="keyword">offset</span> = tileFlatIndex * <span class="number">1024</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">for</span> (<span class="type">uint</span> i = localIndex; i &lt; visibleLightCount; i += <span class="number">256</span>) &#123;</span><br><span class="line">        tileLightIndices[<span class="keyword">offset</span> + i] = visibleLightIndices[i];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h3 id="forward-片元着色器光照计算示例-glsl">2. Forward
+片元着色器光照计算示例 (GLSL)</h3>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 450</span></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">out</span> <span class="type">vec4</span> FragColor;</span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">in</span> <span class="type">vec2</span> inTexCoord;</span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">location</span> = <span class="number">1</span>) <span class="keyword">in</span> <span class="type">vec3</span> inWorldPos;</span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">location</span> = <span class="number">2</span>) <span class="keyword">in</span> <span class="type">vec3</span> inNormal;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 读取由 Compute Shader 生成的光源索引数据</span></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">std430</span>, <span class="keyword">binding</span> = <span class="number">2</span>) <span class="keyword">buffer</span> TileLightList &#123;</span><br><span class="line">    <span class="type">uint</span> tileLightIndices[];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">vec2</span> screenSize;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">vec3</span> viewPos;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">    <span class="comment">// 根据当前像素坐标计算所在的 Tile ID</span></span><br><span class="line">    <span class="type">ivec2</span> tileID = <span class="type">ivec2</span>(<span class="built_in">gl_FragCoord</span>.xy) / <span class="number">16</span>;</span><br><span class="line">    <span class="type">uint</span> tileFlatIndex = tileID.y * (<span class="type">uint</span>(screenSize.x) / <span class="number">16</span>) + tileID.x;</span><br><span class="line">    <span class="type">uint</span> <span class="keyword">offset</span> = tileFlatIndex * <span class="number">1024</span>;</span><br><span class="line"></span><br><span class="line">    <span class="type">vec3</span> N = <span class="built_in">normalize</span>(inNormal);</span><br><span class="line">    <span class="type">vec3</span> V = <span class="built_in">normalize</span>(viewPos - inWorldPos);</span><br><span class="line">    <span class="type">vec3</span> totalLighting = <span class="type">vec3</span>(<span class="number">0.0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 遍历当前 Tile 缓存的光源索引进行累计计算</span></span><br><span class="line">    <span class="comment">// (假定 tileLightIndices 的前几个 Byte 存储了有效光源总数)</span></span><br><span class="line">    <span class="type">uint</span> lightCount = tileLightIndices[<span class="keyword">offset</span>]; </span><br><span class="line">    <span class="keyword">for</span> (<span class="type">uint</span> i = <span class="number">0</span>; i &lt; lightCount; ++i) &#123;</span><br><span class="line">        <span class="type">uint</span> lightIdx = tileLightIndices[<span class="keyword">offset</span> + <span class="number">1</span> + i];</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 读取光源属性并计算 Blinn-Phong 或 PBR 光照</span></span><br><span class="line">        totalLighting += computePointLight(lightIdx, N, inWorldPos, V);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    FragColor = <span class="type">vec4</span>(totalLighting, <span class="number">1.0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h2 id="五-工程注意事项与进阶优化策略">五、
+工程注意事项与进阶优化策略</h2>
+<p>在实际引擎落地开发中， Forward+
+还需要针对特定渲染特效与空间划分进行针对性设计：</p>
+<h3 id="透明物体的渲染策略-transparency-handling">1. 透明物体的渲染策略
+(Transparency Handling)</h3>
+<p>由于透明物体不写入深度预 Pass（Z-prepass），常规根据不透明物体
+Z-Buffer 计算出来的 Tile Min/Max Depth
+会产生偏窄的深度区间。如果透明物体位于不透明物体的前方，其所在位置的光源可能在
+Compute Shader 阶段被误剔除。</p>
+<p><strong>主流解决方案</strong>： * <strong>双 Z-Buffer 法 (Dual
+Z-Buffer)</strong>：在第一步生成 Z-prepass 时维护两个
+Z-Buffer，一个记录不透明物体的深度 Z，另一个记录透明物体的最近深度
+Z。在第二步计算 Tile 包围盒时，将两者的深度范围合并为一个总的 Bounding
+Box，后续光照累加步骤保持不变即可原生兼容透明物体。 *
+<strong>多光源列表分级 (Separate Light
+Lists)</strong>：为不透明物体与半透明物体分别维护两份 Light
+List。透明物体的 Min Depth 直接强制拉近至相机近裁剪面 <span
+class="math inline">\(Z_{   ext{near}}\)</span>，从而确保前方光源不遗漏。</p>
+<h3 id="屏幕空间特效-screen-space-effects-的融合">2. 屏幕空间特效
+(Screen-Space Effects) 的融合</h3>
+<p>在延迟渲染中，由于 G-Buffer
+原生存有世界空间法线与位置，SSAO、SSR（屏幕空间反射）、GI（全局光照）等特效可以无缝调用。</p>
+<p>而在 Forward+ 中： *
+<strong>深度重建位置/法线</strong>：可以直接通过深度图（Depth
+Buffer）实时重构视空间位置，并通过深度梯度求偏导反算法线（或增加一个轻量级的
+Depth-Normal Prepass）。 *
+<strong>直接应用</strong>：有了完整深度图后，SSAO、SSVO、SSR
+等屏幕空间效果均可以顺畅集成到 Forward+ 管线中。</p>
+<hr />
+<h3 id="现代架构演进clustered-forward-集群前向渲染">3.
+现代架构演进：Clustered Forward+ (集群前向渲染)</h3>
+<p>虽然 Forward+ 在 2D Tile 层面大大减少了光源遍历，但它依然面临
+<strong>2D 深度跨度过大（Depth Range Problem）</strong> 的缺陷：
+例如在漫长走廊视角下，一个 <span class="math inline">\(16   imes
+16\)</span> 的 Tile 内部可能同时包含距离相机 1
+米的视锥近端墙壁与距离相机 100 米的远端背景，导致该 Tile 的 <span
+class="math inline">\([Z_{    ext{min}}, Z_{  ext{max}}]\)</span>
+极其庞大。这会使得很多处于中间空旷区域、实际上并不影响任何像素的光源被误判为“相交”，降低了剔除效率。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">+-----------------------------------------------------------------+</span><br><span class="line">|                       Clustered Forward+                        |</span><br><span class="line">|                                                                 |</span><br><span class="line">|     +-------+-------+-------+                                   |</span><br><span class="line">|     | Tile  | Tile  | Tile  |  &lt;--- 屏幕 2D 切片 (X, Y)         |</span><br><span class="line">|     +-------+-------+-------+                                   |</span><br><span class="line">|        /       /       /                                        |</span><br><span class="line">|       /       /       /     &lt;--- 沿 Z 轴深度切片 (Depth Slices)  |</span><br><span class="line">|      +-------+-------+                                          |</span><br><span class="line">|     / Cluster /     /                                           |</span><br><span class="line">|    +-------+-------+                                            |</span><br><span class="line">|                                                                 |</span><br><span class="line">|   打破 2D 限制，将空间切分为 3D 体素栅格 (X x Y x Z Clusters)    |</span><br><span class="line">+-----------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+<p><strong>Clustered Forward+</strong> 在 Forward+ 的基础上，不仅在屏幕
+2D 方向切割 Tile，还在 Z 轴深度方向进行对数/指数切片，将视锥体划分为
+<strong>3D 栅格体素（Clusters）</strong>。Compute Shader
+将光源裁剪直接与 3D Cluster
+求交，彻底消除了深度跨度造成的误判，是目前现代主流引擎（如 UE5 Forward
+Shading、DOOM Eternal 等）的最佳实时光照方案之一。</p>
+<hr />
+<h2 id="六-总结">六、 总结</h2>
+<p>Forward+ 渲染通过引入 Compute Shader 的 Tile
+光照裁剪机制，成功解耦了前向渲染中光源数量与几何体数量的强绑定关系： *
+它避免了传统 Deferred Shading 的<strong>高显存带宽与 G-Buffer
+限制</strong>，使得多光源渲染管线拥有更高的执行效率； *
+保留了对<strong>半透明物体、复杂材质与硬件 MSAA</strong> 的完美支持； *
+为后续演进至 <strong>Clustered Forward+</strong>
+奠定了重要的工程框架基础。</p>
 
     </div>
 
@@ -327,14 +518,14 @@
       
         <a href="../cascaded_shadow_map/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">级联阴影映射（Cascaded Shadow Map）</span>
+          <span class="post-nav-title">深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化</span>
         </a>
       
       
       
         <a href="../clustered_forward_shading/" class="post-nav-item next">
           <span class="post-nav-label">下一篇</span>
-          <span class="post-nav-title">集群前向多光照渲染（Clustered Forward Shading）</span>
+          <span class="post-nav-title">深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践</span>
         </a>
       
     </nav>
@@ -346,7 +537,20 @@
       <div class="toc-wrapper">
         <h3 class="toc-title">目录</h3>
         <div class="toc-content">
-          <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Tiled-based-Deferred-Shading"><span class="toc-text">Tiled-based Deferred Shading</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Forward-Rendering"><span class="toc-text">Forward+ Rendering</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-text">注意事项</span></a></li></ol>
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90-forward-%E6%B8%B2%E6%9F%93forward-plus-tiled-forward-shading"><span class="toc-text">深入解析
+Forward+ 渲染（Forward Plus &#x2F; Tiled Forward Shading）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E6%BC%94%E8%BF%9B%E8%84%89%E7%BB%9C%E4%BB%8E-tiled-based-deferred-%E5%88%B0-forward"><span class="toc-text">一、 演进脉络：从
+Tiled-based Deferred 到 Forward+</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#tiled-based-deferred-shading-%E5%9B%9E%E9%A1%BE"><span class="toc-text">1. Tiled-based Deferred
+Shading 回顾</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#forward-%E7%9A%84%E8%8C%83%E5%BC%8F%E8%BD%AC%E6%8D%A2"><span class="toc-text">2. Forward+ 的范式转换</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-forward-%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF%E4%B8%89%E9%98%B6%E6%AE%B5"><span class="toc-text">二、 Forward+ 渲染管线三阶段</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E9%98%B6%E6%AE%B5%E6%B7%B1%E5%BA%A6%E9%A2%84-pass-z-prepass"><span class="toc-text">1. 第一阶段：深度预 Pass
+(Z-Prepass)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E9%98%B6%E6%AE%B5tile-%E5%88%92%E5%88%86%E4%B8%8E%E5%85%89%E6%BA%90%E8%A3%81%E5%89%AA-light-culling"><span class="toc-text">2. 第二阶段：Tile
+划分与光源裁剪 (Light Culling)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E9%98%B6%E6%AE%B5%E6%AD%A3%E5%90%91%E7%9D%80%E8%89%B2%E9%98%B6%E6%AE%B5-forward-shading-pass"><span class="toc-text">3.
+第三阶段：正向着色阶段 (Forward Shading Pass)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-%E6%8A%80%E6%9C%AF%E7%89%B9%E6%80%A7%E5%AF%B9%E6%AF%94forward-vs-deferred-vs-traditional-forward"><span class="toc-text">三、
+技术特性对比：Forward+ vs Deferred vs Traditional Forward</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E6%A0%B8%E5%BF%83%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="toc-text">四、 核心代码实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#compute-shader-%E5%85%89%E7%85%A7%E8%A3%81%E5%89%AA%E7%A4%BA%E4%BE%8B-glsl"><span class="toc-text">1. Compute Shader 光照裁剪示例
+(GLSL)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#forward-%E7%89%87%E5%85%83%E7%9D%80%E8%89%B2%E5%99%A8%E5%85%89%E7%85%A7%E8%AE%A1%E7%AE%97%E7%A4%BA%E4%BE%8B-glsl"><span class="toc-text">2. Forward
+片元着色器光照计算示例 (GLSL)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E5%B7%A5%E7%A8%8B%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9%E4%B8%8E%E8%BF%9B%E9%98%B6%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-text">五、
+工程注意事项与进阶优化策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%8F%E6%98%8E%E7%89%A9%E4%BD%93%E7%9A%84%E6%B8%B2%E6%9F%93%E7%AD%96%E7%95%A5-transparency-handling"><span class="toc-text">1. 透明物体的渲染策略
+(Transparency Handling)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B1%8F%E5%B9%95%E7%A9%BA%E9%97%B4%E7%89%B9%E6%95%88-screen-space-effects-%E7%9A%84%E8%9E%8D%E5%90%88"><span class="toc-text">2. 屏幕空间特效
+(Screen-Space Effects) 的融合</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E4%BB%A3%E6%9E%B6%E6%9E%84%E6%BC%94%E8%BF%9Bclustered-forward-%E9%9B%86%E7%BE%A4%E5%89%8D%E5%90%91%E6%B8%B2%E6%9F%93"><span class="toc-text">3.
+现代架构演进：Clustered Forward+ (集群前向渲染)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E6%80%BB%E7%BB%93"><span class="toc-text">六、 总结</span></a></li></ol></li></ol>
         </div>
       </div>
     </aside>

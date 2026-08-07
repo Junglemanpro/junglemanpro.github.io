@@ -55,6 +55,17 @@
   }
 </style>
 
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
   <header class="site-header">
@@ -242,7 +253,7 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      3.2k 字
+      3.1k 字
     </span>
   
 
@@ -269,91 +280,61 @@
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
-      <ol>
+      <ol type="1">
 <li>配置clash</li>
 </ol>
 <ul>
 <li><p>网络代理配置</p>
-<p>  设置-&gt;网络-&gt;网络代理</p>
-<p>  http 127.0.0.1 7890<br>  https 127.0.0.1 7890<br>  socket 127.0.0.1 7891</p>
-<p>  <img src="net_setting.png"></p>
-</li>
+<p>设置-&gt;网络-&gt;网络代理</p>
+<p>http 127.0.0.1 7890 https 127.0.0.1 7890 socket 127.0.0.1 7891</p>
+<p><img src="net_setting.png" /></p></li>
 <li><p>开机自启</p>
 <ul>
-<li>创建</li>
+<li><p>创建 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo nano /etc/systemd/system/clash.service</span><br></pre></td></tr></table></figure></p></li>
+<li><p>配置 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">[Unit]</span><br><span class="line">Description=A rule based proxy in Go for %i.</span><br><span class="line">After=network.target</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">Type=simple</span><br><span class="line">User=berg</span><br><span class="line">Restart=on-abort</span><br><span class="line">ExecStart=/home/berg/.clash/clash -d /home/berg/.clash/</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br></pre></td></tr></table></figure></p></li>
+<li><p>开启 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#开启</span><br><span class="line">sudo systemctl start clash</span><br><span class="line">#开机自启</span><br><span class="line">sudo systemctl enable clash</span><br><span class="line">#查看状态</span><br><span class="line">sudo systemctl status clash</span><br></pre></td></tr></table></figure></p></li>
+</ul></li>
 </ul>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo nano /etc/systemd/system/clash.service</span><br></pre></td></tr></table></figure>
-<ul>
-<li>配置</li>
-</ul>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">[Unit]</span><br><span class="line">Description=A rule based proxy in Go for %i.</span><br><span class="line">After=network.target</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">Type=simple</span><br><span class="line">User=berg</span><br><span class="line">Restart=on-abort</span><br><span class="line">ExecStart=/home/berg/.clash/clash -d /home/berg/.clash/</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>开启</li>
-</ul>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#开启</span><br><span class="line">sudo systemctl start clash</span><br><span class="line">#开机自启</span><br><span class="line">sudo systemctl enable clash</span><br><span class="line">#查看状态</span><br><span class="line">sudo systemctl status clash</span><br></pre></td></tr></table></figure></li>
-</ul>
-<ol start="2">
-<li><p>修改默认文件名</p>
- <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">cd ~</span><br><span class="line">mkdir downloads templates public documents</span><br><span class="line">rm -rf 公共 模板 视频 图片 文档 下载 音乐 桌面</span><br><span class="line">xdg-user-dirs-update --set DESKTOP ~/</span><br><span class="line">xdg-user-dirs-update --set DOWNLOAD ~/downloads</span><br><span class="line">xdg-user-dirs-update --set TEMPLATES ~/templates</span><br><span class="line">xdg-user-dirs-update --set PUBLICSHARE ~/public</span><br><span class="line">xdg-user-dirs-update --set DOCUMENTS ~/documents</span><br><span class="line">xdg-user-dirs-update --set MUSIC ~/</span><br><span class="line">xdg-user-dirs-update --set PICTURES ~/</span><br><span class="line">xdg-user-dirs-update --set VIDEOS ~/</span><br></pre></td></tr></table></figure>
-<p> 重启</p>
-</li>
+<ol start="2" type="1">
+<li><p>修改默认文件名 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">cd ~</span><br><span class="line">mkdir downloads templates public documents</span><br><span class="line">rm -rf 公共 模板 视频 图片 文档 下载 音乐 桌面</span><br><span class="line">xdg-user-dirs-update --set DESKTOP ~/</span><br><span class="line">xdg-user-dirs-update --set DOWNLOAD ~/downloads</span><br><span class="line">xdg-user-dirs-update --set TEMPLATES ~/templates</span><br><span class="line">xdg-user-dirs-update --set PUBLICSHARE ~/public</span><br><span class="line">xdg-user-dirs-update --set DOCUMENTS ~/documents</span><br><span class="line">xdg-user-dirs-update --set MUSIC ~/</span><br><span class="line">xdg-user-dirs-update --set PICTURES ~/</span><br><span class="line">xdg-user-dirs-update --set VIDEOS ~/</span><br></pre></td></tr></table></figure> 重启</p></li>
 <li><p>安装oh-my-zsh</p>
 <ul>
-<li><p>安装zsh</p>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install zsh</span><br><span class="line">chsh -s /bin/zsh</span><br></pre></td></tr></table></figure></li>
-<li><p>重启电脑</p>
-</li>
+<li><p>安装zsh <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install zsh</span><br><span class="line">chsh -s /bin/zsh</span><br></pre></td></tr></table></figure></p></li>
+<li><p>重启电脑</p></li>
 <li><p>下载 oh-my-zsh安装脚本</p>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">wget https://gitee.com/mirrors/oh-my-zsh/raw/master/tools/install.sh</span><br><span class="line"></span><br><span class="line">chmod +x install.sh</span><br><span class="line">sh install.sh</span><br></pre></td></tr></table></figure></li>
+<p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">wget https://gitee.com/mirrors/oh-my-zsh/raw/master/tools/install.sh</span><br><span class="line"></span><br><span class="line">chmod +x install.sh</span><br><span class="line">sh install.sh</span><br></pre></td></tr></table></figure></p></li>
 <li><p>安装插件</p>
 <ul>
-<li>安装zsh-syntax-highlighting</li>
-</ul>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;/plugins/zsh-syntax-highlighting</span><br></pre></td></tr></table></figure>
+<li>安装zsh-syntax-highlighting <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;/plugins/zsh-syntax-highlighting</span><br></pre></td></tr></table></figure></li>
+<li>安装zsh-autosuggestions <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/zsh-users/zsh-autosuggestions $&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;/plugins/zsh-autosuggestions</span><br></pre></td></tr></table></figure></li>
+<li>修改/~.zshrc <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">plugins=(git zsh-syntax-highlighting zsh-autosuggestions)</span><br></pre></td></tr></table></figure> 配置主题显示当前文件路径 -
+robbyrussell</li>
+</ul></li>
+</ul></li>
+<li><p>修改主题 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nano ~/.oh-my-zsh/themes/robbyrussell.zsh-theme</span><br></pre></td></tr></table></figure></p>
 <ul>
-<li>安装zsh-autosuggestions</li>
-</ul>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/zsh-users/zsh-autosuggestions $&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;/plugins/zsh-autosuggestions</span><br></pre></td></tr></table></figure>
+<li>更改为以下内容 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">local ret_status=&quot;%(?:%&#123;$fg_bold[green]%&#125;➜ :%&#123;$fg_bold[red]%&#125;➜ )&quot;</span><br><span class="line">PROMPT=&#x27;$&#123;ret_status&#125; %&#123;$fg[cyan]%&#125;$PWD%&#123;$reset_color%&#125; $(git_prompt_info)&#x27;</span><br><span class="line">ZSH_THEME_GIT_PROMPT_PREFIX=&quot;%&#123;$fg_bold[blue]%&#125;git:(%&#123;$fg[red]%&#125;&quot;</span><br><span class="line">ZSH_THEME_GIT_PROMPT_SUFFIX=&quot;%&#123;$reset_color%&#125; &quot;</span><br><span class="line">ZSH_THEME_GIT_PROMPT_DIRTY=&quot;%&#123;$fg[blue]%&#125;) %&#123;$fg[yellow]%&#125;✗&quot;</span><br><span class="line">ZSH_THEME_GIT_PROMPT_CLEAN=&quot;%&#123;$fg[blue]%&#125;)&quot;</span><br></pre></td></tr></table></figure></li>
+</ul></li>
+<li><p>修改grub引导主题</p>
 <ul>
-<li>修改&#x2F;~.zshrc</li>
-</ul>
-  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">plugins=(git zsh-syntax-highlighting zsh-autosuggestions)</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-</ol>
-<p>配置主题显示当前文件路径 - robbyrussell</p>
-<ol start="4">
-<li>修改主题 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nano ~/.oh-my-zsh/themes/robbyrussell.zsh-theme</span><br></pre></td></tr></table></figure>
+<li>下载主题文件 (https://www.gnome-look.org/browse/grub-themes)</li>
+<li>放置主题文件 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo mkdir /usr/share/grub/themes/vimix</span><br><span class="line">sudo cp /your/path/vimix /usr/share/grub/themes/vimix -rf</span><br></pre></td></tr></table></figure></li>
+<li>修改系统配置 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo nano /etc/default/grub</span><br></pre></td></tr></table></figure>
+GRUB_THEME=“/usr/share/grub/themes/vimix/theme.txt”</li>
+<li>更新配置 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo update-grub</span><br></pre></td></tr></table></figure></li>
+</ul></li>
+<li><p>安装nvidia驱动 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install linux-header-amd64 dkms</span><br><span class="line">sudo apt install nvidia-driver</span><br></pre></td></tr></table></figure></p></li>
+<li><p>Nvidia改wayland <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo nano /etc/default/grub</span><br></pre></td></tr></table></figure> GRUB_CMDLINE_LINUX_DEFAULT #添加
+nvidia-drm.modeset=1 GRUB_CMDLINE_LINUX_DEFAULT=”quiet
+nvidia-drm.modeset=1”
+/etc/gdm3/daemon.conf或者/etc/gdm/custom.conf之类的conf 将
+#WaylandEnable=false 改为WaylandEnable=true 屏蔽 ln -s /dev/null
+/etc/udev/rules.d/61-gdm.rules</p></li>
+<li><p>gnome 缩放因子 %125++</p>
 <ul>
-<li>更改为以下内容</li>
-</ul>
- <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">local ret_status=&quot;%(?:%&#123;$fg_bold[green]%&#125;➜ :%&#123;$fg_bold[red]%&#125;➜ )&quot;</span><br><span class="line">PROMPT=&#x27;$&#123;ret_status&#125; %&#123;$fg[cyan]%&#125;$PWD%&#123;$reset_color%&#125; $(git_prompt_info)&#x27;</span><br><span class="line">ZSH_THEME_GIT_PROMPT_PREFIX=&quot;%&#123;$fg_bold[blue]%&#125;git:(%&#123;$fg[red]%&#125;&quot;</span><br><span class="line">ZSH_THEME_GIT_PROMPT_SUFFIX=&quot;%&#123;$reset_color%&#125; &quot;</span><br><span class="line">ZSH_THEME_GIT_PROMPT_DIRTY=&quot;%&#123;$fg[blue]%&#125;) %&#123;$fg[yellow]%&#125;✗&quot;</span><br><span class="line">ZSH_THEME_GIT_PROMPT_CLEAN=&quot;%&#123;$fg[blue]%&#125;)&quot;</span><br></pre></td></tr></table></figure></li>
-<li>修改grub引导主题<ul>
-<li>下载主题文件<br> (<a target="_blank" rel="noopener" href="https://www.gnome-look.org/browse/grub-themes">https://www.gnome-look.org/browse/grub-themes</a>)</li>
-<li>放置主题文件</li>
-</ul>
- <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo mkdir /usr/share/grub/themes/vimix</span><br><span class="line">sudo cp /your/path/vimix /usr/share/grub/themes/vimix -rf</span><br></pre></td></tr></table></figure>
-<ul>
-<li>修改系统配置</li>
-</ul>
- <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo nano /etc/default/grub</span><br></pre></td></tr></table></figure>
-<p> GRUB_THEME&#x3D;”&#x2F;usr&#x2F;share&#x2F;grub&#x2F;themes&#x2F;vimix&#x2F;theme.txt”</p>
-<ul>
-<li>更新配置</li>
-</ul>
- <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo update-grub</span><br></pre></td></tr></table></figure></li>
-<li>安装nvidia驱动 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install linux-header-amd64 dkms</span><br><span class="line">sudo apt install nvidia-driver</span><br></pre></td></tr></table></figure></li>
-<li>Nvidia改wayland  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo nano /etc/default/grub</span><br></pre></td></tr></table></figure>
- GRUB_CMDLINE_LINUX_DEFAULT<br> #添加 nvidia-drm.modeset&#x3D;1<br> GRUB_CMDLINE_LINUX_DEFAULT&#x3D;”quiet nvidia-drm.modeset&#x3D;1”<br> &#x2F;etc&#x2F;gdm3&#x2F;daemon.conf或者&#x2F;etc&#x2F;gdm&#x2F;custom.conf之类的conf<br> 将 #WaylandEnable&#x3D;false 改为WaylandEnable&#x3D;true<br> 屏蔽 ln -s &#x2F;dev&#x2F;null &#x2F;etc&#x2F;udev&#x2F;rules.d&#x2F;61-gdm.rules</li>
-<li>gnome 缩放因子 %125++<ul>
-<li>Wayland下：</li>
-</ul>
- <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gsettings set org.gnome.mutter experimental-features “[‘scale-monitor-framebuffer’]”</span><br></pre></td></tr></table></figure>
-<ul>
-<li>x11下：</li>
-</ul>
- <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gsettings set org.gnome.mutter experimental-features &quot;[&#x27;x11-randr-fractional-scaling&#x27;]&quot;</span><br></pre></td></tr></table></figure></li>
+<li>Wayland下： <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gsettings set org.gnome.mutter experimental-features “[‘scale-monitor-framebuffer’]”</span><br></pre></td></tr></table></figure></li>
+<li>x11下： <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gsettings set org.gnome.mutter experimental-features &quot;[&#x27;x11-randr-fractional-scaling&#x27;]&quot;</span><br></pre></td></tr></table></figure></li>
+</ul></li>
 </ol>
 
     </div>

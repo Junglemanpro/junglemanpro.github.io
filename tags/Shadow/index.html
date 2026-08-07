@@ -55,6 +55,17 @@
   }
 </style>
 
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
   <header class="site-header">
@@ -217,7 +228,7 @@
         
           <li class="archive-item">
             <span class="archive-date">2026-06-06</span>
-            <a href="../../2026/06/06/cascaded_shadow_map/" class="archive-link">级联阴影映射（Cascaded Shadow Map）</a>
+            <a href="../../2026/06/06/cascaded_shadow_map/" class="archive-link">深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化</a>
           </li>
         
       </ul>

@@ -55,6 +55,17 @@
   }
 </style>
 
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
   <header class="site-header">
@@ -209,7 +220,7 @@
         </svg>
         Lighting
       </h1>
-      <p class="archive-count">共 4 篇文章</p>
+      <p class="archive-count">共 3 篇文章</p>
     </header>
 
     <div class="archive-content">
@@ -217,22 +228,17 @@
         
           <li class="archive-item">
             <span class="archive-date">2026-06-06</span>
-            <a href="../../2026/06/06/deferred_shading/" class="archive-link">延迟渲染（Deferred Shading）</a>
+            <a href="../../2026/06/06/deferred_shading/" class="archive-link">深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化</a>
           </li>
         
           <li class="archive-item">
             <span class="archive-date">2026-06-06</span>
-            <a href="../../2026/06/06/forward_plus_shading/" class="archive-link">前向多光照改进渲染(Forward Plus Shading)</a>
+            <a href="../../2026/06/06/forward_plus_shading/" class="archive-link">深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化</a>
           </li>
         
           <li class="archive-item">
             <span class="archive-date">2026-06-06</span>
-            <a href="../../2026/06/06/clustered_forward_shading/" class="archive-link">集群前向多光照渲染（Clustered Forward Shading）</a>
-          </li>
-        
-          <li class="archive-item">
-            <span class="archive-date">2025-05-05</span>
-            <a href="../../2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/" class="archive-link">延迟渲染-deferred_shading</a>
+            <a href="../../2026/06/06/clustered_forward_shading/" class="archive-link">深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践</a>
           </li>
         
       </ul>

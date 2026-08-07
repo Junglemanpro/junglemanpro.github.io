@@ -6,16 +6,16 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>延迟渲染-deferred_shading | 萤虫之光</title>
+<title>深入解析移动端架构与渲染优化：从骁龙 8 Elite 缓存设计到 TBDR 延迟渲染实践 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
-<meta name="keywords" content="Lighting">
+<meta name="keywords" content="Mobile GPU,Hardware Architecture,Graphics Pipeline,Deferred Shading,Cache">
 <meta name="author" content="Berg Zha">
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="延迟渲染-deferred_shading">
+<meta property="og:title" content="深入解析移动端架构与渲染优化：从骁龙 8 Elite 缓存设计到 TBDR 延迟渲染实践">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -54,6 +54,17 @@
     --primary-color: #2563eb;
   }
 </style>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
@@ -203,7 +214,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">延迟渲染-deferred_shading</h1>
+      <h1 class="post-title">深入解析移动端架构与渲染优化：从骁龙 8 Elite 缓存设计到 TBDR 延迟渲染实践</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -227,8 +238,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-06">
-        更新于 2026-08-06
+      <time datetime="2026-08-07">
+        更新于 2026-08-07
       </time>
     </span>
   
@@ -242,7 +253,7 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      171 字
+      8.2k 字
     </span>
   
 
@@ -254,7 +265,7 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       
-      约 1 分钟
+      约 28 分钟
     </span>
   
 
@@ -269,7 +280,176 @@
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
-      <p>以高通骁龙8 elite为例：<br>在手机任务场景里，大2缓的架构设计，表现得最佳！其实手机端的进程通常都是独立的，很少会出现大规模的并发任务数量，也不存在一堆前台并行运行处理的APP，<br>因此，大多数的手机任务，只要请求的进程数不超过核簇规模，就无需3缓做核间通信，3缓面积留给2缓的架构设计，<br>让巨大的2缓带来最大化的单核能效，多核场景就直接调用。</p>
+      <h1
+id="深入解析移动端架构与渲染优化从骁龙-8-elite-缓存设计到-tbdr-延迟渲染实践">深入解析移动端架构与渲染优化：从骁龙
+8 Elite 缓存设计到 TBDR 延迟渲染实践</h1>
+<p>在移动端图形渲染与计算任务的性能调优中，芯片底层的存储子系统（Memory
+Subsystem）架构设计与上层渲染管线的匹配度直接决定了设备的帧率稳定性与能效比
+。以高通骁龙 8 Elite（Snapdragon 8 Elite）为代表的现代移动 SoC，通过重构
+CPU/GPU 缓存层级结构结构，展示了面向移动端高能效计算的深刻设计哲学
+。</p>
+<p>本文将从 <strong>骁龙 8 Elite 缓存架构演进</strong>
+、<strong>移动端任务并行范式</strong> 、<strong>基于 TBDR
+的延迟渲染（Deferred
+Shading）带宽解构</strong>、<strong>缓存命中与能效数学模型</strong> 到
+<strong>Vulkan 工程实践</strong> 进行深度扩展。</p>
+<hr />
+<h2 id="一-移动端-soc-架构革新骁龙-8-elite-的缓存设计哲学">一、 移动端
+SoC 架构革新：骁龙 8 Elite 的缓存设计哲学</h2>
+<h3 id="从三级缓存到大二级缓存的架构转变">1.
+从“三级缓存”到“大二级缓存”的架构转变</h3>
+<p>传统桌面级 CPU/GPU 架构（如 x86/高级桌面
+GPU）极度依赖大容量共享三级缓存（L3
+Cache）来支撑大规模多核并发与复杂的核间通信。然而，在以高通骁龙 8 Elite
+为代表的现代移动芯片设计中，架构师彻底摒弃了冗余的 L3
+缓存空间，转而将这部分晶体管面积分配给超大容量的二级缓存（L2 Cache）集群
+。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">+-----------------------------------------------------------------------+</span><br><span class="line">|                    骁龙 8 Elite 存储子系统架构                          |</span><br><span class="line">|                                                                       |</span><br><span class="line">|  +---------------------------------+   +---------------------------+  |</span><br><span class="line">|  |     性能核簇 (Performance Core) |   |    主频核簇 (Prime Core)  |  |</span><br><span class="line">|  |  +-------+  +-------+           |   |  +-------+  +-------+     |  |</span><br><span class="line">|  |  | Core  |  | Core  |   ...     |   |  | Core  |  | Core  | ... |  |</span><br><span class="line">|  |  +-------+  +-------+           |   |  +-------+  +-------+     |  |</span><br><span class="line">|  |  +---------------------------+  |   |  +---------------------+  |  |</span><br><span class="line">|  |  |  超大共享 L2 Cache (12MB) |  |   |  | 共享 L2 Cache (12MB)|  |  |</span><br><span class="line">|  |  +---------------------------+  |   |  +---------------------+  |  |</span><br><span class="line">|  +---------------------------------+   +---------------------------+  |</span><br><span class="line">|                                  |                                    |</span><br><span class="line">|                                  v                                    |</span><br><span class="line">|  +-----------------------------------------------------------------+  |</span><br><span class="line">|  |             系统级缓存 (System Level Cache, SLC / 8MB)           |  |</span><br><span class="line">|  +-----------------------------------------------------------------+  |</span><br><span class="line">|                                  |                                    |</span><br><span class="line">|                                  v                                    |</span><br><span class="line">|  +-----------------------------------------------------------------+  |</span><br><span class="line">|  |                      LPDDR5X 内存 (DRAM)                         |  |</span><br><span class="line">|  +-----------------------------------------------------------------+  |</span><br><span class="line">+-----------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+<ul>
+<li><strong>独立进程模式与低并发特性</strong>：移动操作系统（如
+Android/iOS）的进程生命周期与任务调度机制决定了前台应用通常占据绝大部分计算资源，极少出现桌面端那种多进程大规模高并发协同的场景
+。</li>
+<li><strong>低核间通信开销</strong>：绝大多数移动任务在请求进程数不超过核簇规模时，不需要频繁跨核
+Cluster 执行同步与通信，因而 L3 缓存带来的“跨 Cluster
+共享”优势被大幅削弱 。</li>
+<li><strong>单核能效比最大化</strong>：将节省出的 L3
+晶体管面积直接赋予超大 L2 缓存，能够极大地缩短 CPU/GPU
+核心访问关键数据（如着色器指令、顶点数据、频繁读写的状态变量）的延迟，带来单核与单线程能效比（Performance
+per Watt）的最大化提升 。</li>
+</ul>
+<hr />
+<h2 id="二-存储层次结构与移动端-gpu-渲染管线">二、 存储层次结构与移动端
+GPU 渲染管线</h2>
+<p>移动端 GPU（如 Adreno
+830）在执行图形渲染任务时，同样深度受制于物理内存（LPDDR5X）的访问功耗。在
+3D 渲染中，访问一次外存 DRAM 的功耗通常是访问片上缓存（On-Chip Cache）的
+<strong>100 倍以上</strong>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+-----------------------------------------------------------------+</span><br><span class="line">| 存储层级 (Hierarchy) | 访问延迟 (Latency) | 物理位置与作用        |</span><br><span class="line">+----------------------+--------------------+---------------------+</span><br><span class="line">| GPU Registers        | ~1 Cycle           | ALU 寄存器文件      |</span><br><span class="line">| On-Chip Tile Memory  | ~1 - 3 Cycles      | Adreno GMEM (片上)  |</span><br><span class="line">| GPU L2 Cache         | ~10 - 20 Cycles    | Adreno 片上二级缓存 |</span><br><span class="line">| System Cache (SLC)   | ~30 - 50 Cycles    | 系统级共享缓存      |</span><br><span class="line">| LPDDR5X DRAM         | ~100 - 200 Cycles  | 外部主内存          |</span><br><span class="line">+-----------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+<p>对于移动端 <strong>Tile-Based Deferred Rendering (TBDR)</strong>
+架构而言： 1. <strong>GMEM (Tile Memory)</strong>：用于暂存当前屏幕
+Tile（如 <span class="math inline">\(16 \times 16\)</span> 或 <span
+class="math inline">\(32 \times 32\)</span> 像素）的 G-Buffer 数据。 2.
+<strong>L2 Cache &amp; SLC</strong>：当 Tile 尺寸放不下极复杂的
+G-Buffer，或者需要频繁读取纹理、Uniform Buffer、SSBO 时，超大的 L2 Cache
+与 SLC 能够完美作为第二道防线，避免数据请求穿透至 LPDDR5X 主存 。</p>
+<hr />
+<h2 id="三-tbdr-延迟渲染deferred-shading中的带宽算力解构">三、 TBDR
+延迟渲染（Deferred Shading）中的带宽算力解构</h2>
+<p>在传统的正向渲染下，无效片元的光照计算会导致严重
+Overdraw。延迟渲染通过 G-Buffer 将几何与光照解耦，但在移动端，G-Buffer
+的巨大体积（如 Position, Normal, Albedo, Specular
+等）会带来极高的写出与读取带宽。</p>
+<h3 id="g-buffer-显存带宽消耗公式">1. G-Buffer 显存带宽消耗公式</h3>
+<p>在不使用片上优化的情况下，单帧 G-Buffer 的理论写出带宽 <span
+class="math inline">\(B_{\mathrm{GBuffer}}\)</span> 可表示为：</p>
+<p><span class="math display">\[
+B_{\mathrm{GBuffer}} = W \times H \times \mathrm{FPS} \times
+\sum_{i=1}^{k} b_i \cdot (1 + \text{Overdraw})
+\]</span></p>
+<p>其中： * <span class="math inline">\(W, H\)</span>
+分别为渲染分辨率的宽与高。 * <span
+class="math inline">\(\mathrm{FPS}\)</span> 为当前目标帧率（如 <span
+class="math inline">\(60\)</span> 或 <span
+class="math inline">\(120\)</span>）。 * <span
+class="math inline">\(b_i\)</span> 为第 <span
+class="math inline">\(i\)</span> 个 G-Buffer Attachment 字节数（如
+16-bit Float 为 8 字节）。 * <span
+class="math inline">\(\text{Overdraw}\)</span> 为几何阶段的遮挡率。</p>
+<p>若分辨率为 <span class="math inline">\(2560 \times
+1440\)</span>，帧率 <span
+class="math inline">\(60\,\mathrm{FPS}\)</span>，G-Buffer 总大小 <span
+class="math inline">\(16\,\text{Bytes/Pixel}\)</span>，在未经过片上缓存优化的场景下，仅
+G-Buffer 阶段就会产生高达 <strong>3.5 GB/s</strong> 的 DRAM
+读写带宽，极易触发 SoC 热限制（Thermal Throttling）。</p>
+<h3 id="vulkan-subpass-与大-l2-缓存协同">2. Vulkan Subpass 与大 L2
+缓存协同</h3>
+<p>为了消除这一带宽开销，Vulkan 的 <code>VkRenderPass</code> 引入了
+<code>Subpass</code> 机制。</p>
+<ul>
+<li><strong>GMEM 内部循环</strong>：Subpass 0（几何阶段）将 G-Buffer
+写入片上 SRAM（GMEM）；Subpass 1（光照阶段）通过
+<code>subpassInput</code> 直接读取当前像素的片上 GMEM 数据。</li>
+<li><strong>大 L2/SLC 兜底</strong>：如果场景着色器非常复杂（如包含 PBR
+材质查找表、大范围采样、Cascade Shadow Map 数组），超出片上 GMEM
+容纳范围，骁龙 8 Elite 庞大的 L2 缓存与 SLC
+可以实现对溢出数据的极高命中率，彻底阻止数据刷回外部 LPDDR5X DRAM
+。</li>
+</ul>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// GLSL Lighting Subpass Fragment Shader 示例</span></span><br><span class="line"><span class="meta">#version 450</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">out</span> <span class="type">vec4</span> FragColor;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 直接读取片元对应的 GMEM / L2 缓存数据，无需走 DRAM 采样</span></span><br><span class="line"><span class="keyword">layout</span> (input_attachment_index = <span class="number">0</span>, set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> subpassInput inPosition;</span><br><span class="line"><span class="keyword">layout</span> (input_attachment_index = <span class="number">1</span>, set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">1</span>) <span class="keyword">uniform</span> subpassInput inNormal;</span><br><span class="line"><span class="keyword">layout</span> (input_attachment_index = <span class="number">2</span>, set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">2</span>) <span class="keyword">uniform</span> subpassInput inAlbedoSpec;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">    <span class="type">vec3</span> fragPos  = subpassLoad(inPosition).rgb;</span><br><span class="line">    <span class="type">vec3</span> normal   = subpassLoad(inNormal).rgb;</span><br><span class="line">    <span class="type">vec3</span> albedo   = subpassLoad(inAlbedoSpec).rgb;</span><br><span class="line">    <span class="type">float</span> specStr = subpassLoad(inAlbedoSpec).a;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 可以在全片上内存直接执行 PBR / Blinn-Phong 光照累加</span></span><br><span class="line">    <span class="type">vec3</span> lighting = computeLighting(fragPos, normal, albedo, specStr);</span><br><span class="line">    FragColor     = <span class="type">vec4</span>(lighting, <span class="number">1.0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h2 id="四-数学模型缓存命中率与能效比推导">四、
+数学模型：缓存命中率与能效比推导</h2>
+<p>我们可以建立一个移动端渲染任务的平均内存访问时间（AMAT）与单帧访问功耗模型。</p>
+<h3 id="平均内存访问时间-amat-模型">1. 平均内存访问时间 (AMAT) 模型</h3>
+<p>假设 L2 缓存命中率为 <span
+class="math inline">\(h_{\mathrm{L2}}\)</span>，SLC 命中率为 <span
+class="math inline">\(h_{\mathrm{SLC}}\)</span>，对应的访问延迟分别为
+<span class="math inline">\(t_{\mathrm{L2}}, t_{\mathrm{SLC}},
+t_{\mathrm{DRAM}}\)</span>，则平均访问延迟 <span
+class="math inline">\(\mathrm{AMAT}\)</span> 为：</p>
+<p><span class="math display">\[
+\mathrm{AMAT} = t_{\mathrm{L2}} + (1 - h_{\mathrm{L2}}) \cdot
+t_{\mathrm{SLC}} + (1 - h_{\mathrm{L2}})(1 - h_{\mathrm{SLC}}) \cdot
+t_{\mathrm{DRAM}}
+\]</span></p>
+<h3 id="单帧内存访问功耗模型">2. 单帧内存访问功耗模型</h3>
+<p>设 <span class="math inline">\(N_{\mathrm{access}}\)</span>
+为单帧图像渲染所产生的总内存访问请求数，<span
+class="math inline">\(e_{\mathrm{L2}}, e_{\mathrm{SLC}},
+e_{\mathrm{DRAM}}\)</span>
+分别为单次访问各级存储结构的能量消耗。单帧渲染的内存总访问功耗 <span
+class="math inline">\(E_{\mathrm{frame}}\)</span> 可表示为：</p>
+<p><span class="math display">\[
+E_{\mathrm{frame}} = N_{\mathrm{access}} \cdot \left[ h_{\mathrm{L2}}
+\cdot e_{\mathrm{L2}} + (1 - h_{\mathrm{L2}}) h_{\mathrm{SLC}} \cdot
+e_{\mathrm{SLC}} + (1 - h_{\mathrm{L2}})(1 - h_{\mathrm{SLC}}) \cdot
+e_{\mathrm{DRAM}} \right]
+\]</span></p>
+<p>由于在物理硬件中 <span class="math inline">\(e_{\mathrm{DRAM}}
+\approx 100 \times e_{\mathrm{L2}}\)</span>，当骁龙 8 Elite 的超大 L2
+缓存将 <span class="math inline">\(h_{\mathrm{L2}}\)</span> 从传统的
+<span class="math inline">\(60\%\)</span> 提升至 <span
+class="math inline">\(90\%\)</span> 以上时 ： <span
+class="math display">\[\Delta E_{\mathrm{frame}} \propto
+(h_{\mathrm{L2\_new}} - h_{\mathrm{L2\_old}}) \cdot
+e_{\mathrm{DRAM}}\]</span></p>
+<p>整体系统的内存访问能耗呈数量级下降，这从底层数学层面解释了“大 L2
+缓存设计能带来最大化单核能效比”的根本原因 。</p>
+<hr />
+<h2 id="五-移动端-gpu-架构下延迟渲染的工程最佳实践">五、 移动端 GPU
+架构下延迟渲染的工程最佳实践</h2>
+<p>结合骁龙 8 Elite 等新型移动 SoC
+的硬件特性，在开发移动端渲染引擎时，应遵循以下工程规范：</p>
+<h3 id="显式-loadstore-ops-配置-memory-anti-banding">1. 显式 Load/Store
+Ops 配置 (Memory Anti-Banding)</h3>
+<p>在 Vulkan 创建 G-Buffer Attachments 时，必须显式将写出指令设置为
+<code>DONT_CARE</code>，防止片上 Tile 数据被无谓刷回 DRAM：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">VkAttachmentDescription gNormalAttachment = &#123;&#125;;</span><br><span class="line">gNormalAttachment.format         = VK_FORMAT_R16G16B16A16_SFLOAT;</span><br><span class="line">gNormalAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;</span><br><span class="line">gNormalAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;</span><br><span class="line"><span class="comment">// 关键优化：几何阶段结束后，G-Buffer 法线无需保留在 DRAM，直接丢弃！</span></span><br><span class="line">gNormalAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE; </span><br><span class="line">gNormalAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;</span><br><span class="line">gNormalAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;</span><br><span class="line">gNormalAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;</span><br><span class="line">gNormalAttachment.finalLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;</span><br></pre></td></tr></table></figure>
+<h3 id="g-buffer-体积极致压缩深度重建位置">2. G-Buffer
+体积极致压缩（深度重建位置）</h3>
+<p>取消独立的 <code>G-Position</code> 附件（占用 8
+字节/像素），改用深度图 <code>G-Depth</code> 结合相机逆投影矩阵，在
+Lighting Pass 中实时推导世界空间坐标：</p>
+<p><span class="math display">\[
+\mathbf{P}_{\mathrm{world}} = M_{\mathrm{InvViewProj}} \cdot
+\begin{pmatrix} u \cdot 2 - 1 \\ v \cdot 2 - 1 \\ d \cdot 2 - 1 \\ 1
+\end{pmatrix}
+\]</span></p>
+<p>这能将 G-Buffer 的尺寸控制在 Adreno GPU 的 GMEM
+最佳容量阈值之内（&lt; 16
+字节/像素），保证全量数据无溢出地留在片上。</p>
+<hr />
+<h2 id="六-总结">六、 总结</h2>
+<p>高通骁龙 8 Elite 采用的“大 L2 缓存、弱化 L3
+依赖”架构革新，精准契合了移动操作系统独立进程、高单核能效比优先的调度模型
+。在现代移动端图形渲染管线中： *
+<strong>底层存储架构决定上界</strong>：超大容量 L2 缓存与系统级 SLC
+为密集数据访问提供了坚实的低功耗屏障 ； * <strong>TBDR
+延迟渲染完美适配</strong>：通过 Vulkan Subpass 与 Input Attachment 将
+G-Buffer 读写锁死在片上 GMEM/L2 空间； *
+<strong>软件与硬件协同突破</strong>：结合
+<code>VK_ATTACHMENT_STORE_OP_DONT_CARE</code>
+与深度位置重建，最大化发挥了现代移动 SoC 架构的极致性能与能效潜力 。</p>
 
     </div>
 
@@ -281,7 +461,15 @@
           <path d="M7 7h.01"></path>
         </svg>
         
-          <a href="../../../../tags/Lighting/" class="tag-link">Lighting</a>
+          <a href="../../../../tags/Mobile-GPU/" class="tag-link">Mobile GPU</a>
+        
+          <a href="../../../../tags/Hardware-Architecture/" class="tag-link">Hardware Architecture</a>
+        
+          <a href="../../../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
+        
+          <a href="../../../../tags/Deferred-Shading/" class="tag-link">Deferred Shading</a>
+        
+          <a href="../../../../tags/Cache/" class="tag-link">Cache</a>
         
       </div>
     
@@ -300,7 +488,7 @@
       
         <a href="../%E9%81%AE%E8%94%BD/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">遮蔽_AO</span>
+          <span class="post-nav-title">深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践</span>
         </a>
       
       
@@ -319,7 +507,17 @@
       <div class="toc-wrapper">
         <h3 class="toc-title">目录</h3>
         <div class="toc-content">
-          
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E7%A7%BB%E5%8A%A8%E7%AB%AF%E6%9E%B6%E6%9E%84%E4%B8%8E%E6%B8%B2%E6%9F%93%E4%BC%98%E5%8C%96%E4%BB%8E%E9%AA%81%E9%BE%99-8-elite-%E7%BC%93%E5%AD%98%E8%AE%BE%E8%AE%A1%E5%88%B0-tbdr-%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E5%AE%9E%E8%B7%B5"><span class="toc-text">深入解析移动端架构与渲染优化：从骁龙
+8 Elite 缓存设计到 TBDR 延迟渲染实践</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E7%A7%BB%E5%8A%A8%E7%AB%AF-soc-%E6%9E%B6%E6%9E%84%E9%9D%A9%E6%96%B0%E9%AA%81%E9%BE%99-8-elite-%E7%9A%84%E7%BC%93%E5%AD%98%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6"><span class="toc-text">一、 移动端
+SoC 架构革新：骁龙 8 Elite 的缓存设计哲学</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8E%E4%B8%89%E7%BA%A7%E7%BC%93%E5%AD%98%E5%88%B0%E5%A4%A7%E4%BA%8C%E7%BA%A7%E7%BC%93%E5%AD%98%E7%9A%84%E6%9E%B6%E6%9E%84%E8%BD%AC%E5%8F%98"><span class="toc-text">1.
+从“三级缓存”到“大二级缓存”的架构转变</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-%E5%AD%98%E5%82%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84%E4%B8%8E%E7%A7%BB%E5%8A%A8%E7%AB%AF-gpu-%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF"><span class="toc-text">二、 存储层次结构与移动端
+GPU 渲染管线</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-tbdr-%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93deferred-shading%E4%B8%AD%E7%9A%84%E5%B8%A6%E5%AE%BD%E7%AE%97%E5%8A%9B%E8%A7%A3%E6%9E%84"><span class="toc-text">三、 TBDR
+延迟渲染（Deferred Shading）中的带宽算力解构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#g-buffer-%E6%98%BE%E5%AD%98%E5%B8%A6%E5%AE%BD%E6%B6%88%E8%80%97%E5%85%AC%E5%BC%8F"><span class="toc-text">1. G-Buffer 显存带宽消耗公式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#vulkan-subpass-%E4%B8%8E%E5%A4%A7-l2-%E7%BC%93%E5%AD%98%E5%8D%8F%E5%90%8C"><span class="toc-text">2. Vulkan Subpass 与大 L2
+缓存协同</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E6%95%B0%E5%AD%A6%E6%A8%A1%E5%9E%8B%E7%BC%93%E5%AD%98%E5%91%BD%E4%B8%AD%E7%8E%87%E4%B8%8E%E8%83%BD%E6%95%88%E6%AF%94%E6%8E%A8%E5%AF%BC"><span class="toc-text">四、
+数学模型：缓存命中率与能效比推导</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B9%B3%E5%9D%87%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE%E6%97%B6%E9%97%B4-amat-%E6%A8%A1%E5%9E%8B"><span class="toc-text">1. 平均内存访问时间 (AMAT) 模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E5%B8%A7%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE%E5%8A%9F%E8%80%97%E6%A8%A1%E5%9E%8B"><span class="toc-text">2. 单帧内存访问功耗模型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E7%A7%BB%E5%8A%A8%E7%AB%AF-gpu-%E6%9E%B6%E6%9E%84%E4%B8%8B%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E7%9A%84%E5%B7%A5%E7%A8%8B%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-text">五、 移动端 GPU
+架构下延迟渲染的工程最佳实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%BE%E5%BC%8F-loadstore-ops-%E9%85%8D%E7%BD%AE-memory-anti-banding"><span class="toc-text">1. 显式 Load&#x2F;Store
+Ops 配置 (Memory Anti-Banding)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#g-buffer-%E4%BD%93%E7%A7%AF%E6%9E%81%E8%87%B4%E5%8E%8B%E7%BC%A9%E6%B7%B1%E5%BA%A6%E9%87%8D%E5%BB%BA%E4%BD%8D%E7%BD%AE"><span class="toc-text">2. G-Buffer
+体积极致压缩（深度重建位置）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E6%80%BB%E7%BB%93"><span class="toc-text">六、 总结</span></a></li></ol></li></ol>
         </div>
       </div>
     </aside>

@@ -55,6 +55,17 @@
   }
 </style>
 
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
   <header class="site-header">
@@ -220,36 +231,64 @@
         
         
         <li class="archive-item">
-          <span class="archive-date">06-06</span>
-          <a href="../2026/06/06/fullscreen-quad_rendering/" class="archive-link">全屏四边形渲染（Fullscreen Quad Rendering）</a>
+          <span class="archive-date">08-06</span>
+          <a href="../2026/08/06/indirectDraw/" class="archive-link">深入解析 Vulkan Indirect Draw（间接绘制）：从 GPU-Driven 管线、Multi-Draw Indirect 到无绑定（Bindless）工程实践</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">08-06</span>
+          <a href="../2026/08/06/%E5%90%8E%E5%A4%84%E7%90%86/" class="archive-link">深入解析现代图形管线中的后处理架构：从 Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">08-06</span>
+          <a href="../2026/08/06/SSSAO/" class="archive-link">深入解析屏幕空间环境光遮蔽（SSAO）：数学半球积分、采样核优化、深度不连续瑕疵与双边滤波工程实现</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">08-06</span>
+          <a href="../2026/08/06/Layout/" class="archive-link">深入解析移动端 TBDR 架构与 Vulkan Subpass：片上 Layout Transition 的硬件物理机制与工程实践</a>
         </li>
       
         
         
         <li class="archive-item">
           <span class="archive-date">06-06</span>
-          <a href="../2026/06/06/deferred_shading/" class="archive-link">延迟渲染（Deferred Shading）</a>
+          <a href="../2026/06/06/fullscreen_quad_rendering/" class="archive-link">深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践</a>
         </li>
       
         
         
         <li class="archive-item">
           <span class="archive-date">06-06</span>
-          <a href="../2026/06/06/cascaded_shadow_map/" class="archive-link">级联阴影映射（Cascaded Shadow Map）</a>
+          <a href="../2026/06/06/deferred_shading/" class="archive-link">深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化</a>
         </li>
       
         
         
         <li class="archive-item">
           <span class="archive-date">06-06</span>
-          <a href="../2026/06/06/forward_plus_shading/" class="archive-link">前向多光照改进渲染(Forward Plus Shading)</a>
+          <a href="../2026/06/06/cascaded_shadow_map/" class="archive-link">深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化</a>
         </li>
       
         
         
         <li class="archive-item">
           <span class="archive-date">06-06</span>
-          <a href="../2026/06/06/clustered_forward_shading/" class="archive-link">集群前向多光照渲染（Clustered Forward Shading）</a>
+          <a href="../2026/06/06/forward_plus_shading/" class="archive-link">深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">06-06</span>
+          <a href="../2026/06/06/clustered_forward_shading/" class="archive-link">深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践</a>
         </li>
       
         
@@ -263,42 +302,7 @@
         
         <li class="archive-item">
           <span class="archive-date">05-05</span>
-          <a href="../2025/05/05/%E9%81%AE%E8%94%BD/" class="archive-link">遮蔽_AO</a>
-        </li>
-      
-        
-        
-        <li class="archive-item">
-          <span class="archive-date">05-05</span>
-          <a href="../2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/" class="archive-link">延迟渲染-deferred_shading</a>
-        </li>
-      
-        
-        
-        <li class="archive-item">
-          <span class="archive-date">05-05</span>
-          <a href="../2025/05/05/debian%E6%90%AD%E5%BB%BAgithub%E5%8D%9A%E5%AE%A2%E6%89%8B%E5%86%8C/" class="archive-link">debian搭建github博客手册</a>
-        </li>
-      
-        
-          
-            </ul>
-          
-          
-          <h2 class="archive-year">2024</h2>
-          <ul class="archive-list">
-        
-        
-        <li class="archive-item">
-          <span class="archive-date">04-04</span>
-          <a href="../2024/04/04/debian%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/" class="archive-link">debian配置手册</a>
-        </li>
-      
-        
-        
-        <li class="archive-item">
-          <span class="archive-date">04-04</span>
-          <a href="../2024/04/04/oh-my-posh%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/" class="archive-link">oh-my-posh配置手册</a>
+          <a href="../2025/05/05/%E9%81%AE%E8%94%BD/" class="archive-link">深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践</a>
         </li>
       
       

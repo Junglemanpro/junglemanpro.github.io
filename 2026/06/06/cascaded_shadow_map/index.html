@@ -6,16 +6,16 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>级联阴影映射（Cascaded Shadow Map） | 萤虫之光</title>
+<title>深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
-<meta name="keywords" content="Shadow">
+<meta name="keywords" content="Shadow,Cascaded Shadow Map,Graphics Pipeline,Shadow Map">
 <meta name="author" content="Berg Zha">
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="级联阴影映射（Cascaded Shadow Map）">
+<meta property="og:title" content="深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2026/06/06/cascaded_shadow_map/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -54,6 +54,17 @@
     --primary-color: #2563eb;
   }
 </style>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
@@ -203,7 +214,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">级联阴影映射（Cascaded Shadow Map）</h1>
+      <h1 class="post-title">深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -227,8 +238,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-06">
-        更新于 2026-08-06
+      <time datetime="2026-08-07">
+        更新于 2026-08-07
       </time>
     </span>
   
@@ -242,7 +253,7 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      2.2k 字
+      10.8k 字
     </span>
   
 
@@ -254,7 +265,7 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       
-      约 8 分钟
+      约 37 分钟
     </span>
   
 
@@ -269,27 +280,315 @@
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
-      <p>让我们近距离观察一下:</p>
-<p><img src="worse_shadows.jpg" alt="阴影锯齿"> </p>
-<p>阴影的质量不高,因为这种块效应，将其称为透视锯齿，视图空间中的大量像素被映射到阴影贴图中的同一像素，这意味着所有这些像素要么处于阴影中，要么处于光亮中，从而产生块状感。换句话说，由于阴影贴图的分辨率不够高，因此无法充分覆盖视图空间。解决这个问题的一个明显方法是增加阴影贴图的分辨率，但这会增加我们应用程序的内存占用，因此它可能不是最好的做法。</p>
-<p>处理此问题的另一种方法是注意靠近相机的阴影比远处物体的阴影重要得多。无论如何，远处的物体都较小，通常眼睛会聚焦于附近发生的事情，而将其余的视为“背景”。如果我们能找到一种方法，对较近的物体使用专用的阴影贴图，对远处的物体使用不同的阴影贴图，那么第一个阴影贴图将只需要覆盖较小的区域，从而减少我们上面讨论的比率。简而言之，这就是级联阴影贴图（又名 CSM）的全部内容。CSM 被认为是处理透视锯齿的最佳方法之一。让我们看看如何实现它。</p>
-<p>从高层视图来看，我们将把视锥体分割成几个级联（因为它不需要像前面的示例中那样只有两个）。出于本教程的目的，我们将使用三个级联：近、中和远。该算法本身非常通用，因此如果您愿意，可以使用更多级联。每个级联都会被渲染成它自己的私有阴影贴图。阴影算法本身将保持不变，但在从阴影贴图采样深度时，我们需要根据距观察者的距离选择适当的贴图。让我们看一下通用的视锥体：</p>
-<p><img src="frustum_3d.png"><br>像往常一样，我们有一个小的近平面和一个更大的远平面。现在让我们从上面看一下同一个平截头体：<br><img src="frustum_2d.png"> </p>
-<p>下一步是将近平面到远平面的范围分成三部分。我们将其称为近、中、远。另外，我们添加光线方向（右侧的箭头）：<br><img src="frustum_cascade.png"> </p>
-<p>那么我们如何将每个级联渲染成它自己的私有阴影贴图呢？让我们考虑一下阴影贴图算法中的阴影阶段。我们设置一些东西来从光的角度渲染场景。这意味着使用对象的世界变换、基于光线的视图变换和投影矩阵创建一个 WVP 矩阵。由于本教程基于处理定向光阴影的教程 47，因此投影矩阵将是正交的。一般来说，CSM 在主要光源通常是太阳的户外场景中更有意义，因此在这里使用定向光是很自然的。如果您查看上面的 WVP 矩阵，您会发现所有级联的前两个部分（世界和视图）都是相同的。毕竟，物体在世界中的位置以及基于光源的相机的方向与将视锥体分裂成级联无关。这里重要的只是投影矩阵，因为它定义了最终渲染区域的范围。由于正交投影是使用盒子定义的，我们需要定义三个不同的盒子，它们将被转换为三个不同的正交投影矩阵。这些投影矩阵将用于创建三个 WVP 矩阵，以将每个级联渲染为其自己的阴影贴图。</p>
-<p>最合乎逻辑的做法是使这些框尽可能小，以保持视图像素与阴影贴图像素的比率尽可能低。这意味着为每个级联创建一个沿光方向矢量定向的边界框。让我们为第一个级联创建一个这样的边界框：<br><img src="frustum_cascade_bounds_1.png"><br>现在让我们为第二个级联创建一个边界框：<br><img src="frustum_cascade_bounds_2.png"><br>最后是最后一个级联的边界框：<br><img src="frustum_cascade_bounds_3.png"></p>
-<p>正如您所看到的，由于光线的方向，边界框存在一些重叠，这意味着某些像素将被渲染到多个阴影贴图中。只要单个级联的所有像素完全位于单个阴影贴图中，就没有问题。在着色器中用于阴影计算的阴影贴图的选择将基于像素与实际观看者的距离。</p>
-<p>作为阴影阶段正投影的基础的边界框的计算是该算法中最复杂的部分。这些盒子必须在光空间中描述，因为投影发生在世界和视图变换之后（此时光从原点“起源”并沿正 Z 轴指向）。由于框将被计算为所有三个轴上的最小&#x2F;最大值，因此它们将在光线方向上对齐，这就是我们投影所需的。为了计算边界框，我们需要知道每个级联在光空间中的样子。为此，我们需要执行以下步骤：</p>
-<p>计算视图空间中每个级联的八个角。这很简单，需要简单的三角函数：</p>
-<p><img src="frustum1.png"></p>
-<p>上图表示任意级联（因为每个级联本身基本上是一个截锥体，并且与其他级联共享相同的视场角）。请注意，我们是从上往下看 XZ 平面。我们需要计算 X 1和 X 2：<br><img src="calc1.png"><br><img src="calc2.png"></p>
-<p>这为我们提供了视图空间中级联的八个坐标的 X 和 Z 分量。对垂直视场角使用类似的数学运算，我们可以获得 Y 分量并最终确定坐标。</p>
-<p>现在我们需要将级联坐标从视图空间转换回世界空间。假设观察者的方向使得在世界空间中的截锥体看起来像这样（红色箭头是光线方向，但现在忽略它）：</p>
-<p><img src="frustum2.png"></p>
-<p>为了从世界空间转换到视图空间，我们将世界位置向量乘以视图矩阵（基于相机位置和旋转）。这意味着，如果我们已经有了视图空间中级联的坐标，我们必须将它们乘以视图矩阵的逆矩阵，以便将它们转换到世界空间：</p>
-<p><img src="calc3.png"></p>
-<p>通过世界空间中的视锥体坐标，我们现在可以像任何其他对象一样将它们转换为光空间。请记住，光空间与视图空间完全相同，但我们使用光源代替相机。由于我们处理的是没有原点的定向光，因此我们只需要旋转世界，使光方向与正 Z 轴对齐。光的原点可以简单地是光空间坐标系的原点（这意味着我们不需要任何平移）。如果我们使用上图（红色箭头是光方向）来做到这一点，光空间中的级联平截头体应该如下所示：</p>
-<p><img src="frustum_3.png"><br>对于最终在光空间中的级联坐标，我们只需要通过获取八个坐标的 X&#x2F;Y&#x2F;Z 分量的最小&#x2F;最大值来为其生成一个边界框。该边界框提供正交投影的值，用于将此级联渲染到其阴影贴图中。通过分别为每个级联生成正交投影，我们现在可以将每个级联渲染为不同的阴影贴图。在光照阶段，我们将通过根据距观察者的距离选择阴影贴图来计算阴影系数。</p>
+      <h1
+id="深入解析级联阴影映射cascaded-shadow-map-csm">深入解析级联阴影映射（Cascaded
+Shadow Map, CSM）</h1>
+<p>在实时图形学与 3D
+渲染管线中，阴影渲染不仅是提升场景空间感与真实感的核心技术，也是性能与画质消耗的主要痛点之一。<strong>级联阴影映射（Cascaded
+Shadow Map，简称 CSM）</strong> 是目前工业级渲染引擎（如 Unreal
+Engine、Unity 及主流 AAA
+游戏引擎）解决大场景平行光（如太阳光）<strong>透视锯齿（Perspective
+Aliasing）</strong> 的标准方案。</p>
+<p>本文将系统解构透视锯齿的数学本质、视锥体分割策略、光照空间包围盒（AABB）推导、<strong>Texel
+Snapping 消除闪烁</strong>、<strong>级联平滑过渡</strong>
+等工程优化手段。</p>
+<hr />
+<h2 id="一-引言阴影透视锯齿问题-perspective-aliasing">一、
+引言：阴影透视锯齿问题 (Perspective Aliasing)</h2>
+<p>在基于传统 Shadow Mapping
+算法渲染户外大场景时，近处的阴影往往呈现出严重的锯齿状或块状边缘，这种现象被称为<strong>透视锯齿（Perspective
+Aliasing）</strong>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">视角相机 (View Camera)</span><br><span class="line">   \   像素密度极高 (High Pixel Density)</span><br><span class="line">    \   |   |   |</span><br><span class="line">     v  v   v   v</span><br><span class="line">    +---------------+-----------------------+</span><br><span class="line">    | 近处视锥区域  |     远处视锥区域      |</span><br><span class="line">    +---------------+-----------------------+</span><br><span class="line">    ^               ^</span><br><span class="line">    |               |</span><br><span class="line">  阴影贴图采样 (Shadow Map Texels: 均等分布 / Uniform Density)</span><br></pre></td></tr></table></figure>
+<h3 id="成因分析">1. 成因分析</h3>
+<p>透视锯齿的本质是<strong>视图像素与阴影贴图纹素（Texel）的采样率不匹配</strong>：
+* 相机透视投影（Perspective
+Projection）使得<strong>近处视锥截面较小、远处截面巨大</strong>。在屏幕空间中，近处一个像素所占有的世界空间物理面积远小于远处像素。
+* 然而，平行光（定向光）使用的是<strong>正交投影矩阵（Orthographic
+Projection）</strong>，它将整张阴影贴图均等划分为固定的 Texel 物理尺寸。
+*
+这导致<strong>视图空间近处的多个屏幕像素映射到了阴影贴图中的同一个纹素上</strong>。缺少足够的分辨率来精准覆盖视图近端，最终表现为块状锯齿。</p>
+<h3 id="为什么简单的提高分辨率不可行">2.
+为什么简单的提高分辨率不可行？</h3>
+<p>直观的解决思路是直接提升阴影贴图的分辨率（如从 <span
+class="math inline">\(1024 \times 1024\)</span> 提升至 <span
+class="math inline">\(8192 \times
+8192\)</span>）。但这会带来难以承受的开销： *
+<strong>显存与带宽暴增</strong>：显存占用按分辨率二次方增加，导致 Depth
+Pass 的带宽与显存开销激增。 *
+<strong>远处资源浪费</strong>：远处物体在屏幕上占据像素极少，极高分辨率的阴影贴图在远景区域造成了严重的采样浪费。</p>
+<hr />
+<h2 id="二-csm-核心思想与视锥体分割策略">二、 CSM
+核心思想与视锥体分割策略</h2>
+<h3 id="解耦思想">1. 解耦思想</h3>
+<p>级联阴影映射（CSM）建立在一个符合人类视觉习惯的观察之上：<strong>靠近相机的阴影细节对视觉质量至关重要，而远处物体的阴影细节感知度较低</strong>。</p>
+<p>CSM 的核心逻辑在于： 1. 将摄像机的视锥体沿深度 Z 轴分割成 <span
+class="math inline">\(N\)</span> 个连续的子视锥体（Cascades，级联）。 2.
+为每个级联分别配置独立的正交投影矩阵和专属的阴影贴图（Shadow Map）。 3.
+近处级联仅需覆盖极小的视锥体积，从而在相同分辨率下赋予其极高的 Texel
+密度；远处级联覆盖巨大体积，虽然 Texel
+密度较低，但正好符合远景的视觉精度需求。</p>
+<hr />
+<h3 id="视锥体分割方案-frustum-split-schemes">2. 视锥体分割方案 (Frustum
+Split Schemes)</h3>
+<p>如何划分级联边界（<span class="math inline">\(Z_0, Z_1, \dots,
+Z_N\)</span>）直接决定了阴影质量的分布。常见的划分数学模型包括：</p>
+<h4 id="a.-线性分割-linear-split">A. 线性分割 (Linear Split)</h4>
+<p>按物理距离均匀切割：</p>
+<p><span class="math display">\[
+Z_i^{\text{lin}} = Z_{\text{near}} + (Z_{\text{far}} - Z_{\text{near}})
+\cdot \frac{i}{N}
+\]</span></p>
+<ul>
+<li><strong>缺点</strong>：忽略了透视投影的非线性特性，近处级联依然分不到足够的采样精度。</li>
+</ul>
+<h4 id="b.-对数分割-logarithmic-split">B. 对数分割 (Logarithmic
+Split)</h4>
+<p>按透视深度的对数比例切割，使近处级联分布更加密集：</p>
+<p><span class="math display">\[
+Z_i^{\text{log}} = Z_{\text{near}} \cdot
+\left(\frac{Z_{\text{far}}}{Z_{\text{near}}}\right)^{\frac{i}{N}}
+\]</span></p>
+<ul>
+<li><strong>缺点</strong>：在远景区域分割过于稀疏，导致中远景阴影品质骤降。</li>
+</ul>
+<h4 id="c.-实用混合分割-practical-split-scheme-pssm">C. 实用混合分割
+(Practical Split Scheme, PSSM)</h4>
+<p>工业级引擎通常采用线性与对数的加权混合方案（通过参数 <span
+class="math inline">\(\lambda \in [0, 1]\)</span> 调节）：</p>
+<p><span class="math display">\[
+Z_i = \lambda Z_i^{\text{log}} + (1 - \lambda) Z_i^{\text{lin}}
+\]</span></p>
+<p>推荐设定 <span class="math inline">\(\lambda \approx 0.5 \sim
+0.75\)</span>，能够在中近景阴影细节与远景平滑度之间取得最佳平衡。</p>
+<hr />
+<h2 id="三-级联包围盒aabb的数学推导">三、
+级联包围盒（AABB）的数学推导</h2>
+<p>构建每个级联的正交投影矩阵是 CSM
+算法的核心与难点。我们需要在<strong>光照空间（Light
+Space）</strong>中为每个级联视锥体拟合一个最小的轴对齐包围盒（AABB）。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[视图空间级联角点] ──(Inverse View Matrix)──&gt; [世界空间坐标] ──(Light View Matrix)──&gt; [光照空间坐标] ──(Min/Max AABB)──&gt; [正交投影矩阵]</span><br></pre></td></tr></table></figure>
+<h3 id="计算视图空间中的级联角点">1. 计算视图空间中的级联角点</h3>
+<p>对于某个级联，已知其近裁剪面 <span class="math inline">\(Z_n\)</span>
+与远裁剪面 <span
+class="math inline">\(Z_f\)</span>，以及相机的垂直视场角 <span
+class="math inline">\(\text{FOV}_y\)</span> 与宽高比 <span
+class="math inline">\(\text{Aspect}\)</span>。</p>
+<p>在视图空间（View Space，相机位于原点，看向 <span
+class="math inline">\(-Z\)</span> 或 <span
+class="math inline">\(+Z\)</span> 轴）中，截锥体 8
+个顶点的坐标可以通过三角函数计算得到：</p>
+<p><span class="math display">\[
+\begin{aligned}
+h_n &amp;= \tan\left(\frac{\text{FOV}_y}{2}\right) \cdot Z_n, &amp; w_n
+&amp;= h_n \cdot \text{Aspect} \\
+h_f &amp;= \tan\left(\frac{\text{FOV}_y}{2}\right) \cdot Z_f, &amp; w_f
+&amp;= h_f \cdot \text{Aspect}
+\end{aligned}
+\]</span></p>
+<p>8 个顶点在 View Space 中的坐标表示为 <span class="math inline">\((\pm
+w, \pm h, Z)\)</span>：</p>
+<p><span class="math display">\[
+\begin{aligned}
+P_{\text{near\_corners}} &amp;= (\pm w_n, \pm h_n, Z_n) \\
+P_{\text{far\_corners}} &amp;= (\pm w_f, \pm h_f, Z_f)
+\end{aligned}
+\]</span></p>
+<hr />
+<h3 id="变换至世界空间-world-space">2. 变换至世界空间 (World Space)</h3>
+<p>将视图空间中的 8 个角点乘以相机视图矩阵的逆矩阵 <span
+class="math inline">\(M_{\text{View}}^{-1}\)</span>，即可得到级联视锥体在世界空间中的绝对坐标：</p>
+<p><span class="math display">\[
+P_{\text{world}} = M_{\text{View}}^{-1} \cdot P_{\text{view}}
+\]</span></p>
+<hr />
+<h3 id="变换至光照空间-light-space-并提取-aabb">3. 变换至光照空间 (Light
+Space) 并提取 AABB</h3>
+<p>定义平行光的光照视图矩阵 <span
+class="math inline">\(M_{\text{LightView}}\)</span>（将场景旋转平移，使光线方向与光照空间
+<span class="math inline">\(+Z\)</span>
+轴对齐）。将世界空间坐标变换至光照空间：</p>
+<p><span class="math display">\[
+P_{\text{light}} = M_{\text{LightView}} \cdot P_{\text{world}}
+\]</span></p>
+<p>遍历这 8 个光照空间中的顶点，分别提取 <span class="math inline">\(X,
+Y, Z\)</span>
+三个轴上的最小值与最大值，得到最小轴对齐包围盒（AABB）：</p>
+<p><span class="math display">\[
+\begin{aligned}
+X_{\min}, X_{\max} &amp;= \min(P_{\text{light}}.x),
+\max(P_{\text{light}}.x) \\
+Y_{\min}, Y_{\max} &amp;= \min(P_{\text{light}}.y),
+\max(P_{\text{light}}.y) \\
+Z_{\min}, Z_{\max} &amp;= \min(P_{\text{light}}.z),
+\max(P_{\text{light}}.z)
+\end{aligned}
+\]</span></p>
+<h3 id="构造级联正交投影矩阵">4. 构造级联正交投影矩阵</h3>
+<p>根据生成的 <span class="math inline">\(X, Y, Z\)</span>
+范围，构造正交投影矩阵 <span
+class="math inline">\(M_{\text{Ortho}}\)</span>：</p>
+<p><span class="math display">\[
+M_{\text{Ortho}} = \text{Orthographic}(X_{\min}, X_{\max}, Y_{\min},
+Y_{\max}, Z_{\min}, Z_{\max})
+\]</span></p>
+<p>最终用于渲染该级联阴影贴图的 <strong>WVP 矩阵</strong> 为：</p>
+<p><span class="math display">\[
+M_{\text{ShadowWVP}} = M_{\text{Ortho}} \cdot M_{\text{LightView}} \cdot
+M_{\text{World}}
+\]</span></p>
+<blockquote>
+<p><strong>注意（Light Z-Bounds
+延伸）</strong>：为了防止在视锥体外部但处于光源与视锥体之间的物体（如高树或建筑物）遗漏阴影，计算
+<span class="math inline">\(Z_{\min}\)</span>
+时通常需要沿着光照方向向后延伸（Extend <span
+class="math inline">\(Z_{\min}\)</span>），以包含可能投射阴影入视锥内的遮挡体。</p>
+</blockquote>
+<hr />
+<h2 id="四-工业级工程瑕疵处理与优化策略">四、
+工业级工程瑕疵处理与优化策略</h2>
+<p>在实际工程实现中，基础 CSM
+会带来阴影边缘抖动、接缝明显、阴影失真等瑕疵，需要采用以下技术解决：</p>
+<h3 id="消除阴影闪烁边缘游泳效应-texel-snapping-anti-flickering">1.
+消除阴影闪烁/边缘游泳效应 (Texel Snapping / Anti-Flickering)</h3>
+<p>当相机在场景中移动或旋转时，级联包围盒的物理尺寸和位置会发生微小的连续变化。这会导致阴影贴图中的
+Texel
+覆盖范围在世界空间中产生亚像素级漂移，表现为<strong>阴影边缘像流水一样不停闪烁（Shadow
+Swimming）</strong>。</p>
+<h4
+id="解决方案包围球与-texel-增量对齐-texel-snapping">解决方案：包围球与
+Texel 增量对齐 (Texel Snapping)</h4>
+<ol type="1">
+<li><p><strong>固定级联包围体为包围球（Bounding Sphere）</strong>：
+不直接使用 AABB 的外接矩形，而是先计算级联视锥体的包围球（中心点 <span
+class="math inline">\(C\)</span>，半径 <span
+class="math inline">\(R\)</span>）。因为球体在相机旋转时其半径和几何形状保持不变，能彻底消除旋转导致的闪烁。</p></li>
+<li><p><strong>Texel 尺寸对齐 (Snapping)</strong>： 确定单位 Texel
+代表的世界物理尺寸：</p>
+<p><span class="math display">\[
+\Delta_{\text{texel}} = \frac{2 \cdot R}{\text{ShadowMapResolution}}
+\]</span></p>
+<p>将光照空间下的包围盒原点坐标向下取整到 <span
+class="math inline">\(\Delta_{\text{texel}}\)</span> 的整数倍：</p>
+<p><span class="math display">\[
+P_{\text{snapped}}.x = \left\lfloor
+\frac{P_{\text{light}}.x}{\Delta_{\text{texel}}} \right\rfloor \cdot
+\Delta_{\text{texel}}
+\]</span></p>
+<p><span class="math display">\[
+P_{\text{snapped}}.y = \left\lfloor
+\frac{P_{\text{light}}.y}{\Delta_{\text{texel}}} \right\rfloor \cdot
+\Delta_{\text{texel}}
+\]</span></p></li>
+</ol>
+<p>应用对齐后，包围盒只会在跨越完整 Texel
+距离时产生阶跃，彻底消除亚像素平移导致的边缘闪烁。</p>
+<hr />
+<h3 id="级联接缝消除-cascade-blending">2. 级联接缝消除 (Cascade
+Blending)</h3>
+<p>在阴影渲染阶段，当片段坐标从级联 0 跨越到级联 1
+时，由于采样分辨率突然改变，交界处会出现一条极其明显的硬接缝（Seam）。</p>
+<h4 id="解决方案过渡带混合-blend-band">解决方案：过渡带混合 (Blend
+Band)</h4>
+<p>定义级联边界处占比 5%~10%
+的过渡区域。当片元落在混合带内时，着色器同时对<strong>当前级联</strong>与<strong>下一级联</strong>的阴影贴图进行采样，并基于深度距离进行线性插值（<code>lerp</code>）：</p>
+<p><span class="math display">\[
+\text{ShadowFactor} = (1 - \alpha) \cdot \text{Shadow}_i + \alpha \cdot
+\text{Shadow}_{i+1}
+\]</span></p>
+<hr />
+<h3 id="自阴影失真与悬浮-shadow-acne-peter-panning">3. 自阴影失真与悬浮
+(Shadow Acne &amp; Peter Panning)</h3>
+<ul>
+<li><strong>Shadow
+Acne（阴影粉刺/自阴影失真）</strong>：受限于阴影贴图精度，受光面表面像素的深度误判为遮挡。</li>
+<li><strong>Peter
+Panning（彼得潘效应/阴影悬浮）</strong>：偏置过大导致阴影与物体根部断开脱节。</li>
+</ul>
+<h4 id="解决方案normal-offset-bias">解决方案：Normal Offset Bias</h4>
+<p>根据表面法线向量与光照方向的夹角，沿着表面法线将片元在世界空间中向外微拉，动态调整
+Bias 开销：</p>
+<p><span class="math display">\[
+\text{Bias} = \max\left(\text{Bias}_{\text{max}} \cdot (1.0 - \mathbf{N}
+\cdot \mathbf{L}), \text{Bias}_{\text{min}}\right)
+\]</span></p>
+<hr />
+<h2 id="五-渲染管线伪代码实现">五、 渲染管线伪代码实现</h2>
+<h3 id="cpu-端级联包围盒计算伪代码">1. CPU 端级联包围盒计算伪代码</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">Cascade</span> &#123;</span><br><span class="line">    <span class="type">float</span> splitDepth;</span><br><span class="line">    glm::mat4 viewProjMatrix;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">UpdateCSM</span><span class="params">(Camera&amp; camera, Light&amp; light, std::vector&lt;Cascade&gt;&amp; cascades)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 1. 计算分割深度列表 (PSSM)</span></span><br><span class="line">    <span class="built_in">CalculatePSSMSplits</span>(cascades, camera.near, camera.far);</span><br><span class="line"></span><br><span class="line">    glm::mat4 invView = glm::<span class="built_in">inverse</span>(camera.<span class="built_in">GetViewMatrix</span>());</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; cascades.<span class="built_in">size</span>(); ++i) &#123;</span><br><span class="line">        <span class="type">float</span> prevSplit = (i == <span class="number">0</span>) ? camera.near : cascades[i - <span class="number">1</span>].splitDepth;</span><br><span class="line">        <span class="type">float</span> currSplit = cascades[i].splitDepth;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2. 获取当前级联在 View Space 中的 8 个角点</span></span><br><span class="line">        std::vector&lt;glm::vec3&gt; projCorners = <span class="built_in">GetFrustumCornersVS</span>(camera, prevSplit, currSplit);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3. 转换到 World Space，并计算包围球 (Bounding Sphere)</span></span><br><span class="line">        <span class="function">glm::vec3 <span class="title">center</span><span class="params">(<span class="number">0.0f</span>)</span></span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">const</span> <span class="keyword">auto</span>&amp; pt : projCorners) &#123;</span><br><span class="line">            glm::vec4 worldPt = invView * glm::<span class="built_in">vec4</span>(pt, <span class="number">1.0f</span>);</span><br><span class="line">            center += glm::<span class="built_in">vec3</span>(worldPt);</span><br><span class="line">        &#125;</span><br><span class="line">        center /= projCorners.<span class="built_in">size</span>(); <span class="comment">// 包围球中心</span></span><br><span class="line"></span><br><span class="line">        <span class="type">float</span> radius = <span class="number">0.0f</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">const</span> <span class="keyword">auto</span>&amp; pt : projCorners) &#123;</span><br><span class="line">            glm::vec4 worldPt = invView * glm::<span class="built_in">vec4</span>(pt, <span class="number">1.0f</span>);</span><br><span class="line">            radius = std::<span class="built_in">max</span>(radius, glm::<span class="built_in">distance</span>(glm::<span class="built_in">vec3</span>(worldPt), center));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4. 构建 Light View 矩阵</span></span><br><span class="line">        glm::mat4 lightView = glm::<span class="built_in">lookAt</span>(center - light.direction * radius, center, glm::<span class="built_in">vec3</span>(<span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>));</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 5. Texel Snapping (消除阴影闪烁)</span></span><br><span class="line">        <span class="type">float</span> texelPerUnit = SHADOW_MAP_RESOLUTION / (radius * <span class="number">2.0f</span>);</span><br><span class="line">        glm::mat4 snapMatrix = glm::<span class="built_in">scale</span>(glm::<span class="built_in">mat4</span>(<span class="number">1.0f</span>), glm::<span class="built_in">vec3</span>(texelPerUnit));</span><br><span class="line">        glm::vec4 snappedCenter = snapMatrix * glm::<span class="built_in">vec4</span>(center, <span class="number">1.0f</span>);</span><br><span class="line">        snappedCenter = glm::<span class="built_in">floor</span>(snappedCenter);</span><br><span class="line">        snappedCenter = glm::<span class="built_in">inverse</span>(snapMatrix) * snappedCenter;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 6. 重新构造对齐后的 Light View &amp; Ortho 矩阵</span></span><br><span class="line">        lightView = glm::<span class="built_in">lookAt</span>(glm::<span class="built_in">vec3</span>(snappedCenter) - light.direction * radius, glm::<span class="built_in">vec3</span>(snappedCenter), glm::<span class="built_in">vec3</span>(<span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>));</span><br><span class="line">        glm::mat4 lightOrtho = glm::<span class="built_in">ortho</span>(-radius, radius, -radius, radius, <span class="number">0.0f</span>, radius * <span class="number">2.0f</span>);</span><br><span class="line"></span><br><span class="line">        cascades[i].viewProjMatrix = lightOrtho * lightView;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h3 id="gpu-端-glsl-级联采样着色器">2. GPU 端 GLSL 级联采样着色器</h3>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 450</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">in</span> <span class="type">vec3</span> inWorldPos;</span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">location</span> = <span class="number">1</span>) <span class="keyword">in</span> <span class="type">vec3</span> inNormal;</span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> <span class="type">sampler2DArray</span> shadowMapArray; <span class="comment">// 使用 Texture Array 存储多级联 Shadow Map</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">std140</span>, <span class="keyword">binding</span> = <span class="number">1</span>) <span class="keyword">uniform</span> CSMBuffer &#123;</span><br><span class="line">    <span class="type">mat4</span> lightSpaceMatrices[<span class="number">4</span>];</span><br><span class="line">    <span class="type">float</span> cascadeSplits[<span class="number">4</span>];</span><br><span class="line">    <span class="type">vec3</span> lightDir;</span><br><span class="line">    <span class="type">int</span> cascadeCount;</span><br><span class="line">&#125; csm;</span><br><span class="line"></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">vec3</span> viewPos;</span><br><span class="line"></span><br><span class="line"><span class="type">float</span> CalculateCSMShadow(<span class="type">vec3</span> worldPos, <span class="type">vec3</span> normal) &#123;</span><br><span class="line">    <span class="comment">// 1. 根据片元视图空间深度确定当前级联索引</span></span><br><span class="line">    <span class="type">float</span> depthVS = <span class="built_in">abs</span>((viewMatrix * <span class="type">vec4</span>(worldPos, <span class="number">1.0</span>)).z);</span><br><span class="line">    <span class="type">int</span> layer = <span class="number">-1</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; csm.cascadeCount; ++i) &#123;</span><br><span class="line">        <span class="keyword">if</span> (depthVS &lt; csm.cascadeSplits[i]) &#123;</span><br><span class="line">            layer = i;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (layer == <span class="number">-1</span>) layer = csm.cascadeCount - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 将世界空间坐标转换至对应级联的光照 NDC 空间</span></span><br><span class="line">    <span class="type">vec4</span> lightSpacePos = csm.lightSpaceMatrices[layer] * <span class="type">vec4</span>(worldPos, <span class="number">1.0</span>);</span><br><span class="line">    <span class="type">vec3</span> projCoords = lightSpacePos.xyz / lightSpacePos.w;</span><br><span class="line">    projCoords = projCoords * <span class="number">0.5</span> + <span class="number">0.5</span>; <span class="comment">// 转换至 [0, 1] 纹理坐标</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (projCoords.z &gt; <span class="number">1.0</span>) <span class="keyword">return</span> <span class="number">0.0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3. 计算 Normal Offset Bias 避免 Shadow Acne</span></span><br><span class="line">    <span class="type">float</span> bias = <span class="built_in">max</span>(<span class="number">0.005</span> * (<span class="number">1.0</span> - <span class="built_in">dot</span>(normal, -csm.lightDir)), <span class="number">0.0005</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 4. 执行 PCF (Percentage-Closer Filtering) 软阴影采样</span></span><br><span class="line">    <span class="type">float</span> shadow = <span class="number">0.0</span>;</span><br><span class="line">    <span class="type">vec2</span> texelSize = <span class="number">1.0</span> / <span class="built_in">textureSize</span>(shadowMapArray, <span class="number">0</span>).xy;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> x = <span class="number">-1</span>; x &lt;= <span class="number">1</span>; ++x) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> y = <span class="number">-1</span>; y &lt;= <span class="number">1</span>; ++y) &#123;</span><br><span class="line">            <span class="type">float</span> pcfDepth = <span class="built_in">texture</span>(shadowMapArray, <span class="type">vec3</span>(projCoords.xy + <span class="type">vec2</span>(x, y) * texelSize, layer)).r;</span><br><span class="line">            shadow += (projCoords.z - bias &gt; pcfDepth) ? <span class="number">1.0</span> : <span class="number">0.0</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    shadow /= <span class="number">9.0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> shadow;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h2 id="六-技术方案选型与现代演进">六、 技术方案选型与现代演进</h2>
+<p>技术并非一成不变，大场景阴影技术也在持续演化：</p>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">评估维度</th>
+<th style="text-align: left;">标准 Shadow Map</th>
+<th style="text-align: left;">CSM (级联阴影)</th>
+<th style="text-align: left;">VSM (虚化/虚拟阴影贴图)</th>
+<th style="text-align: left;">光线追踪阴影 (RTS)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>解决痛点</strong></td>
+<td style="text-align: left;">基础遮挡判断</td>
+<td style="text-align: left;">消除透视锯齿</td>
+<td style="text-align: left;">超高分辨率/超大场景遮挡</td>
+<td style="text-align: left;">物理真实软阴影/无锯齿</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>内存/显存开销</strong></td>
+<td style="text-align: left;">极低</td>
+<td style="text-align: left;">中等 (<span
+class="math inline">\(N\)</span> 个 Shadow Map)</td>
+<td style="text-align: left;">高 (按页 Tile 管理)</td>
+<td style="text-align: left;">极低 (无 Texture) / 高 (BVH 显存)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Draw Call 开销</strong></td>
+<td style="text-align: left;">低 (1 次 Depth Pass)</td>
+<td style="text-align: left;">较高 (<span
+class="math inline">\(N\)</span> 次 Cascades Pass)</td>
+<td style="text-align: left;">极低 (GPU Driven/只提交变更)</td>
+<td style="text-align: left;">无 Depth Pass</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>硬件要求</strong></td>
+<td style="text-align: left;">任意 GPU</td>
+<td style="text-align: left;">工业标准 GPU (支持 Texture Array)</td>
+<td style="text-align: left;">支持 Sparse Texture/Bindless</td>
+<td style="text-align: left;">支持 DXR/Hardware Ray Tracing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="现代演进如-unreal-engine-5-virtual-shadow-maps-vsm">现代演进（如
+Unreal Engine 5 Virtual Shadow Maps, VSM）</h3>
+<p>在 UE5 等次世代引擎中，传统的 CSM 正逐渐被 <strong>Virtual Shadow
+Maps (VSM)</strong> 所补充或替代。VSM 将一个极高分辨率（如 <span
+class="math inline">\(16384 \times
+16384\)</span>）的虚拟阴影贴图划分为微小的 Pages（如 <span
+class="math inline">\(128 \times 128\)</span>），配合 Nanite 进行 GPU
+Driven 的按需加载与缓存。即便如此，CSM
+凭借其极高的稳定性、低硬件门槛以及成熟的工程链，依然是绝大多数中手游和
+PC 游戏的首选阴影方案。</p>
+<hr />
+<h2 id="七-总结">七、 总结</h2>
+<p>级联阴影映射（CSM）通过<strong>“空间分割”与“多粒度采样”</strong>的思想，以极高的性价比破解了实时渲染中的透视锯齿难题：
+* <strong>核心在于透视匹配</strong>：近距离使用小包围盒高 Texel
+密度，远距离使用大包围盒覆盖。 * <strong>数学要义在于 AABB
+求解</strong>：在 Light Space 极小化拟合视锥顶点，并用 PSSM
+进行合理切割。 * <strong>工程成败在于细节优化</strong>：Texel Snapping
+解决闪烁、Cascade Blending 解决接缝、Normal Offset Bias 消除 Acne。</p>
 
     </div>
 
@@ -302,6 +601,12 @@
         </svg>
         
           <a href="../../../../tags/Shadow/" class="tag-link">Shadow</a>
+        
+          <a href="../../../../tags/Cascaded-Shadow-Map/" class="tag-link">Cascaded Shadow Map</a>
+        
+          <a href="../../../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
+        
+          <a href="../../../../tags/Shadow-Map/" class="tag-link">Shadow Map</a>
         
       </div>
     
@@ -320,14 +625,14 @@
       
         <a href="../deferred_shading/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">延迟渲染（Deferred Shading）</span>
+          <span class="post-nav-title">深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化</span>
         </a>
       
       
       
         <a href="../forward_plus_shading/" class="post-nav-item next">
           <span class="post-nav-label">下一篇</span>
-          <span class="post-nav-title">前向多光照改进渲染(Forward Plus Shading)</span>
+          <span class="post-nav-title">深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化</span>
         </a>
       
     </nav>
@@ -339,7 +644,19 @@
       <div class="toc-wrapper">
         <h3 class="toc-title">目录</h3>
         <div class="toc-content">
-          
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E7%BA%A7%E8%81%94%E9%98%B4%E5%BD%B1%E6%98%A0%E5%B0%84cascaded-shadow-map-csm"><span class="toc-text">深入解析级联阴影映射（Cascaded
+Shadow Map, CSM）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E5%BC%95%E8%A8%80%E9%98%B4%E5%BD%B1%E9%80%8F%E8%A7%86%E9%94%AF%E9%BD%BF%E9%97%AE%E9%A2%98-perspective-aliasing"><span class="toc-text">一、
+引言：阴影透视锯齿问题 (Perspective Aliasing)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%88%90%E5%9B%A0%E5%88%86%E6%9E%90"><span class="toc-text">1. 成因分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E7%AE%80%E5%8D%95%E7%9A%84%E6%8F%90%E9%AB%98%E5%88%86%E8%BE%A8%E7%8E%87%E4%B8%8D%E5%8F%AF%E8%A1%8C"><span class="toc-text">2.
+为什么简单的提高分辨率不可行？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-csm-%E6%A0%B8%E5%BF%83%E6%80%9D%E6%83%B3%E4%B8%8E%E8%A7%86%E9%94%A5%E4%BD%93%E5%88%86%E5%89%B2%E7%AD%96%E7%95%A5"><span class="toc-text">二、 CSM
+核心思想与视锥体分割策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E8%80%A6%E6%80%9D%E6%83%B3"><span class="toc-text">1. 解耦思想</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%86%E9%94%A5%E4%BD%93%E5%88%86%E5%89%B2%E6%96%B9%E6%A1%88-frustum-split-schemes"><span class="toc-text">2. 视锥体分割方案 (Frustum
+Split Schemes)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-%E7%BA%A7%E8%81%94%E5%8C%85%E5%9B%B4%E7%9B%92aabb%E7%9A%84%E6%95%B0%E5%AD%A6%E6%8E%A8%E5%AF%BC"><span class="toc-text">三、
+级联包围盒（AABB）的数学推导</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%A7%86%E5%9B%BE%E7%A9%BA%E9%97%B4%E4%B8%AD%E7%9A%84%E7%BA%A7%E8%81%94%E8%A7%92%E7%82%B9"><span class="toc-text">1. 计算视图空间中的级联角点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%98%E6%8D%A2%E8%87%B3%E4%B8%96%E7%95%8C%E7%A9%BA%E9%97%B4-world-space"><span class="toc-text">2. 变换至世界空间 (World Space)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%98%E6%8D%A2%E8%87%B3%E5%85%89%E7%85%A7%E7%A9%BA%E9%97%B4-light-space-%E5%B9%B6%E6%8F%90%E5%8F%96-aabb"><span class="toc-text">3. 变换至光照空间 (Light
+Space) 并提取 AABB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%84%E9%80%A0%E7%BA%A7%E8%81%94%E6%AD%A3%E4%BA%A4%E6%8A%95%E5%BD%B1%E7%9F%A9%E9%98%B5"><span class="toc-text">4. 构造级联正交投影矩阵</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E5%B7%A5%E4%B8%9A%E7%BA%A7%E5%B7%A5%E7%A8%8B%E7%91%95%E7%96%B5%E5%A4%84%E7%90%86%E4%B8%8E%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-text">四、
+工业级工程瑕疵处理与优化策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B6%88%E9%99%A4%E9%98%B4%E5%BD%B1%E9%97%AA%E7%83%81%E8%BE%B9%E7%BC%98%E6%B8%B8%E6%B3%B3%E6%95%88%E5%BA%94-texel-snapping-anti-flickering"><span class="toc-text">1.
+消除阴影闪烁&#x2F;边缘游泳效应 (Texel Snapping &#x2F; Anti-Flickering)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BA%A7%E8%81%94%E6%8E%A5%E7%BC%9D%E6%B6%88%E9%99%A4-cascade-blending"><span class="toc-text">2. 级联接缝消除 (Cascade
+Blending)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E9%98%B4%E5%BD%B1%E5%A4%B1%E7%9C%9F%E4%B8%8E%E6%82%AC%E6%B5%AE-shadow-acne-peter-panning"><span class="toc-text">3. 自阴影失真与悬浮
+(Shadow Acne &amp; Peter Panning)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="toc-text">五、 渲染管线伪代码实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#cpu-%E7%AB%AF%E7%BA%A7%E8%81%94%E5%8C%85%E5%9B%B4%E7%9B%92%E8%AE%A1%E7%AE%97%E4%BC%AA%E4%BB%A3%E7%A0%81"><span class="toc-text">1. CPU 端级联包围盒计算伪代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#gpu-%E7%AB%AF-glsl-%E7%BA%A7%E8%81%94%E9%87%87%E6%A0%B7%E7%9D%80%E8%89%B2%E5%99%A8"><span class="toc-text">2. GPU 端 GLSL 级联采样着色器</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E6%8A%80%E6%9C%AF%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%E4%B8%8E%E7%8E%B0%E4%BB%A3%E6%BC%94%E8%BF%9B"><span class="toc-text">六、 技术方案选型与现代演进</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E4%BB%A3%E6%BC%94%E8%BF%9B%E5%A6%82-unreal-engine-5-virtual-shadow-maps-vsm"><span class="toc-text">现代演进（如
+Unreal Engine 5 Virtual Shadow Maps, VSM）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83-%E6%80%BB%E7%BB%93"><span class="toc-text">七、 总结</span></a></li></ol></li></ol>
         </div>
       </div>
     </aside>

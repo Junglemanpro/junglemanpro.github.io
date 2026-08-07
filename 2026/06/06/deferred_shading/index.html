@@ -6,16 +6,16 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>延迟渲染（Deferred Shading） | 萤虫之光</title>
+<title>深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
-<meta name="keywords" content="Lighting">
+<meta name="keywords" content="Vulkan,Graphics Pipeline,Lighting,Deferred Shading">
 <meta name="author" content="Berg Zha">
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="延迟渲染（Deferred Shading）">
+<meta property="og:title" content="深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2026/06/06/deferred_shading/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -54,6 +54,17 @@
     --primary-color: #2563eb;
   }
 </style>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
@@ -203,7 +214,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">延迟渲染（Deferred Shading）</h1>
+      <h1 class="post-title">深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -227,8 +238,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-06">
-        更新于 2026-08-06
+      <time datetime="2026-08-07">
+        更新于 2026-08-07
       </time>
     </span>
   
@@ -242,7 +253,7 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      9.8k 字
+      10.1k 字
     </span>
   
 
@@ -254,7 +265,7 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       
-      约 33 分钟
+      约 34 分钟
     </span>
   
 
@@ -269,59 +280,317 @@
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
-      <h3 id="1-基本概念"><a href="#1-基本概念" class="headerlink" title="1. 基本概念"></a>1. 基本概念</h3><p>正向渲染下，是否丢弃某片元的操作是在各种测试之后，如果在frag阶段做大量算法（如光照计算），而后进行的测试将该片元舍弃，等于做了无用功。当光照数量可观时，严重消耗了算力。<br>    而延迟渲染下，先渲染场景一次，记录有效的 位置向量(Position Vector)、颜色向量(Color Vector)、法向量(Normal Vector)和&#x2F;或镜面值(Specular Value)，这时候的片段信息都是作为最顶层的片段，保证了对于在光照处理阶段中处理的每一个像素都只处理一次，再使用G缓冲中的几何数据对每一个片段计算场景的光照。<br><img src="deferred_g_buffer.png"></p>
-<h3 id="2-缺点"><a href="#2-缺点" class="headerlink" title="2. 缺点"></a>2. 缺点</h3><p>缺点：不能渲染透明物体 gbuffer需要大量带宽</p>
-<h3 id="3-实现"><a href="#3-实现" class="headerlink" title="3. 实现"></a>3. 实现</h3><p>方法：</p>
+      <h1 id="深入解析延迟渲染deferred-shading">深入解析延迟渲染（Deferred
+Shading）</h1>
+<p>延迟渲染（Deferred Shading）是现代图形渲染引擎（如 Unreal
+Engine、Unity HDRP 及自定义 Vulkan/DirectX12
+引擎）中处理多光源场景的核心渲染范式。本文将从<strong>基本原理</strong>、<strong>G-Buffer
+设计</strong>、<strong>Vulkan Subpass
+工程实践</strong>、<strong>混合渲染工作流</strong>到<strong>进阶光照优化</strong>进行全面解构与扩展。</p>
+<hr />
+<h2 id="一-渲染范式变革从正向到延迟">一、
+渲染范式变革：从正向到延迟</h2>
+<h3 id="正向渲染forward-rendering的痛点">1. 正向渲染（Forward
+Rendering）的痛点</h3>
+<p>在传统的正向渲染管线中，光照计算直接在几何体的片元着色器（Fragment
+Shader）阶段执行。渲染复杂度通常表示为： <span
+class="math display">\[\text{Complexity} = O(N_{\text{objects}} \times
+M_{\text{lights}} \times \text{Overdraw})\]</span></p>
 <ul>
-<li>多pass,一个gbuffer pass生成gbuffer,一个pass处理光照计算，中间使用semaphores同步，需要submit两次</li>
-<li>subpass,使用一个pass内嵌两个subpass</li>
+<li><strong>光照计算冗余 (Overdraw Overhead)</strong>：即便启用了
+Early-Z（早期深度测试），在存在复杂遮挡、Alpha
+测试或无序绘制的场景中，许多片元在执行完极耗性能的光照算法后，仍可能在后续测试中被丢弃，造成大量的算力浪费。</li>
+<li><strong>多光源性能骤降</strong>：每增加一个光源，每个受影响的几何体都需要重新绘制一次（或在单个
+Shader
+内用循环遍历所有光源），导致着色器指令膨胀、变体激增，性能随光源数量呈线性甚至指数级下降。</li>
 </ul>
-<p>实现：<br>G缓冲(G-buffer)是对所有用来储存光照相关的数据，并在最后的光照处理阶段中使用的所有纹理的总称。趁此机会，让我们顺便复习一下在正向渲染中照亮一个片段所需要的所有数据：</p>
-<p>一个3D位置向量来计算(插值)片段位置变量供lightDir和viewDir使用<br>一个RGB漫反射颜色向量，也就是反照率(Albedo)<br>一个3D法向量来判断平面的斜率<br>一个镜面强度(Specular Intensity)浮点值<br>所有光源的位置和颜色向量<br>玩家或者观察者的位置向量<br>有了这些(逐片段)变量的处置权，我们就能够计算我们很熟悉的(布林-)冯氏光照(Blinn-Phong Lighting)了。光源的位置，颜色，和玩家的观察位置可以通过uniform变量来设置，但是其它变量对于每个对象的片段都是不同的。如果我们能以某种方式传输完全相同的数据到最终的延迟光照处理阶段中，我们就能计算与之前相同的光照效果了，尽管我们只是在渲染一个2D方形的片段。</p>
-<p>OpenGL并没有限制我们能在纹理中能存储的东西，所以现在你应该清楚在一个或多个屏幕大小的纹理中储存所有逐片段数据并在之后光照处理阶段中使用的可行性了。因为G缓冲纹理将会和光照处理阶段中的2D方形一样大，我们会获得和正向渲染设置完全一样的片段数据，但在光照处理阶段这里是一对一映射。</p>
-<p>整个过程在伪代码中会是这样的：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span>(...) <span class="comment">// 游戏循环</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 1. 几何处理阶段：渲染所有的几何/颜色数据到G缓冲 </span></span><br><span class="line">    <span class="built_in">glBindFramebuffer</span>(GL_FRAMEBUFFER, gBuffer);</span><br><span class="line">    <span class="built_in">glClear</span>(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);</span><br><span class="line">    gBufferShader.<span class="built_in">Use</span>();</span><br><span class="line">    <span class="keyword">for</span>(Object obj : Objects)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">ConfigureShaderTransformsAndUniforms</span>();</span><br><span class="line">        obj.<span class="built_in">Draw</span>();</span><br><span class="line">    &#125;  </span><br><span class="line">    <span class="comment">// 2. 光照处理阶段：使用G缓冲计算场景的光照</span></span><br><span class="line">    <span class="built_in">glBindFramebuffer</span>(GL_FRAMEBUFFER, <span class="number">0</span>);</span><br><span class="line">    <span class="built_in">glClear</span>(GL_COLOR_BUFFER_BIT);</span><br><span class="line">    lightingPassShader.<span class="built_in">Use</span>();</span><br><span class="line">    <span class="built_in">BindAllGBufferTextures</span>();</span><br><span class="line">    <span class="built_in">SetLightingUniforms</span>();</span><br><span class="line">    <span class="built_in">RenderQuad</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>对于每一个片段我们需要储存的数据有：一个位置向量、一个法向量，一个颜色向量，一个镜面强度值。所以我们在几何处理阶段中需要渲染场景中所有的对象并储存这些数据分量到G缓冲中。我们可以再次使用多渲染目标(Multiple Render Targets)来在一个渲染处理之内渲染多个颜色缓冲，在之前的泛光教程中我们也简单地提及了它。</p>
-<p>对于几何渲染处理阶段，我们首先需要初始化一个帧缓冲对象，我们很直观的称它为gBuffer，它包含了多个颜色缓冲和一个单独的深度渲染缓冲对象(Depth Renderbuffer Object)。对于位置和法向量的纹理，我们希望使用高精度的纹理(每分量16或32位的浮点数)，而对于反照率和镜面值，使用默认的纹理(每分量8位浮点数)就够了。</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">GLuint gBuffer;</span><br><span class="line"><span class="built_in">glGenFramebuffers</span>(<span class="number">1</span>, &amp;gBuffer);</span><br><span class="line"><span class="built_in">glBindFramebuffer</span>(GL_FRAMEBUFFER, gBuffer);</span><br><span class="line">GLuint gPosition, gNormal, gColorSpec;</span><br><span class="line"></span><br><span class="line"><span class="comment">// - 位置颜色缓冲</span></span><br><span class="line"><span class="built_in">glGenTextures</span>(<span class="number">1</span>, &amp;gPosition);</span><br><span class="line"><span class="built_in">glBindTexture</span>(GL_TEXTURE_2D, gPosition);</span><br><span class="line"><span class="built_in">glTexImage2D</span>(GL_TEXTURE_2D, <span class="number">0</span>, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, <span class="number">0</span>, GL_RGB, GL_FLOAT, <span class="literal">NULL</span>);</span><br><span class="line"><span class="built_in">glTexParameteri</span>(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);</span><br><span class="line"><span class="built_in">glTexParameteri</span>(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);</span><br><span class="line"><span class="built_in">glFramebufferTexture2D</span>(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, <span class="number">0</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">// - 法线颜色缓冲</span></span><br><span class="line"><span class="built_in">glGenTextures</span>(<span class="number">1</span>, &amp;gNormal);</span><br><span class="line"><span class="built_in">glBindTexture</span>(GL_TEXTURE_2D, gNormal);</span><br><span class="line"><span class="built_in">glTexImage2D</span>(GL_TEXTURE_2D, <span class="number">0</span>, GL_RGB16F, SCR_WIDTH, SCR_HEIGHT, <span class="number">0</span>, GL_RGB, GL_FLOAT, <span class="literal">NULL</span>);</span><br><span class="line"><span class="built_in">glTexParameteri</span>(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);</span><br><span class="line"><span class="built_in">glTexParameteri</span>(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);</span><br><span class="line"><span class="built_in">glFramebufferTexture2D</span>(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// - 颜色 + 镜面颜色缓冲</span></span><br><span class="line"><span class="built_in">glGenTextures</span>(<span class="number">1</span>, &amp;gAlbedoSpec);</span><br><span class="line"><span class="built_in">glBindTexture</span>(GL_TEXTURE_2D, gAlbedoSpec);</span><br><span class="line"><span class="built_in">glTexImage2D</span>(GL_TEXTURE_2D, <span class="number">0</span>, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, <span class="number">0</span>, GL_RGBA, GL_FLOAT, <span class="literal">NULL</span>);</span><br><span class="line"><span class="built_in">glTexParameteri</span>(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);</span><br><span class="line"><span class="built_in">glTexParameteri</span>(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);</span><br><span class="line"><span class="built_in">glFramebufferTexture2D</span>(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// - 告诉OpenGL我们将要使用(帧缓冲的)哪种颜色附件来进行渲染</span></span><br><span class="line">GLuint attachments[<span class="number">3</span>] = &#123; GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 &#125;;</span><br><span class="line"><span class="built_in">glDrawBuffers</span>(<span class="number">3</span>, attachments);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 之后同样添加渲染缓冲对象(Render Buffer Object)为深度缓冲(Depth Buffer)，并检查完整性</span></span><br><span class="line">[...]</span><br></pre></td></tr></table></figure>
-
-<p>由于我们使用了多渲染目标，我们需要显式告诉OpenGL我们需要使用glDrawBuffers渲染的是和GBuffer关联的哪个颜色缓冲。同样需要注意的是，我们使用RGB纹理来储存位置和法线的数据，因为每个对象只有三个分量；但是我们将颜色和镜面强度数据合并到一起，存储到一个单独的RGBA纹理里面，这样我们就不需要声明一个额外的颜色缓冲纹理了。随着你的延迟渲染管线变得越来越复杂，需要更多的数据的时候，你就会很快发现新的方式来组合数据到一个单独的纹理当中。</p>
-<p>接下来我们需要渲染它们到G缓冲中。假设每个对象都有漫反射，一个法线和一个镜面强度纹理，我们会想使用一些像下面这个片段着色器的东西来渲染它们到G缓冲中去。</p>
-<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 330 core</span></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">out</span> <span class="type">vec3</span> gPosition;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">1</span>) <span class="keyword">out</span> <span class="type">vec3</span> gNormal;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">2</span>) <span class="keyword">out</span> <span class="type">vec4</span> gAlbedoSpec;</span><br><span class="line"></span><br><span class="line"><span class="keyword">in</span> <span class="type">vec2</span> TexCoords;</span><br><span class="line"><span class="keyword">in</span> <span class="type">vec3</span> FragPos;</span><br><span class="line"><span class="keyword">in</span> <span class="type">vec3</span> Normal;</span><br><span class="line"></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">sampler2D</span> texture_diffuse1;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">sampler2D</span> texture_specular1;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main()</span><br><span class="line">&#123;    </span><br><span class="line">    <span class="comment">// 存储第一个G缓冲纹理中的片段位置向量</span></span><br><span class="line">    gPosition = FragPos;</span><br><span class="line">    <span class="comment">// 同样存储对每个逐片段法线到G缓冲中</span></span><br><span class="line">    gNormal = <span class="built_in">normalize</span>(Normal);</span><br><span class="line">    <span class="comment">// 和漫反射对每个逐片段颜色</span></span><br><span class="line">    gAlbedoSpec.rgb = <span class="built_in">texture</span>(texture_diffuse1, TexCoords).rgb;</span><br><span class="line">    <span class="comment">// 存储镜面强度到gAlbedoSpec的alpha分量</span></span><br><span class="line">    gAlbedoSpec.a = <span class="built_in">texture</span>(texture_specular1, TexCoords).r;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>因为我们使用了多渲染目标，这个布局指示符(Layout Specifier)告诉了OpenGL我们需要渲染到当前的活跃帧缓冲中的哪一个颜色缓冲。注意我们并没有储存镜面强度到一个单独的颜色缓冲纹理中，因为我们可以储存它单独的浮点值到其它颜色缓冲纹理的alpha分量中。</p>
-<p>如果我们现在想要渲染一大堆纳米装战士对象到gBuffer帧缓冲中，并通过一个一个分别投影它的颜色缓冲到铺屏四边形中尝试将他们显示出来，我们会看到向下面这样的东西：</p>
-<p>尝试想象世界空间位置和法向量都是正确的。比如说，指向右侧的法向量将会被更多地对齐到红色上，从场景原点指向右侧的位置矢量也同样是这样。一旦你对G缓冲中的内容满意了，我们就该进入到下一步：光照处理阶段了。</p>
-<p>##延迟光照处理阶段</p>
-<p>现在我们已经有了一大堆的片段数据储存在G缓冲中供我们处置，我们可以选择通过一个像素一个像素地遍历各个G缓冲纹理，并将储存在它们里面的内容作为光照算法的输入，来完全计算场景最终的光照颜色。由于所有的G缓冲纹理都代表的是最终变换的片段值，我们只需要对每一个像素执行一次昂贵的光照运算就行了。这使得延迟光照非常高效，特别是在需要调用大量重型片段着色器的复杂场景中。</p>
-<p>对于这个光照处理阶段，我们将会渲染一个2D全屏的方形(有一点像后期处理效果)并且在每个像素上运行一个昂贵的光照片段着色器。</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">glClear</span>(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);</span><br><span class="line">shaderLightingPass.<span class="built_in">Use</span>();</span><br><span class="line"><span class="built_in">glActiveTexture</span>(GL_TEXTURE0);</span><br><span class="line"><span class="built_in">glBindTexture</span>(GL_TEXTURE_2D, gPosition);</span><br><span class="line"><span class="built_in">glActiveTexture</span>(GL_TEXTURE1);</span><br><span class="line"><span class="built_in">glBindTexture</span>(GL_TEXTURE_2D, gNormal);</span><br><span class="line"><span class="built_in">glActiveTexture</span>(GL_TEXTURE2);</span><br><span class="line"><span class="built_in">glBindTexture</span>(GL_TEXTURE_2D, gAlbedoSpec);</span><br><span class="line"><span class="comment">// 同样发送光照相关的uniform</span></span><br><span class="line"><span class="built_in">SendAllLightUniformsToShader</span>(shaderLightingPass);</span><br><span class="line"><span class="built_in">glUniform3fv</span>(<span class="built_in">glGetUniformLocation</span>(shaderLightingPass.Program, <span class="string">&quot;viewPos&quot;</span>), <span class="number">1</span>, &amp;camera.Position[<span class="number">0</span>]);</span><br><span class="line"><span class="built_in">RenderQuad</span>();  </span><br></pre></td></tr></table></figure>
-<p>我们在渲染之前绑定了G缓冲中所有相关的纹理，并且发送光照相关的uniform变量到着色器中。</p>
-<p>光照处理阶段的片段着色器和我们之前一直在用的光照教程着色器是非常相似的，除了我们添加了一个新的方法，从而使我们能够获取光照的输入变量，当然这些变量我们会从G缓冲中直接采样。</p>
-<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 330 core</span></span><br><span class="line"><span class="keyword">out</span> <span class="type">vec4</span> FragColor;</span><br><span class="line"><span class="keyword">in</span> <span class="type">vec2</span> TexCoords;</span><br><span class="line"></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">sampler2D</span> gPosition;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">sampler2D</span> gNormal;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">sampler2D</span> gAlbedoSpec;</span><br><span class="line"></span><br><span class="line">struct Light &#123;</span><br><span class="line">    <span class="type">vec3</span> Position;</span><br><span class="line">    <span class="type">vec3</span> Color;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">const</span> <span class="type">int</span> NR_LIGHTS = <span class="number">32</span>;</span><br><span class="line"><span class="keyword">uniform</span> Light lights[NR_LIGHTS];</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">vec3</span> viewPos;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main()</span><br><span class="line">&#123;             </span><br><span class="line">    <span class="comment">// 从G缓冲中获取数据</span></span><br><span class="line">    <span class="type">vec3</span> FragPos = <span class="built_in">texture</span>(gPosition, TexCoords).rgb;</span><br><span class="line">    <span class="type">vec3</span> Normal = <span class="built_in">texture</span>(gNormal, TexCoords).rgb;</span><br><span class="line">    <span class="type">vec3</span> Albedo = <span class="built_in">texture</span>(gAlbedoSpec, TexCoords).rgb;</span><br><span class="line">    <span class="type">float</span> Specular = <span class="built_in">texture</span>(gAlbedoSpec, TexCoords).a;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 然后和往常一样地计算光照</span></span><br><span class="line">    <span class="type">vec3</span> lighting = Albedo * <span class="number">0.1</span>; <span class="comment">// 硬编码环境光照分量</span></span><br><span class="line">    <span class="type">vec3</span> viewDir = <span class="built_in">normalize</span>(viewPos - FragPos);</span><br><span class="line">    <span class="keyword">for</span>(<span class="type">int</span> i = <span class="number">0</span>; i &lt; NR_LIGHTS; ++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 漫反射</span></span><br><span class="line">        <span class="type">vec3</span> lightDir = <span class="built_in">normalize</span>(lights[i].Position - FragPos);</span><br><span class="line">        <span class="type">vec3</span> diffuse = <span class="built_in">max</span>(<span class="built_in">dot</span>(Normal, lightDir), <span class="number">0.0</span>) * Albedo * lights[i].Color;</span><br><span class="line">        lighting += diffuse;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    FragColor = <span class="type">vec4</span>(lighting, <span class="number">1.0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>光照处理阶段着色器接受三个uniform纹理，代表G缓冲，它们包含了我们在几何处理阶段储存的所有数据。如果我们现在再使用当前片段的纹理坐标采样这些数据，我们将会获得和之前完全一样的片段值，这就像我们在直接渲染几何体。在片段着色器的一开始，我们通过一个简单的纹理查找从G缓冲纹理中获取了光照相关的变量。注意我们从gAlbedoSpec纹理中同时获取了Albedo颜色和Spqcular强度。</p>
-<p>因为我们现在已经有了必要的逐片段变量(和相关的uniform变量)来计算布林-冯氏光照(Blinn-Phong Lighting)，我们不需要对光照代码做任何修改了。我们在延迟着色法中唯一需要改的就是获取光照输入变量的方法。</p>
-<p>运行一个包含32个小光源的简单Demo会是像这样子的：</p>
-<p><img src="deferred_shading.png"></p>
-<p>你可以在以下位置找到Demo的完整源代码，和几何渲染阶段的顶点和片段着色器，还有光照渲染阶段的顶点和片段着色器。</p>
-<p>延迟着色法的其中一个缺点就是它不能进行混合(Blending)，因为G缓冲中所有的数据都是从一个单独的片段中来的，而混合需要对多个片段的组合进行操作。延迟着色法另外一个缺点就是它迫使你对大部分场景的光照使用相同的光照算法，你可以通过包含更多关于材质的数据到G缓冲中来减轻这一缺点。</p>
-<p>为了克服这些缺点(特别是混合)，我们通常分割我们的渲染器为两个部分：一个是延迟渲染的部分，另一个是专门为了混合或者其他不适合延迟渲染管线的着色器效果而设计的的正向渲染的部分。为了展示这是如何工作的，我们将会使用正向渲染器渲染光源为一个小立方体，因为光照立方体会需要一个特殊的着色器(会输出一个光照颜色)。</p>
-<p>##结合延迟渲染与正向渲染</p>
-<p>现在我们想要渲染每一个光源为一个3D立方体，并放置在光源的位置上随着延迟渲染器一起发出光源的颜色。很明显，我们需要做的第一件事就是在延迟渲染方形之上正向渲染所有的光源，它会在延迟渲染管线的最后进行。所以我们只需要像正常情况下渲染立方体，只是会在我们完成延迟渲染操作之后进行。代码会像这样：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 延迟渲染光照渲染阶段</span></span><br><span class="line">[...]</span><br><span class="line"><span class="built_in">RenderQuad</span>();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 现在像正常情况一样正向渲染所有光立方体</span></span><br><span class="line">shaderLightBox.<span class="built_in">Use</span>();</span><br><span class="line"><span class="built_in">glUniformMatrix4fv</span>(locProjection, <span class="number">1</span>, GL_FALSE, glm::<span class="built_in">value_ptr</span>(projection));</span><br><span class="line"><span class="built_in">glUniformMatrix4fv</span>(locView, <span class="number">1</span>, GL_FALSE, glm::<span class="built_in">value_ptr</span>(view));</span><br><span class="line"><span class="keyword">for</span> (GLuint i = <span class="number">0</span>; i &lt; lightPositions.<span class="built_in">size</span>(); i++)</span><br><span class="line">&#123;</span><br><span class="line">    model = glm::<span class="built_in">mat4</span>();</span><br><span class="line">    model = glm::<span class="built_in">translate</span>(model, lightPositions[i]);</span><br><span class="line">    model = glm::<span class="built_in">scale</span>(model, glm::<span class="built_in">vec3</span>(<span class="number">0.25f</span>));</span><br><span class="line">    <span class="built_in">glUniformMatrix4fv</span>(locModel, <span class="number">1</span>, GL_FALSE, glm::<span class="built_in">value_ptr</span>(model));</span><br><span class="line">    <span class="built_in">glUniform3fv</span>(locLightcolor, <span class="number">1</span>, &amp;lightColors[i][<span class="number">0</span>]);</span><br><span class="line">    <span class="built_in">RenderCube</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>然而，这些渲染出来的立方体并没有考虑到我们储存的延迟渲染器的几何深度(Depth)信息，并且结果是它被渲染在之前渲染过的物体之上，这并不是我们想要的结果。</p>
-<p><img src="deferred_lights_no_depth.png"></p>
-<p>我们需要做的就是首先复制出在几何渲染阶段中储存的深度信息，并输出到默认的帧缓冲的深度缓冲，然后我们才渲染光立方体。这样之后只有当它在之前渲染过的几何体上方的时候，光立方体的片段才会被渲染出来。我们可以使用glBlitFramebuffer复制一个帧缓冲的内容到另一个帧缓冲中，这个函数我们也在抗锯齿的教程中使用过，用来还原多重采样的帧缓冲。glBlitFramebuffer这个函数允许我们复制一个用户定义的帧缓冲区域到另一个用户定义的帧缓冲区域。</p>
-<p>我们储存所有延迟渲染阶段中所有物体的深度信息在gBuffer这个FBO中。如果我们仅仅是简单复制它的深度缓冲内容到默认帧缓冲的深度缓冲中，那么光立方体就会像是场景中所有的几何体都是正向渲染出来的一样渲染出来。就像在抗锯齿教程中介绍的那样，我们需要指定一个帧缓冲为读帧缓冲(Read Framebuffer)，并且类似地指定一个帧缓冲为写帧缓冲(Write Framebuffer)：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">glBindFramebuffer</span>(GL_READ_FRAMEBUFFER, gBuffer);</span><br><span class="line"><span class="built_in">glBindFramebuffer</span>(GL_DRAW_FRAMEBUFFER, <span class="number">0</span>); <span class="comment">// 写入到默认帧缓冲</span></span><br><span class="line"><span class="built_in">glBlitFramebuffer</span>(</span><br><span class="line">  <span class="number">0</span>, <span class="number">0</span>, SCR_WIDTH, SCR_HEIGHT, <span class="number">0</span>, <span class="number">0</span>, SCR_WIDTH, SCR_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST</span><br><span class="line">);</span><br><span class="line"><span class="built_in">glBindFramebuffer</span>(GL_FRAMEBUFFER, <span class="number">0</span>);</span><br><span class="line"><span class="comment">// 现在像之前一样渲染光立方体</span></span><br><span class="line">[...] </span><br></pre></td></tr></table></figure>
-<p>在这里我们复制整个读帧缓冲的深度缓冲信息到默认帧缓冲的深度缓冲，对于颜色缓冲和模板缓冲我们也可以这样处理。现在如果我们接下来再渲染光立方体，场景里的几何体将会看起来很真实了，而不只是简单地粘贴立方体到2D方形之上：</p>
-<p><img src="deferred_lights_depth.png"></p>
-<p>有了这种方法，我们就能够轻易地结合延迟着色法和正向着色法了。这真是太棒了，我们现在可以应用混合或者渲染需要特殊着色器效果的物体了，这在延迟渲染中是不可能做到的。</p>
-<p>更多的光源<br>延迟渲染一直被称赞的原因就是它能够渲染大量的光源而不消耗大量的性能。然而，延迟渲染它本身并不能支持非常大量的光源，因为我们仍然必须要对场景中每一个光源计算每一个片段的光照分量。真正让大量光源成为可能的是我们能够对延迟渲染管线引用的一个非常棒的优化：光体积(Light Volumes)</p>
-<p>通常情况下，当我们渲染一个复杂光照场景下的片段着色器时，我们会计算场景中每一个光源的贡献，不管它们离这个片段有多远。很大一部分的光源根本就不会到达这个片段，所以为什么我们还要浪费这么多光照运算呢？</p>
-<p>隐藏在光体积背后的想法就是计算光源的半径，或是体积，也就是光能够到达片段的范围。由于大部分光源都使用了某种形式的衰减(Attenuation)，我们可以用它来计算光源能够到达的最大路程，或者说是半径。我们接下来只需要对那些在一个或多个光体积内的片段进行繁重的光照运算就行了。这可以给我们省下来很可观的计算量，因为我们现在只在需要的情况下计算光照。</p>
-<p>这个方法的难点基本就是找出一个光源光体积的大小，或者是半径。</p>
-<p>计算一个光源的体积或半径<br>为了获取一个光源的体积半径，我们需要解一个对于一个我们认为是黑暗(Dark)的亮度(Brightness)的衰减方程，它可以是0.0，或者是更亮一点的但仍被认为黑暗的值，像是0.03。为了展示我们如何计算光源的体积半径，我们将会使用一个在投光物这节中引入的一个更加复杂，但非常灵活的衰减方程：<br>Flight&#x3D;IKc+Kl∗d+Kq<br>我们现在想要在Flight<br>等于0的前提下解这个方程，也就是说光在该距离完全是黑暗的。然而这个方程永远不会真正等于0.0，所以它没有解。所以，我们不会求表达式等于0.0时候的解，相反我们会求当亮度值靠近于0.0的解，这时候它还是能被看做是黑暗的。在这个教程的演示场景中，我们选择5&#x2F;256<br>作为一个合适的光照值；除以256是因为默认的8-bit帧缓冲可以每个分量显示这么多强度值(Intensity)。</p>
+<h3 id="延迟渲染的核心解耦思想">2. 延迟渲染的核心解耦思想</h3>
+<p>延迟渲染的核心在于<strong>“将几何处理与光照计算彻底解耦”</strong>。整个渲染过程分为两个主阶段：</p>
+<ol type="1">
+<li><strong>几何阶段（Geometry
+Pass）</strong>：渲染场景几何体，但不计算任何光照，仅将光照计算所需的表面属性（位置、法线、材质参数等）写入一组称为
+<strong>G-Buffer（G-缓冲区）</strong> 的帧缓冲附件中。</li>
+<li><strong>光照阶段（Lighting Pass）</strong>：以全屏矩形（Screen
+Quad）或光源体积为驱动，逐像素读取 G-Buffer
+中的信息，统一执行光照计算并输出最终颜色。</li>
+</ol>
+<p>解耦后的计算复杂度降为： <span
+class="math display">\[\text{Complexity} = O(N_{\text{objects}}) +
+O(\text{Screen Pixels} \times M_{\text{visible\_lights}})\]</span></p>
+<p><strong>关键优势</strong>：在此流程下，光照计算仅对<strong>最终在屏幕上可见的像素</strong>执行一次，彻底消除了
+Lighting 阶段的 Overdraw 浪费。</p>
+<hr />
+<h2 id="二-g-buffer-架构设计与存储优化">二、 G-Buffer
+架构设计与存储优化</h2>
+<p>G-Buffer（Geometry Buffer）是连接几何阶段与光照阶段的数据纽带。合理的
+G-Buffer 布局不仅能节约显存空间，还能大幅降低带宽占用。</p>
+<h3 id="经典-g-buffer-布局">1. 经典 G-Buffer 布局</h3>
+<p>以计算 Blinn-Phong 或基础 PBR 光照为例，标准 G-Buffer
+包含以下物理量：</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">附件名称</th>
+<th style="text-align: left;">记录数据</th>
+<th style="text-align: left;">推荐格式</th>
+<th style="text-align: left;">占用内存/像素</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>G-Position</strong></td>
+<td style="text-align: left;">观察空间/世界空间位置 <span
+class="math inline">\((X, Y, Z)\)</span></td>
+<td
+style="text-align: left;"><code>VK_FORMAT_R16G16B16A16_SFLOAT</code></td>
+<td style="text-align: left;">8 Bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>G-Normal</strong></td>
+<td style="text-align: left;">表面法线向量 <span
+class="math inline">\((N_x, N_y, N_z)\)</span></td>
+<td
+style="text-align: left;"><code>VK_FORMAT_R16G16B16A16_SFLOAT</code></td>
+<td style="text-align: left;">8 Bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>G-AlbedoSpec</strong></td>
+<td style="text-align: left;">漫反射颜色 <span class="math inline">\((R,
+G, B)\)</span> + 镜面强度/粗糙度</td>
+<td style="text-align: left;"><code>VK_FORMAT_R8G8B8A8_UNORM</code></td>
+<td style="text-align: left;">4 Bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>G-Depth</strong></td>
+<td style="text-align: left;">硬件深度缓冲区 (Depth Buffer)</td>
+<td style="text-align: left;"><code>VK_FORMAT_D32_SFLOAT</code></td>
+<td style="text-align: left;">4 Bytes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="工业级-g-buffer-带宽优化扩展">2. 工业级 G-Buffer
+带宽优化扩展</h3>
+<p>在实际工程中，8 字节/像素的 <code>G-Position</code>
+会带来巨大的显存带宽开销。现代引擎通常采用以下优化手段：</p>
+<ol type="1">
+<li><strong>深度重建位置 (Position Reconstruction from Depth)</strong>：
+<ul>
+<li><strong>原理</strong>：取消独立的 <code>G-Position</code>
+附件。在光照阶段，利用 <code>G-Depth</code> 中的深度值 <span
+class="math inline">\(d\)</span>，结合像素的屏幕坐标 <span
+class="math inline">\((u, v)\)</span>
+和相机的<strong>逆投影矩阵（Inverse Projection
+Matrix）</strong>，实时反算出视空间或世界空间坐标。</li>
+<li><strong>收益</strong>：直接将 G-Buffer 的写出带宽降低约
+<strong>30%~40%</strong>。</li>
+</ul></li>
+<li><strong>法线编码压缩 (Normal Encoding)</strong>：
+<ul>
+<li>利用八面体编码（Octahedral Normal Encoding）将单位法线向量 <span
+class="math inline">\((N_x, N_y, N_z)\)</span> 压缩存储至 2 个 8-bit 或
+16-bit 通道，进一步节省显存。</li>
+</ul></li>
+</ol>
+<hr />
+<h2 id="三-延迟渲染的权衡利弊">三、 延迟渲染的权衡利弊</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">维度</th>
+<th style="text-align: left;">延迟渲染（Deferred Shading）</th>
+<th style="text-align: left;">正向渲染（Forward Rendering）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>多光源扩展性</strong></td>
+<td style="text-align: left;">极其优秀，可轻松支持上千动态光源</td>
+<td style="text-align: left;">较差，受限于 Shader 遍历或多 Pass
+绘制</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Overdraw 消耗</strong></td>
+<td style="text-align: left;">光照计算无 Overdraw</td>
+<td style="text-align: left;">光照计算存在严重 Overdraw</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>半透明渲染</strong></td>
+<td
+style="text-align: left;">原生<strong>不支持</strong>（只能存储单层片元）</td>
+<td style="text-align: left;">原生支持（从后往前排序混合）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>显存与带宽</strong></td>
+<td style="text-align: left;">极高（G-Buffer 频繁读写）</td>
+<td style="text-align: left;">极低（直接写入 Render Target）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>抗锯齿 (AA)</strong></td>
+<td style="text-align: left;">无法原生使用硬件 MSAA</td>
+<td style="text-align: left;">原生完美支持硬件 MSAA</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>材质多样性</strong></td>
+<td style="text-align: left;">受限（所有物体倾向共享同一种 Shader）</td>
+<td style="text-align: left;">灵活（每个物体可独立编写复杂 Shader）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="局限性的主流解决方案">局限性的主流解决方案</h3>
+<ul>
+<li><strong>半透明物体</strong>：使用<strong>混合渲染流</strong>，即先用延迟渲染处理不透明物体，再用正向渲染
+Pass 叠加透明物体。</li>
+<li><strong>硬件 MSAA 缺失</strong>：使用后处理抗锯齿技术（如
+<strong>TAA</strong>、<strong>SMAA</strong> 或
+<strong>FXAA</strong>）。</li>
+<li><strong>材质单一</strong>：在 G-Buffer 中增加 <strong>Material
+ID</strong> 通道，光照阶段根据 ID 进行着色分支处理（Branching）。</li>
+</ul>
+<hr />
+<h2 id="四-工程实现基于-vulkan-subpass-的现代管线实践">四、
+工程实现：基于 Vulkan Subpass 的现代管线实践</h2>
+<p>在移动端 Tile-Based GPU（TBR/TBDR）及现代 PC 显卡架构下，传统的
+Multi-Pass 延迟渲染（将 G-Buffer 写入 VRAM，再从 VRAM
+读取）会导致极高的显存带宽消耗与发热。</p>
+<p>Vulkan 引入了 <strong>Subpass</strong> 和 <strong>Input
+Attachment</strong> 机制，允许 G-Buffer 数据保存在 <strong>Tile
+Memory（片上 SRAM 高速缓存）</strong>
+中，甚至不需要写回主显存，从而实现极其高效的延迟光照。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+-------------------------------------------------------------------+</span><br><span class="line">|                        VkRenderPass                               |</span><br><span class="line">|  +---------------------------+     +---------------------------+  |</span><br><span class="line">|  |     Subpass 0 (Geometry)  |     |     Subpass 1 (Lighting)  |  |</span><br><span class="line">|  |                           |     |                           |  |</span><br><span class="line">|  |  Writes to G-Buffer       |====&gt;|  Reads via subpassInput   |  |</span><br><span class="line">|  |  Attachments              |     |  (Kept in Tile Memory!)   |  |</span><br><span class="line">|  +---------------------------+     +---------------------------+  |</span><br><span class="line">+-------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+<h3 id="subpass-0几何阶段-geometry-pass">1. Subpass 0：几何阶段
+(Geometry Pass)</h3>
+<p>几何 Pass 的使命是将场景物体的表面属性渲染并填入 G-Buffer
+附件中。</p>
+<h4 id="glsl-几何阶段着色器示例-geometry-shader">GLSL 几何阶段着色器示例
+(Geometry Shader)</h4>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 450</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 对应 Vulkan VkSubpassDescription 中 pColorAttachments 的索引</span></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">out</span> <span class="type">vec4</span> gPosition;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">1</span>) <span class="keyword">out</span> <span class="type">vec4</span> gNormal;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">2</span>) <span class="keyword">out</span> <span class="type">vec4</span> gAlbedoSpec;</span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">in</span> <span class="type">vec2</span> inTexCoords;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">1</span>) <span class="keyword">in</span> <span class="type">vec3</span> inFragPos;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">2</span>) <span class="keyword">in</span> <span class="type">vec3</span> inNormal;</span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span> (set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> <span class="type">sampler2D</span> textureDiffuse;</span><br><span class="line"><span class="keyword">layout</span> (set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">1</span>) <span class="keyword">uniform</span> <span class="type">sampler2D</span> textureSpecular;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main()</span><br><span class="line">&#123;    </span><br><span class="line">    <span class="comment">// 1. 存储片段世界/视空间位置向量</span></span><br><span class="line">    gPosition = <span class="type">vec4</span>(inFragPos, <span class="number">1.0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 存储归一化法线向量</span></span><br><span class="line">    gNormal = <span class="type">vec4</span>(<span class="built_in">normalize</span>(inNormal), <span class="number">1.0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 存储漫反射 RGB，并将镜面反射强度 (Specular) 存入 Alpha 通道</span></span><br><span class="line">    gAlbedoSpec.rgb = <span class="built_in">texture</span>(textureDiffuse, inTexCoords).rgb;</span><br><span class="line">    gAlbedoSpec.a   = <span class="built_in">texture</span>(textureSpecular, inTexCoords).r;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h3 id="subpass-1延迟光照阶段-lighting-pass">2. Subpass 1：延迟光照阶段
+(Lighting Pass)</h3>
+<p>在第二个 Subpass 中，G-Buffer 被配置为
+<code>Input Attachments</code>。着色器通过 <code>subpassInput</code>
+内置类型和 <code>subpassLoad()</code>
+函数直接读取<strong>当前像素</strong>在片上缓存中的数据。</p>
+<h4 id="依赖同步-vksubpassdependency-配置">依赖同步
+(VkSubpassDependency) 配置</h4>
+<p>为了确保几何阶段写操作完成后再进行光照读取，必须配置 Subpass
+依赖：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">VkSubpassDependency dependency = &#123;&#125;;</span><br><span class="line">dependency.srcSubpass = <span class="number">0</span>; <span class="comment">// 几何 Subpass</span></span><br><span class="line">dependency.dstSubpass = <span class="number">1</span>; <span class="comment">// 光照 Subpass</span></span><br><span class="line">dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;</span><br><span class="line">dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;</span><br><span class="line">dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;</span><br><span class="line">dependency.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;</span><br><span class="line">dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT; <span class="comment">// 保证像素级按 Region 同步</span></span><br></pre></td></tr></table></figure>
+<h4 id="glsl-光照阶段着色器示例-lighting-shader">GLSL 光照阶段着色器示例
+(Lighting Shader)</h4>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 450</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">out</span> <span class="type">vec4</span> FragColor;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">in</span> <span class="type">vec2</span> inTexCoords;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 在 Vulkan 中使用 subpassInput 直接从片上 Tile 内存中读取像素数据</span></span><br><span class="line"><span class="keyword">layout</span> (input_attachment_index = <span class="number">0</span>, set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> subpassInput inPosition;</span><br><span class="line"><span class="keyword">layout</span> (input_attachment_index = <span class="number">1</span>, set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">1</span>) <span class="keyword">uniform</span> subpassInput inNormal;</span><br><span class="line"><span class="keyword">layout</span> (input_attachment_index = <span class="number">2</span>, set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">2</span>) <span class="keyword">uniform</span> subpassInput inAlbedoSpec;</span><br><span class="line"></span><br><span class="line">struct PointLight &#123;</span><br><span class="line">    <span class="type">vec3</span> position;</span><br><span class="line">    <span class="type">vec3</span> color;</span><br><span class="line">    <span class="type">float</span> intensity;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> <span class="type">int</span> MAX_LIGHTS = <span class="number">32</span>;</span><br><span class="line"><span class="keyword">layout</span> (set = <span class="number">1</span>, <span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> LightBuffer &#123;</span><br><span class="line">    PointLight lights[MAX_LIGHTS];</span><br><span class="line">    <span class="type">vec3</span> viewPos;</span><br><span class="line">    <span class="type">int</span> lightCount;</span><br><span class="line">&#125; ubo;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main()</span><br><span class="line">&#123;             </span><br><span class="line">    <span class="comment">// 使用 subpassLoad 读取当前像素位置对应的 G-Buffer 属性</span></span><br><span class="line">    <span class="type">vec3</span> fragPos  = subpassLoad(inPosition).rgb;</span><br><span class="line">    <span class="type">vec3</span> normal   = subpassLoad(inNormal).rgb;</span><br><span class="line">    <span class="type">vec3</span> albedo   = subpassLoad(inAlbedoSpec).rgb;</span><br><span class="line">    <span class="type">float</span> specStr = subpassLoad(inAlbedoSpec).a; </span><br><span class="line"></span><br><span class="line">    <span class="comment">// 环境光计算</span></span><br><span class="line">    <span class="type">vec3</span> lighting = albedo * <span class="number">0.1</span>;</span><br><span class="line">    <span class="type">vec3</span> viewDir  = <span class="built_in">normalize</span>(ubo.viewPos - fragPos);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 累加所有光源的光照影响 (Blinn-Phong 算法)</span></span><br><span class="line">    <span class="keyword">for</span>(<span class="type">int</span> i = <span class="number">0</span>; i &lt; ubo.lightCount; ++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="type">vec3</span> lightDir = <span class="built_in">normalize</span>(ubo.lights[i].position - fragPos);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 漫反射 (Diffuse)</span></span><br><span class="line">        <span class="type">float</span> diff = <span class="built_in">max</span>(<span class="built_in">dot</span>(normal, lightDir), <span class="number">0.0</span>);</span><br><span class="line">        <span class="type">vec3</span> diffuse = diff * albedo * ubo.lights[i].color;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 高光 (Specular - Blinn-Phong)</span></span><br><span class="line">        <span class="type">vec3</span> halfWayDir = <span class="built_in">normalize</span>(lightDir + viewDir);</span><br><span class="line">        <span class="type">float</span> spec = <span class="built_in">pow</span>(<span class="built_in">max</span>(<span class="built_in">dot</span>(normal, halfWayDir), <span class="number">0.0</span>), <span class="number">32.0</span>);</span><br><span class="line">        <span class="type">vec3</span> specular = ubo.lights[i].color * spec * specStr;</span><br><span class="line"></span><br><span class="line">        lighting += (diffuse + specular) * ubo.lights[i].intensity;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    FragColor = <span class="type">vec4</span>(lighting, <span class="number">1.0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h2 id="五-混合渲染工作流处理半透明与调试几何体">五、
+混合渲染工作流：处理半透明与调试几何体</h2>
+<p>延迟渲染无法直接渲染半透明物体（如玻璃、烟雾）或需要特殊着色器的小控件（如光源代理
+3D
+立方体）。通常的解决方案是将管线分为<strong>延迟阶段</strong>与<strong>正向阶段</strong>。</p>
+<h3 id="深度复用与状态配置-depth-buffer-reuse">深度复用与状态配置 (Depth
+Buffer Reuse)</h3>
+<p>传统 OpenGL 做法可能需要调用 <code>glBlitFramebuffer</code>
+拷贝深度缓冲，但在 Vulkan 中，可通过合理的 RenderPass
+规划避免拷贝性能损失：</p>
+<ol type="1">
+<li><strong>共享深度附件</strong>：在随后执行的正向渲染 Pass
+中，直接绑定几何 Pass 所填充的 <code>VkImageView</code> 深度附件。</li>
+<li><strong>深度加载指令</strong>：将该深度附件的加载操作设置为
+<code>VK_ATTACHMENT_LOAD_OP_LOAD</code>，这会完整保留几何阶段写入的场景深度信息。</li>
+<li><strong>管线测试状态</strong>：在正向渲染管线中开启深度测试、关闭深度写入：
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">VkPipelineDepthStencilStateCreateInfo depthStencil = &#123;&#125;;</span><br><span class="line">depthStencil.depthTestEnable  = VK_TRUE;  <span class="comment">// 开启深度测试（保证正确遮挡关系）</span></span><br><span class="line">depthStencil.depthWriteEnable = VK_FALSE; <span class="comment">// 关闭深度写入（避免半透明物体遮挡后续绘制）</span></span><br><span class="line">depthStencil.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;</span><br></pre></td></tr></table></figure></li>
+</ol>
+<hr />
+<h2 id="六-进阶光照优化策略">六、 进阶光照优化策略</h2>
+<p>全屏绘制光照阶段（Screen-space Quad
+Lighting）会导致场景中的每一个像素都遍历计算所有光源，导致 <span
+class="math inline">\(O(\text{Pixels} \times \text{Lights})\)</span>
+的复杂度。在成千上万个动态光源的场景下，性能依然会遭遇瓶颈。</p>
+<h3 id="光体积截断-light-volumes-attenuation-bounds">1. 光体积截断
+(Light Volumes &amp; Attenuation Bounds)</h3>
+<p>由于点光源的照射强度随距离衰减，距离光源较远的片元受到的光照影响微乎其微。我们可以通过数学公式推导出一个<strong>极限受光半径
+<span
+class="math inline">\(R_{\text{light}}\)</span></strong>，并仅在该半径封装的几何体积（如简易球体或网格）覆盖的屏幕区域计算光照。</p>
+<h4 id="点光源衰减公式与半径推导">点光源衰减公式与半径推导</h4>
+<p>常用的点光源衰减方程如下：</p>
+<p><span class="math display">\[
+F_{\text{attenuation}} = \frac{1}{K_c + K_l d + K_q d^2}
+\]</span></p>
+<p>其中： * <span class="math inline">\(d\)</span> 为片元到光源的距离。
+* <span class="math inline">\(K_c\)</span> 为常数项（Constant），<span
+class="math inline">\(K_l\)</span> 为一次线性项（Linear），<span
+class="math inline">\(K_q\)</span> 为二次项（Quadratic）。</p>
+<p>假设定义当光照贡献低于极限色彩阈值 <span
+class="math inline">\(I_{\text{threshold}}\)</span>（例如在 8-bit
+帧缓冲下取值 <span class="math inline">\(I_{\text{threshold}} =
+\frac{5}{256} \approx
+0.0195\)</span>）时，光照视作不可见。令强度边界方程成立：</p>
+<p><span class="math display">\[
+I_{\text{max}} \cdot \frac{1}{K_c + K_l d + K_q d^2} =
+I_{\text{threshold}}
+\]</span></p>
+<p>将其整理为关于距离 <span class="math inline">\(d\)</span>
+的标准一元二次方程：</p>
+<p><span class="math display">\[
+K_q d^2 + K_l d + \left(K_c -
+\frac{I_{\text{max}}}{I_{\text{threshold}}}\right) = 0
+\]</span></p>
+<p>根据一元二次方程求根公式，解得光源的最大影响半径 <span
+class="math inline">\(R_{\text{light}}\)</span> 为：</p>
+<p><span class="math display">\[
+R_{\text{light}} = \frac{-K_l + \sqrt{K_l^2 - 4 K_q \left(K_c -
+\frac{I_{\text{max}}}{I_{\text{threshold}}}\right)}}{2 K_q}
+\]</span></p>
+<h4 id="实施方式">实施方式</h4>
+<p>在光照 Pass 中，不再绘制全屏矩形，而是为每个点光源绘制一个半径为
+<span class="math inline">\(R_{\text{light}}\)</span>
+的低模球体。球体覆盖的像素即为受光影响的像素，大幅缩减了无效片段的
+Lighting Shader 执行次数。</p>
+<hr />
+<h3 id="现代架构演进tiled-clustered-deferred-shading">2.
+现代架构演进：Tiled &amp; Clustered Deferred Shading</h3>
+<p>随着场景光源数量进一步增加（如上万个光源），频繁提交光照几何体（Light
+Volume Proxy）会导致 Draw Call 和几何顶点过高。现代 3D
+引擎采用了更高效的空间分块策略：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">+------------------------+---------------------------------------+</span><br><span class="line">| 渲染技术 (Technology)  | 空间划分维度                           |</span><br><span class="line">+------------------------+---------------------------------------+</span><br><span class="line">| Traditional Deferred   | 全屏幕逐像素处理                      |</span><br><span class="line">| Light Volumes          | 3D 几何代理 (Proxy Sphere/Cone) Mesh  |</span><br><span class="line">| Tiled Deferred         | 2D 屏幕分块 (如 16x16 像素 Tile)       |</span><br><span class="line">| Clustered Deferred     | 3D 空间切块 (2D Tile + Z-Depth 视锥切片)|</span><br><span class="line">+------------------------+---------------------------------------+</span><br></pre></td></tr></table></figure>
+<ol type="1">
+<li><strong>分块延迟渲染 (Tiled Deferred Shading)</strong>：
+<ul>
+<li>将屏幕切割为 <span class="math inline">\(16 \times 16\)</span>
+像素的小块（Tiles）。</li>
+<li>使用 Compute Shader 在视锥体空间内求交，计算每个 Tile
+覆盖的光源列表，将光源索引存入 Buffer。</li>
+<li>光照 Pass 逐像素读取当前 Tile 的光源列表，避免全屏光源遍历。</li>
+</ul></li>
+<li><strong>集群延迟渲染 (Clustered Deferred / Forward+)</strong>：
+<ul>
+<li>在 Tiled 的基础上的，将 View Frustum 在 Z
+轴深度方向上进一步切片，形成 3D 空间栅格（Clusters/Voxels）。</li>
+<li>彻底解决了 2D Tile
+在深度跨度较大时（例如景深极深处与近处物体重叠在同一个
+Tile）导致的<strong>光源误判</strong>与计算浪费。同时，这种集群裁剪思想还能无缝扩展至
+Forward+ 管线，实现透明物体与不透明物体的统一光照管理。</li>
+</ul></li>
+</ol>
+<hr />
+<h2 id="七-总结">七、 总结</h2>
+<p>延迟渲染通过<strong>“空间换时间”</strong>与<strong>“计算解耦”</strong>的思想，为现代
+3D 引擎提供了强大的多光源渲染能力。在工程实践中： * 理解
+<strong>G-Buffer 布局设计</strong>是降低渲染带宽的关键； * 结合
+<strong>Vulkan Subpass 与 Tile Memory</strong> 是移动端与现代图形 API
+发挥硬件极致性能的必然选择； * 配合
+<strong>深度重建位置</strong>、<strong>光体积裁剪</strong> 及
+<strong>Clustered
+方案</strong>，使得千万级光照渲染在实时应用中成为可能。</p>
 
     </div>
 
@@ -333,7 +602,13 @@
           <path d="M7 7h.01"></path>
         </svg>
         
+          <a href="../../../../tags/Vulkan/" class="tag-link">Vulkan</a>
+        
+          <a href="../../../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
+        
           <a href="../../../../tags/Lighting/" class="tag-link">Lighting</a>
+        
+          <a href="../../../../tags/Deferred-Shading/" class="tag-link">Deferred Shading</a>
         
       </div>
     
@@ -350,16 +625,16 @@
     <!-- 上一篇 / 下一篇 -->
     <nav class="post-nav">
       
-        <a href="../fullscreen-quad_rendering/" class="post-nav-item prev">
+        <a href="../fullscreen_quad_rendering/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">全屏四边形渲染（Fullscreen Quad Rendering）</span>
+          <span class="post-nav-title">深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践</span>
         </a>
       
       
       
         <a href="../cascaded_shadow_map/" class="post-nav-item next">
           <span class="post-nav-label">下一篇</span>
-          <span class="post-nav-title">级联阴影映射（Cascaded Shadow Map）</span>
+          <span class="post-nav-title">深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化</span>
         </a>
       
     </nav>
@@ -371,7 +646,19 @@
       <div class="toc-wrapper">
         <h3 class="toc-title">目录</h3>
         <div class="toc-content">
-          <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-text">1. 基本概念</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E7%BC%BA%E7%82%B9"><span class="toc-text">2. 缺点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%AE%9E%E7%8E%B0"><span class="toc-text">3. 实现</span></a></li></ol>
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93deferred-shading"><span class="toc-text">深入解析延迟渲染（Deferred
+Shading）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E6%B8%B2%E6%9F%93%E8%8C%83%E5%BC%8F%E5%8F%98%E9%9D%A9%E4%BB%8E%E6%AD%A3%E5%90%91%E5%88%B0%E5%BB%B6%E8%BF%9F"><span class="toc-text">一、
+渲染范式变革：从正向到延迟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%AD%A3%E5%90%91%E6%B8%B2%E6%9F%93forward-rendering%E7%9A%84%E7%97%9B%E7%82%B9"><span class="toc-text">1. 正向渲染（Forward
+Rendering）的痛点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E7%9A%84%E6%A0%B8%E5%BF%83%E8%A7%A3%E8%80%A6%E6%80%9D%E6%83%B3"><span class="toc-text">2. 延迟渲染的核心解耦思想</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-g-buffer-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AD%98%E5%82%A8%E4%BC%98%E5%8C%96"><span class="toc-text">二、 G-Buffer
+架构设计与存储优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E5%85%B8-g-buffer-%E5%B8%83%E5%B1%80"><span class="toc-text">1. 经典 G-Buffer 布局</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E4%B8%9A%E7%BA%A7-g-buffer-%E5%B8%A6%E5%AE%BD%E4%BC%98%E5%8C%96%E6%89%A9%E5%B1%95"><span class="toc-text">2. 工业级 G-Buffer
+带宽优化扩展</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E7%9A%84%E6%9D%83%E8%A1%A1%E5%88%A9%E5%BC%8A"><span class="toc-text">三、 延迟渲染的权衡利弊</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B1%80%E9%99%90%E6%80%A7%E7%9A%84%E4%B8%BB%E6%B5%81%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-text">局限性的主流解决方案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E5%B7%A5%E7%A8%8B%E5%AE%9E%E7%8E%B0%E5%9F%BA%E4%BA%8E-vulkan-subpass-%E7%9A%84%E7%8E%B0%E4%BB%A3%E7%AE%A1%E7%BA%BF%E5%AE%9E%E8%B7%B5"><span class="toc-text">四、
+工程实现：基于 Vulkan Subpass 的现代管线实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#subpass-0%E5%87%A0%E4%BD%95%E9%98%B6%E6%AE%B5-geometry-pass"><span class="toc-text">1. Subpass 0：几何阶段
+(Geometry Pass)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#subpass-1%E5%BB%B6%E8%BF%9F%E5%85%89%E7%85%A7%E9%98%B6%E6%AE%B5-lighting-pass"><span class="toc-text">2. Subpass 1：延迟光照阶段
+(Lighting Pass)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E6%B7%B7%E5%90%88%E6%B8%B2%E6%9F%93%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%A4%84%E7%90%86%E5%8D%8A%E9%80%8F%E6%98%8E%E4%B8%8E%E8%B0%83%E8%AF%95%E5%87%A0%E4%BD%95%E4%BD%93"><span class="toc-text">五、
+混合渲染工作流：处理半透明与调试几何体</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B7%B1%E5%BA%A6%E5%A4%8D%E7%94%A8%E4%B8%8E%E7%8A%B6%E6%80%81%E9%85%8D%E7%BD%AE-depth-buffer-reuse"><span class="toc-text">深度复用与状态配置 (Depth
+Buffer Reuse)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E8%BF%9B%E9%98%B6%E5%85%89%E7%85%A7%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-text">六、 进阶光照优化策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%89%E4%BD%93%E7%A7%AF%E6%88%AA%E6%96%AD-light-volumes-attenuation-bounds"><span class="toc-text">1. 光体积截断
+(Light Volumes &amp; Attenuation Bounds)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E4%BB%A3%E6%9E%B6%E6%9E%84%E6%BC%94%E8%BF%9Btiled-clustered-deferred-shading"><span class="toc-text">2.
+现代架构演进：Tiled &amp; Clustered Deferred Shading</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83-%E6%80%BB%E7%BB%93"><span class="toc-text">七、 总结</span></a></li></ol></li></ol>
         </div>
       </div>
     </aside>

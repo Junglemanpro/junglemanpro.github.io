@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+<!-- 标题 -->
+<title>深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践 | 萤虫之光</title>
+
+<!-- 网站描述 -->
+<meta name="description" content="个人博客">
+<meta name="keywords" content="Vulkan,Graphics Pipeline,PostProcessing,Shader,Rasterization">
+<meta name="author" content="Berg Zha">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践">
+<meta property="og:description" content="个人博客">
+<meta property="og:url" content="http://junglemanpro.com/2026/06/06/fullscreen_quad_rendering/index.html">
+<meta property="og:site_name" content="萤虫之光">
+
+
+<!-- Favicon -->
+
+<link rel="icon" href="../../../../img/berg.jpg">
+
+
+<!-- 预连接 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- 字体 -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- 样式表 -->
+
+<link rel="stylesheet" href="../../../../css/style.css">
+
+
+<!-- RSS -->
+
+
+<!-- 规范链接 -->
+<link rel="canonical" href="http://junglemanpro.com/2026/06/06/fullscreen_quad_rendering/index.html">
+
+<!-- 主题色 -->
+<meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
+
+<!-- 自定义样式变量 -->
+<style>
+  :root {
+    --primary-color: #2563eb;
+  }
+</style>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<meta name="generator" content="Hexo 8.1.2"></head>
+<body>
+  <header class="site-header">
+  <div class="header-container">
+    <!-- Logo / 站点标题 -->
+    <div class="site-brand">
+      <a href="../../../../index.html" class="site-logo">
+        
+          <span class="site-title">萤虫之光</span>
+        
+      </a>
+    </div>
+
+    <!-- 导航菜单 -->
+    <nav class="site-nav">
+      <ul class="nav-list">
+        
+          <li class="nav-item">
+            <a href="../../../../index.html" 
+               class="nav-link ">
+              首页
+            </a>
+          </li>
+        
+          <li class="nav-item">
+            <a href="../../../../archives" 
+               class="nav-link ">
+              归档
+            </a>
+          </li>
+        
+          <li class="nav-item">
+            <a href="../../../../tags" 
+               class="nav-link ">
+              标签
+            </a>
+          </li>
+        
+          <li class="nav-item">
+            <a href="../../../../docs/" 
+               class="nav-link ">
+              文档
+            </a>
+          </li>
+        
+          <li class="nav-item">
+            <a href="../../../../about" 
+               class="nav-link ">
+              关于
+            </a>
+          </li>
+        
+      </ul>
+    </nav>
+
+    <!-- 工具栏 -->
+    <div class="header-tools">
+      <!-- 搜索按钮 -->
+      
+        <button class="tool-btn search-toggle" aria-label="搜索" title="搜索">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 主题切换 -->
+      
+        <button class="tool-btn theme-toggle" aria-label="切换主题" title="切换主题">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 移动端菜单按钮 -->
+      <button class="tool-btn menu-toggle" aria-label="菜单" title="菜单">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" x2="20" y1="12" y2="12"></line>
+          <line x1="4" x2="20" y1="6" y2="6"></line>
+          <line x1="4" x2="20" y1="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 移动端导航 -->
+  <div class="mobile-nav">
+    <ul class="mobile-nav-list">
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../index.html" 
+             class="mobile-nav-link ">
+            首页
+          </a>
+        </li>
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../archives" 
+             class="mobile-nav-link ">
+            归档
+          </a>
+        </li>
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../tags" 
+             class="mobile-nav-link ">
+            标签
+          </a>
+        </li>
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../docs/" 
+             class="mobile-nav-link ">
+            文档
+          </a>
+        </li>
+      
+        <li class="mobile-nav-item">
+          <a href="../../../../about" 
+             class="mobile-nav-link ">
+            关于
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</header>
+
+  
+  <main class="main-content">
+    <div class="container">
+      <div class="page-layout post-layout">
+  <article class="post-article">
+    <!-- 文章头部 -->
+    <header class="post-header">
+      <h1 class="post-title">深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践</h1>
+      
+      <!-- 元信息 -->
+      <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-06-06">
+      2026-06-06
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+    <span class="meta-item meta-updated">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+      </svg>
+      <time datetime="2026-08-07">
+        更新于 2026-08-07
+      </time>
+    </span>
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      7.0k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 24 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+</div>
+
+      
+      <!-- 封面图 -->
+      
+    </header>
+
+    <!-- 文章内容 -->
+    <div class="post-content markdown-body">
+      <h1
+id="深入解析全屏无缓冲区渲染fullscreen-triangle-rendering">深入解析全屏无缓冲区渲染（Fullscreen
+Triangle Rendering）</h1>
+<p>在实时 3D
+图形渲染管线中，渲染覆盖整个屏幕的区域是一项高频且基础的任务。无论是后处理（Post-Processing）、延迟着色（Deferred
+Lighting
+Pass）、屏幕空间环境光遮蔽（SSAO）、屏幕空间反射（SSR），还是程序化纹理生成，都需要在
+<span class="math inline">\([0, 1]\)</span> 范围的 UV
+坐标下将片元着色器应用到全屏像素上。</p>
+<p>本文将系统解构全屏渲染从传统双三角形四边形（Quad）到单全屏大三角形（Fullscreen
+Triangle）的范式演进，剖析 <strong>GPU 2x2 Fragment Quad
+硬件遮挡开销</strong>，推导 <strong><code>gl_VertexIndex</code>
+顶点生成位运算逻辑</strong>，并提供 <strong>Vulkan
+无缓冲区管线的工程落地指南</strong>。</p>
+<hr />
+<h2 id="一-范式演进与-gpu-光栅化微架构痛点">一、 范式演进与 GPU
+光栅化微架构痛点</h2>
+<h3 id="传统全屏四边形quad及其瓶颈">1.
+传统全屏四边形（Quad）及其瓶颈</h3>
+<p>传统渲染全屏视口的方法是构建一个由两个三角形组成的四边形（Quad）。这需要在
+CPU 端创建顶点缓冲区（VBO）和索引缓冲区（IBO），填充 4 个顶点的 3D
+位置与 UV 坐标及 6 个顶点索引，并在渲染时绑定这些缓冲区提交绘制。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">传统全屏四边形 (Quad)                  单全屏大三角形 (Fullscreen Triangle)</span><br><span class="line">+-------------------+                  (3, -1)</span><br><span class="line">| \               |                    +</span><br><span class="line">|   \   顶 点     |                   / |</span><br><span class="line">|     \   斜      |                  /  |</span><br><span class="line">|       \   接    |                 /   |</span><br><span class="line">|         \   缝  |                /    |</span><br><span class="line">|           \     |               +-----+-----+  (1, 1) [屏幕边界]</span><br><span class="line">|             \   |               |     |    /</span><br><span class="line">|               \ |               |     |   /</span><br><span class="line">+-------------------+             +-----+--+  (-1, -1)</span><br><span class="line">(-1, -1)          (1, 1)</span><br></pre></td></tr></table></figure>
+<p>在 Vulkan 等现代低层级图形 API 中，创建 VBO/IBO
+意味着需要显式设置顶点输入绑定（<code>VkVertexInputBindingDescription</code>）、属性描述（<code>VkVertexInputAttributeDescription</code>）、内存分配与
+Descriptor 布局绑定。对于仅需全屏覆写的目标，这带来了大量冗余的 API
+模板代码。</p>
+<hr />
+<h3 id="硬件微架构痛点2x2-fragment-quad-斜对角线开销">2.
+硬件微架构痛点：2x2 Fragment Quad 斜对角线开销</h3>
+<p>除了 API 调用的繁琐外，由两个三角形组成的 Quad 在 GPU
+硬件光栅化（Rasterization）层面存在天生的效能浪费。</p>
+<p>GPU 在执行片元着色器（Fragment
+Shader）时，并非以单个像素为单位独立调度，而是将像素打包为 <strong><span
+class="math inline">\(2 \times 2\)</span> 像素块（Fragment Quad / Pixel
+Quad）</strong>。这种设计是为了在硬件流水线中通过有限差分求导（Derivatives）计算纹理采样的
+Mipmap 层级（即偏导数 <code>dFdx</code> 和 <code>dFdy</code>）。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">斜对角线穿过的 2x2 Pixel Quad 示意图</span><br><span class="line">+---------+---------+</span><br><span class="line">|  Active |  Active |  &lt;-- 三角形 0 内部像素</span><br><span class="line">+---------+---------+</span><br><span class="line">|  Active | Helper  |  &lt;-- 斜对角线切割线</span><br><span class="line">+---------+---------+      (Helper Lane: 强制执行 Shader 但丢弃输出)</span><br></pre></td></tr></table></figure>
+<ul>
+<li><strong>辅助像素（Helper Lanes / Dummy Fragments）</strong>：当一个
+<span class="math inline">\(2 \times 2\)</span> Quad 被三角形边缘（如
+Quad
+的斜对角切割线）穿过时，不在当前三角形内的像素会被标记为“辅助像素（Helper
+Lane）”。这些辅助像素<strong>必须强制执行片段着色器</strong>以计算求导所需的梯度值，但其计算结果在写入帧缓冲前会被直接丢弃。</li>
+<li><strong>重复执行</strong>：在 Quad 的斜对角线两侧，大量的 <span
+class="math inline">\(2 \times 2\)</span> Pixel Quad
+会被重复绘制两次（左上三角形与右下三角形各一次）。这导致沿对角线分布的片元着色器产生了不必要的冗余算力消耗。</li>
+</ul>
+<h3 id="单全屏大三角形fullscreen-triangle的优势">3.
+单全屏大三角形（Fullscreen Triangle）的优势</h3>
+<p>使用一个扩展至屏幕之外的<strong>单全屏大三角形</strong>覆盖整个 NDC
+空间 <span class="math inline">\([-1,
+1]^2\)</span>，可以彻底消除斜对角线： 1.
+<strong>零斜对角线重叠</strong>：整个屏幕仅由一个三角形覆盖，视口内部不存在任何内部几何边缘，完全消除了因斜对角线切割导致的
+Helper Lane 冗余计算。 2. <strong>极简顶点开销</strong>：仅需 <strong>3
+次顶点着色器调用</strong>（传统 Quad 无论是否复用顶点均需要 4 或 6
+次调用）。 3. <strong>零额外带宽消耗</strong>：超出屏幕 NDC
+边界外的灰色三角形区域由 GPU 硬件光栅化裁剪器（Fixed-function Hardware
+Clipper）在片元阶段前自动剔除，<strong>裁剪区域不会触发任何片元着色与纹理采样</strong>，因此不会浪费任何显存带宽。</p>
+<hr />
+<h2 id="二-数学映射推导与顶点生成位运算">二、
+数学映射推导与顶点生成位运算</h2>
+<p>通过 Vulkan/GLSL 内置的 <code>gl_VertexIndex</code> 变量（类似于
+OpenGL 的
+<code>gl_VertexID</code>），我们可以在顶点着色器中根据顶点的索引值 <span
+class="math inline">\(i \in \{0, 1, 2\}\)</span> 动态推导顶点位置与 UV
+坐标，从而完全摒弃顶点缓冲区。</p>
+<h3 id="坐标空间映射方程">1. 坐标空间映射方程</h3>
+<p>目标是将索引 <span class="math inline">\(i \in \{0, 1, 2\}\)</span>
+映射到涵盖屏幕 <span class="math inline">\([0, 1]\)</span> 范围的 UV
+坐标以及超出 NDC 空间 <span class="math inline">\([-1, 1]\)</span>
+的顶点坐标：</p>
+<ul>
+<li>顶点 0：<span class="math inline">\(\mathbf{P}_0 = (-1.0,
+-1.0)\)</span>，<span class="math inline">\(\mathrm{UV}_0 = (0.0,
+0.0)\)</span></li>
+<li>顶点 1：<span class="math inline">\(\mathbf{P}_1 = (3.0,
+-1.0)\)</span>，<span class="math inline">\(\mathrm{UV}_1 = (2.0,
+0.0)\)</span></li>
+<li>顶点 2：<span class="math inline">\(\mathbf{P}_2 = (-1.0,
+3.0)\)</span>，<span class="math inline">\(\mathrm{UV}_2 = (0.0,
+2.0)\)</span></li>
+</ul>
+<p>对应映射矩阵公式为：</p>
+<p><span class="math display">\[
+\mathbf{P}_{\mathrm{NDC}} = \mathrm{UV} \cdot 2.0 - 1.0
+\]</span></p>
+<p>即：</p>
+<p><span class="math display">\[
+\begin{pmatrix} X_{\mathrm{NDC}} \\ Y_{\mathrm{NDC}} \end{pmatrix} =
+\begin{pmatrix} U \cdot 2.0 - 1.0 \\ V \cdot 2.0 - 1.0 \end{pmatrix}
+\]</span></p>
+<h3 id="位运算推导机制">2. 位运算推导机制</h3>
+<p>利用二进制按位操作，可以在着色器中以极高效率生成 UV 坐标：</p>
+<p>对于索引 <span class="math inline">\(i\)</span> 的二进制表示： * 当
+<span class="math inline">\(i = 0 \, (00_2)\)</span> 时： <span
+class="math display">\[\mathrm{UV}_x = (00_2 \ll 1) \mathbin{\&amp;} 2 =
+0\]</span> <span class="math display">\[\mathrm{UV}_y = 00_2
+\mathbin{\&amp;} 2 = 0\]</span> * 当 <span class="math inline">\(i = 1
+\, (01_2)\)</span> 时： <span class="math display">\[\mathrm{UV}_x =
+(01_2 \ll 1) \mathbin{\&amp;} 2 = 02_2 \mathbin{\&amp;} 02_2 =
+2\]</span> <span class="math display">\[\mathrm{UV}_y = 01_2
+\mathbin{\&amp;} 2 = 0\]</span> * 当 <span class="math inline">\(i = 2
+\, (10_2)\)</span> 时： <span class="math display">\[\mathrm{UV}_x =
+(10_2 \ll 1) \mathbin{\&amp;} 2 = 04_2 \mathbin{\&amp;} 02_2 =
+0\]</span> <span class="math display">\[\mathrm{UV}_y = 10_2
+\mathbin{\&amp;} 2 = 2\]</span></p>
+<p>通用逻辑表达为：</p>
+<p><span class="math display">\[
+\mathrm{UV}_x = (i \ll 1) \mathbin{\&amp;} 2
+\]</span></p>
+<p><span class="math display">\[
+\mathrm{UV}_y = i \mathbin{\&amp;} 2
+\]</span></p>
+<hr />
+<h2 id="三-vulkan-管线配置与无缓冲区绘制">三、 Vulkan
+管线配置与无缓冲区绘制</h2>
+<p>在 Vulkan 中落地全屏三角形无需创建任何 <code>VkBuffer</code> 或
+<code>VkDeviceMemory</code>，只需配置一个无顶点输入的管线状态即可。</p>
+<h3 id="空顶点输入状态配置-empty-vertex-input-state">1.
+空顶点输入状态配置 (Empty Vertex Input State)</h3>
+<p><code>VkPipelineVertexInputStateCreateInfo</code>
+的属性描述与绑定描述计数均设置为 0：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">VkPipelineVertexInputStateCreateInfo emptyInputState&#123;&#125;;</span><br><span class="line">emptyInputState.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;</span><br><span class="line">emptyInputState.vertexAttributeDescriptionCount = <span class="number">0</span>;</span><br><span class="line">emptyInputState.pVertexAttributeDescriptions    = <span class="literal">nullptr</span>;</span><br><span class="line">emptyInputState.vertexBindingDescriptionCount   = <span class="number">0</span>;</span><br><span class="line">emptyInputState.pVertexBindingDescriptions      = <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line">pipelineCreateInfo.pVertexInputState = &amp;emptyInputState;</span><br><span class="line"></span><br><span class="line"><span class="built_in">vkCreateGraphicsPipelines</span>(device, pipelineCache, <span class="number">1</span>, &amp;pipelineCreateInfo, <span class="literal">nullptr</span>, &amp;fullscreenPipeline);</span><br></pre></td></tr></table></figure>
+<hr />
+<h3 id="剔除模式与顶点缠绕顺序-culling-winding-order">2.
+剔除模式与顶点缠绕顺序 (Culling &amp; Winding Order)</h3>
+<p>按上述公式生成的 3 个顶点按顺时针（Clockwise, CW）顺序排列：<span
+class="math inline">\((0,0) \rightarrow (2,0) \rightarrow
+(0,2)\)</span>。</p>
+<p>如果管线开启了背向面剔除（Back-face
+Culling），需要相应地配置正面朝向状态，避免三角形被硬件误剔除：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">rasterizationState.cullMode  = VK_CULL_MODE_FRONT_BIT;</span><br><span class="line">rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;</span><br></pre></td></tr></table></figure>
+<p>或者直接禁用面剔除：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">rasterizationState.cullMode  = VK_CULL_MODE_NONE;</span><br></pre></td></tr></table></figure>
+<hr />
+<h3 id="命令缓冲区绘制提交">3. 命令缓冲区绘制提交</h3>
+<p>绘制时，完全不需要调用 <code>vkCmdBindVertexBuffers</code> 或
+<code>vkCmdBindIndexBuffer</code>。只需直接提交顶点数为 3
+的非索引绘制指令即可：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">vkCmdBindPipeline</span>(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, fullscreenPipeline);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 绘制 3 个程序化生成的顶点，实例数为 1</span></span><br><span class="line"><span class="built_in">vkCmdDraw</span>(commandBuffer, <span class="number">3</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br></pre></td></tr></table></figure>
+<p>即使完全没有绑定物理顶点缓冲区，Vulkan 验证层（Validation
+Layers）也不会触发任何 Warning 或 Error。</p>
+<hr />
+<h2 id="四-着色器工程实现与跨-api-平台适配">四、 着色器工程实现与跨 API
+平台适配</h2>
+<h3 id="vulkan-glsl-顶点着色器实现">1. Vulkan GLSL 顶点着色器实现</h3>
+<p>在 GLSL 中，通过扩展 <code>GL_KHR_vulkan_GLSL</code> 支持
+<code>gl_VertexIndex</code> 变量：</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 450</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">out</span> <span class="type">vec2</span> outUV;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() </span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 利用位运算直接生成 [0, 2] 范围的 UV 坐标</span></span><br><span class="line">    outUV = <span class="type">vec2</span>((gl_VertexIndex &lt;&lt; <span class="number">1</span>) &amp; <span class="number">2</span>, gl_VertexIndex &amp; <span class="number">2</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 将 UV 映射到 NDC 空间 [-1, 3] 范围</span></span><br><span class="line">    <span class="built_in">gl_Position</span> = <span class="type">vec4</span>(outUV * <span class="number">2.0</span>f - <span class="number">1.0</span>f, <span class="number">0.0</span>f, <span class="number">1.0</span>f);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="hlsl-directx-12-spir-v-顶点着色器实现">2. HLSL (DirectX 12 /
+SPIR-V) 顶点着色器实现</h3>
+<p>在 HLSL 中，通过系统生成值 <code>SV_VertexID</code>
+实现等价逻辑：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">struct VSOutput</span><br><span class="line">&#123;</span><br><span class="line">    float4 Pos : SV_Position;</span><br><span class="line">    float2 UV  : TEXCOORD0;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">VSOutput main(uint VertexID : SV_VertexID)</span><br><span class="line">&#123;</span><br><span class="line">    VSOutput output;</span><br><span class="line">    </span><br><span class="line">    output.UV = float2((VertexID &lt;&lt; 1) &amp; 2, VertexID &amp; 2);</span><br><span class="line">    output.Pos = float4(output.UV * 2.0f - 1.0f, 0.0f, 1.0f);</span><br><span class="line">    </span><br><span class="line">    // 若在 Direct3D 下需要翻转 Y 轴，可根据 API 习惯进行微调：</span><br><span class="line">    // output.Pos.y = -output.Pos.y;</span><br><span class="line">    </span><br><span class="line">    return output;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h2 id="五-全屏渲染方案硬件效能对比矩阵">五、
+全屏渲染方案硬件效能对比矩阵</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">评估维度</th>
+<th style="text-align: left;">传统 Quad (VBO + IBO)</th>
+<th style="text-align: left;">程序化 Quad
+(<code>gl_VertexIndex</code>)</th>
+<th style="text-align: left;">程序化大三角形 (Fullscreen Triangle)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>顶点数量</strong></td>
+<td style="text-align: left;">4 个顶点 + 6 个索引</td>
+<td style="text-align: left;">6 个顶点（或 4 个顶点）</td>
+<td style="text-align: left;"><strong>3 个顶点</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>VRAM 存储开销</strong></td>
+<td style="text-align: left;">需要分配 VBO / IBO 内存</td>
+<td style="text-align: left;"><strong>0 Byte</strong></td>
+<td style="text-align: left;"><strong>0 Byte</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Vulkan API 模板代码</strong></td>
+<td style="text-align: left;">极繁琐（Binding / Attribute）</td>
+<td style="text-align: left;">极简（空 Input State）</td>
+<td style="text-align: left;"><strong>极简（空 Input
+State）</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>斜对角线 Helper Lanes
+开销</strong></td>
+<td style="text-align: left;">存在（斜对角线分割）</td>
+<td style="text-align: left;">存在（斜对角线分割）</td>
+<td style="text-align: left;"><strong>完全无斜对角线开销</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>片元光照重复计算率</strong></td>
+<td style="text-align: left;">~5% 至 10%（沿对角线）</td>
+<td style="text-align: left;">~5% 至 10%（沿对角线）</td>
+<td style="text-align: left;"><strong>0%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>硬件光栅化裁剪开销</strong></td>
+<td style="text-align: left;">无</td>
+<td style="text-align: left;">无</td>
+<td style="text-align: left;"><strong>无（由硬件 Clipper
+自动免费完成）</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="六-总结">六、 总结</h2>
+<p>全屏三角形渲染（Fullscreen Triangle
+Rendering）通过<strong>程序化顶点生成</strong>与<strong>单三角形视口覆盖</strong>，实现了实时渲染管线在性能与开发效率上的双重突破：
+* <strong>解耦物理缓冲区</strong>：利用 <code>gl_VertexIndex</code> /
+<code>SV_VertexID</code> 配合位运算生成顶点，消除了 Vulkan
+繁琐的顶点缓冲区绑定与内存分配； *
+<strong>优化硬件光栅化</strong>：彻底消除了传统四边形斜对角线上的 2x2
+Fragment Quad 辅助像素（Helper Lanes）浪费，提升片元着色器执行效率； *
+<strong>结合硬件光栅裁剪</strong>：利用 GPU
+固定的硬件裁剪器（Fixed-function
+Clipper）无开销剔除视口外区域，兼具代码优雅性与工业级运行效能。</p>
+
+    </div>
+
+    <!-- 标签 -->
+    
+      <div class="post-tags">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+          <path d="M7 7h.01"></path>
+        </svg>
+        
+          <a href="../../../../tags/Vulkan/" class="tag-link">Vulkan</a>
+        
+          <a href="../../../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
+        
+          <a href="../../../../tags/PostProcessing/" class="tag-link">PostProcessing</a>
+        
+          <a href="../../../../tags/Shader/" class="tag-link">Shader</a>
+        
+          <a href="../../../../tags/Rasterization/" class="tag-link">Rasterization</a>
+        
+      </div>
+    
+
+    <!-- 版权信息 -->
+    
+      <div class="post-copyright">
+        <p><strong>本文作者：</strong>Berg Zha</p>
+        <p><strong>本文链接：</strong><a href="http://junglemanpro.com/2026/06/06/fullscreen_quad_rendering/">http://junglemanpro.com/2026/06/06/fullscreen_quad_rendering/</a></p>
+        <p><strong>版权声明：</strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！</p>
+      </div>
+    
+
+    <!-- 上一篇 / 下一篇 -->
+    <nav class="post-nav">
+      
+        <a href="../../../08/06/Layout/" class="post-nav-item prev">
+          <span class="post-nav-label">上一篇</span>
+          <span class="post-nav-title">深入解析移动端 TBDR 架构与 Vulkan Subpass：片上 Layout Transition 的硬件物理机制与工程实践</span>
+        </a>
+      
+      
+      
+        <a href="../deferred_shading/" class="post-nav-item next">
+          <span class="post-nav-label">下一篇</span>
+          <span class="post-nav-title">深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化</span>
+        </a>
+      
+    </nav>
+  </article>
+
+  <!-- TOC 目录 -->
+  
+    <aside class="post-toc">
+      <div class="toc-wrapper">
+        <h3 class="toc-title">目录</h3>
+        <div class="toc-content">
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E5%85%A8%E5%B1%8F%E6%97%A0%E7%BC%93%E5%86%B2%E5%8C%BA%E6%B8%B2%E6%9F%93fullscreen-triangle-rendering"><span class="toc-text">深入解析全屏无缓冲区渲染（Fullscreen
+Triangle Rendering）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E8%8C%83%E5%BC%8F%E6%BC%94%E8%BF%9B%E4%B8%8E-gpu-%E5%85%89%E6%A0%85%E5%8C%96%E5%BE%AE%E6%9E%B6%E6%9E%84%E7%97%9B%E7%82%B9"><span class="toc-text">一、 范式演进与 GPU
+光栅化微架构痛点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BC%A0%E7%BB%9F%E5%85%A8%E5%B1%8F%E5%9B%9B%E8%BE%B9%E5%BD%A2quad%E5%8F%8A%E5%85%B6%E7%93%B6%E9%A2%88"><span class="toc-text">1.
+传统全屏四边形（Quad）及其瓶颈</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A1%AC%E4%BB%B6%E5%BE%AE%E6%9E%B6%E6%9E%84%E7%97%9B%E7%82%B92x2-fragment-quad-%E6%96%9C%E5%AF%B9%E8%A7%92%E7%BA%BF%E5%BC%80%E9%94%80"><span class="toc-text">2.
+硬件微架构痛点：2x2 Fragment Quad 斜对角线开销</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E5%85%A8%E5%B1%8F%E5%A4%A7%E4%B8%89%E8%A7%92%E5%BD%A2fullscreen-triangle%E7%9A%84%E4%BC%98%E5%8A%BF"><span class="toc-text">3.
+单全屏大三角形（Fullscreen Triangle）的优势</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-%E6%95%B0%E5%AD%A6%E6%98%A0%E5%B0%84%E6%8E%A8%E5%AF%BC%E4%B8%8E%E9%A1%B6%E7%82%B9%E7%94%9F%E6%88%90%E4%BD%8D%E8%BF%90%E7%AE%97"><span class="toc-text">二、
+数学映射推导与顶点生成位运算</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9D%90%E6%A0%87%E7%A9%BA%E9%97%B4%E6%98%A0%E5%B0%84%E6%96%B9%E7%A8%8B"><span class="toc-text">1. 坐标空间映射方程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%8D%E8%BF%90%E7%AE%97%E6%8E%A8%E5%AF%BC%E6%9C%BA%E5%88%B6"><span class="toc-text">2. 位运算推导机制</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-vulkan-%E7%AE%A1%E7%BA%BF%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%97%A0%E7%BC%93%E5%86%B2%E5%8C%BA%E7%BB%98%E5%88%B6"><span class="toc-text">三、 Vulkan
+管线配置与无缓冲区绘制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A9%BA%E9%A1%B6%E7%82%B9%E8%BE%93%E5%85%A5%E7%8A%B6%E6%80%81%E9%85%8D%E7%BD%AE-empty-vertex-input-state"><span class="toc-text">1.
+空顶点输入状态配置 (Empty Vertex Input State)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%89%94%E9%99%A4%E6%A8%A1%E5%BC%8F%E4%B8%8E%E9%A1%B6%E7%82%B9%E7%BC%A0%E7%BB%95%E9%A1%BA%E5%BA%8F-culling-winding-order"><span class="toc-text">2.
+剔除模式与顶点缠绕顺序 (Culling &amp; Winding Order)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%91%BD%E4%BB%A4%E7%BC%93%E5%86%B2%E5%8C%BA%E7%BB%98%E5%88%B6%E6%8F%90%E4%BA%A4"><span class="toc-text">3. 命令缓冲区绘制提交</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E7%9D%80%E8%89%B2%E5%99%A8%E5%B7%A5%E7%A8%8B%E5%AE%9E%E7%8E%B0%E4%B8%8E%E8%B7%A8-api-%E5%B9%B3%E5%8F%B0%E9%80%82%E9%85%8D"><span class="toc-text">四、 着色器工程实现与跨 API
+平台适配</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#vulkan-glsl-%E9%A1%B6%E7%82%B9%E7%9D%80%E8%89%B2%E5%99%A8%E5%AE%9E%E7%8E%B0"><span class="toc-text">1. Vulkan GLSL 顶点着色器实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#hlsl-directx-12-spir-v-%E9%A1%B6%E7%82%B9%E7%9D%80%E8%89%B2%E5%99%A8%E5%AE%9E%E7%8E%B0"><span class="toc-text">2. HLSL (DirectX 12 &#x2F;
+SPIR-V) 顶点着色器实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E5%85%A8%E5%B1%8F%E6%B8%B2%E6%9F%93%E6%96%B9%E6%A1%88%E7%A1%AC%E4%BB%B6%E6%95%88%E8%83%BD%E5%AF%B9%E6%AF%94%E7%9F%A9%E9%98%B5"><span class="toc-text">五、
+全屏渲染方案硬件效能对比矩阵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E6%80%BB%E7%BB%93"><span class="toc-text">六、 总结</span></a></li></ol></li></ol>
+        </div>
+      </div>
+    </aside>
+  
+</div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-content">
+      <!-- 版权信息 -->
+      <div class="footer-copyright">
+        <p>
+          &copy; 
+          
+            2024 - 
+          
+          2026 
+          <a href="../../../../index.html">Berg Zha</a>
+        </p>
+      </div>
+
+      <!-- 社交链接 -->
+      
+        <div class="footer-social">
+          
+          
+          
+        </div>
+      
+
+      <!-- 技术支持 -->
+      <div class="footer-powered">
+        <p>
+          Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a>
+          <span class="separator">|</span>
+          Theme Starter
+        </p>
+      </div>
+
+      <!-- 备案信息 -->
+      
+
+      <!-- 自定义内容 -->
+      
+    </div>
+  </div>
+</footer>
+
+  
+  <!-- 搜索模态框 -->
+  
+    <div id="search-modal" class="search-modal">
+  <div class="search-container">
+    <!-- 搜索头部 -->
+    <div class="search-header">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="搜索文章、文档..." 
+          autocomplete="off"
+          autofocus
+        >
+        <button class="search-close" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="search-shortcut">
+        <kbd>ESC</kbd> 关闭
+        <span class="shortcut-divider">|</span>
+        <kbd>↑</kbd><kbd>↓</kbd> 导航
+        <span class="shortcut-divider">|</span>
+        <kbd>Enter</kbd> 打开
+      </div>
+    </div>
+
+    <!-- 搜索结果 -->
+    <div id="search-results" class="search-results">
+      <div class="search-tip">输入关键词开始搜索</div>
+    </div>
+
+    <!-- 搜索页脚 -->
+    <div class="search-footer">
+      <span class="search-footer-text">
+        <kbd>Ctrl</kbd> + <kbd>K</kbd> 快速搜索
+      </span>
+    </div>
+  </div>
+</div>
+
+  
+
+  <!-- 站点配置 -->
+  <script>
+    window.STARTER_CONFIG = {
+      root: '/',
+      searchEnabled: true
+    };
+  </script>
+
+  <!-- 主脚本 -->
+  
+<script src="../../../../js/main.js"></script>
+
+  
+  
+    
+<script src="../../../../js/search.js"></script>
+
+  
+  
+  
+    
+<script src="../../../../js/doc-sidebar.js"></script>
+
+  
+</body>
+</html>

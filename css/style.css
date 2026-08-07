@@ -97,31 +97,44 @@
 }
 
 /* 深色主题 */
+/* ===== 护眼深色主题 (低对比度柔和哑光) ===== */
 [data-theme="dark"] {
-  --primary-color: #3b82f6;
-  --primary-hover: #60a5fa;
-  --primary-light: #1e3a5f;
+  /* 主色调：采用降低饱和度的柔和天蓝 */
+  --primary-color: #60a5fa;
+  --primary-hover: #93c5fd;
+  --primary-light: rgba(96, 165, 250, 0.12);
   
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
-  --text-inverse: #0f172a;
+  /* 文本颜色：降低纯白对比度，采用柔和哑光灰白，大幅减轻暗光环境下的刺眼感 */
+  --text-primary: #dce1e8;    /* 主文本：哑光灰白 (WCAG AA 舒适可读) */
+  --text-secondary: #a0aec0;  /* 次要文本：中灰 */
+  --text-muted: #6c788a;      /* 暗级/补充文本 */
+  --text-inverse: #181a1f;    /* 反色文本 */
   
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --bg-hover: #475569;
+  /* 背景颜色：由偏高调蓝黑改为暖底哑光炭灰 (Dark Charcoal)，更贴合阅读体验 */
+  --bg-primary: #181a1f;      /* 主背景：暗哑底色 */
+  --bg-secondary: #21252b;    /* 次级背景：卡片/侧边栏/引言块 */
+  --bg-tertiary: #2d3139;     /* 三级背景：组件/悬浮层 */
+  --bg-hover: #353b45;        /* 鼠标悬停态 */
   
-  --border-color: #334155;
-  --border-light: #1e293b;
+  /* 边框颜色：弱化边框高光 */
+  --border-color: #2d3139;
+  --border-light: #21252b;
   
-  --code-bg: #1e293b;
-  --code-border: #334155;
+  /* 代码块：深暖色极简衬底 */
+  --code-bg: #1e2227;
+  --code-border: #2d3139;
   
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  /* 状态颜色：降低饱和度，避免强炫光 */
+  --success: #4ade80;
+  --warning: #facc15;
+  --error: #f87171;
+  --info: #60a5fa;
+  
+  /* 阴影：通过自然暗阴影区分层级，减少对高对比边线的依赖 */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.55), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
 }
 
 /* ===== 基础样式 ===== */

@@ -6,16 +6,16 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>遮蔽_AO | 萤虫之光</title>
+<title>深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
-<meta name="keywords" content="PostProcessing">
+<meta name="keywords" content="Graphics Pipeline,SSAO,PostProcessing,PBR,Ambient Occlusion,GTAO">
 <meta name="author" content="Berg Zha">
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="遮蔽_AO">
+<meta property="og:title" content="深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2025/05/05/%E9%81%AE%E8%94%BD/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -54,6 +54,17 @@
     --primary-color: #2563eb;
   }
 </style>
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
 <meta name="generator" content="Hexo 8.1.2"></head>
 <body>
@@ -203,7 +214,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">遮蔽_AO</h1>
+      <h1 class="post-title">深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -227,8 +238,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-06">
-        更新于 2026-08-06
+      <time datetime="2026-08-07">
+        更新于 2026-08-07
       </time>
     </span>
   
@@ -242,7 +253,7 @@
         <path d="M15.1 18H3"></path>
       </svg>
       
-      431 字
+      6.9k 字
     </span>
   
 
@@ -254,7 +265,7 @@
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       
-      约 2 分钟
+      约 24 分钟
     </span>
   
 
@@ -269,14 +280,202 @@
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
-      <p>遮蔽是一个重要的暗化因素, 用于在各种尺度下重建阴影:</p>
-<p>小尺度: 微遮蔽, 用于处理折痕, 裂缝和空洞</p>
-<p>中等尺度: 宏遮蔽, 用于处理物体自身几何遮蔽或法线贴图(砖块等)中烘焙几何体的遮蔽.</p>
-<p>大尺度: 遮蔽来自物体之间的接触, 或来自物体自身的几何.</p>
-<p>微遮蔽: 在漫反射贴图中预先烘焙漫反射微遮蔽, 并在反射纹理中预先烘焙镜面微遮蔽. 在我们的系统中, 微遮蔽可以简单地在基色图中烘焙. 这必须在知道镜面光不受微遮蔽的影响情况下才可以.</p>
-<p>中等尺度的环境遮蔽在环境遮蔽贴图中预烘焙, 并作为材质参数(Ambient occlusion)提供.</p>
-<p>大尺度的环境光遮蔽通常使用屏幕空间技术来计算, 例如SSAO(屏幕空间环境光遮蔽), HBAO(基于地平线的环境光遮蔽)等. 请注意, 当相机足够接近表面时, 这些技术也可用于中等尺度的环境遮蔽.</p>
-<p>注意: 为了防止在使用中等和大尺度遮蔽时过度变暗, Lagarde建议使用 min(AOmedium,AOlarge).</p>
+      <h1
+id="深入解析环境光遮蔽ambient-occlusion-ao">深入解析环境光遮蔽（Ambient
+Occlusion, AO）</h1>
+<p>环境光遮蔽（Ambient Occlusion, AO）是实时图形学与
+PBR（基于物理的渲染）管线中至关重要的视觉要素，它通过模拟漫反射光线被周围几何体遮挡的程度，作为一种重要的暗化因素在各种尺度下重建阴影
+。</p>
+<p>本文将从 <strong>多尺度遮蔽分级</strong> 、<strong>屏幕空间 AO
+算法演进（SSAO/HBAO/GTAO）</strong> 、<strong>PBR 镜面遮蔽（Specular
+Occlusion）与过暗融合</strong> 到 <strong>GLSL 着色器工程实现</strong>
+进行全面深度扩展。</p>
+<hr />
+<h2 id="一-多尺度遮蔽架构-multi-scale-occlusion-framework">一、
+多尺度遮蔽架构 (Multi-Scale Occlusion Framework)</h2>
+<p>在实时渲染管线中，环境光遮蔽根据其作用的几何尺度，被划分为三个核心层次
+：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">+-------------------------------------------------------------------------+</span><br><span class="line">|                      多尺度环境光遮蔽 (Multi-Scale AO)                    |</span><br><span class="line">|                                                                         |</span><br><span class="line">|  +-------------------+   +-------------------+   +-------------------+  |</span><br><span class="line">|  |   1. 微遮蔽       |   |   2. 宏/中尺度遮蔽 |   |   3. 大尺度遮蔽   |  |</span><br><span class="line">|  |  (Micro-occlusion)|   |  (Macro-occlusion)|   |  (Large-scale AO) |  |</span><br><span class="line">|  |  微小折痕、裂缝   |   |  物体自身/法线细节|   |  物体间接触遮蔽   |  |</span><br><span class="line">|  +-------------------+   +-------------------+   +-------------------+  |</span><br><span class="line">|            |                       |                       |            |</span><br><span class="line">|            v                       v                       v            |</span><br><span class="line">|     BaseColor 烘焙          AO 贴图材质参数         SSAO / GTAO / RTAO   |</span><br><span class="line">+-------------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+<h3 id="小尺度微遮蔽-micro-occlusion">1. 小尺度：微遮蔽
+(Micro-occlusion)</h3>
+<ul>
+<li><strong>作用范围</strong>：用于处理极其微小的几何结构，如折痕、裂缝和空洞
+。</li>
+<li><strong>烘焙与存储策略</strong>：理论上应在漫反射贴图中预先烘焙漫反射微遮蔽，并在反射纹理中预先烘焙镜面微遮蔽
+。在实际渲染系统中，如果明确知道镜面光不受微遮蔽的影响，微遮蔽可以简单地直接烘焙在基色图（Base
+Color Map）中 。</li>
+</ul>
+<h3 id="中等尺度宏遮蔽-macro-occlusion">2. 中等尺度：宏遮蔽
+(Macro-occlusion)</h3>
+<ul>
+<li><strong>作用范围</strong>：用于处理物体自身几何体的遮蔽，或法线贴图（如砖块缝隙、墙面雕刻等）中烘焙出的几何体遮蔽
+。</li>
+<li><strong>烘焙与存储策略</strong>：中等尺度的环境遮蔽通常在纹理制作阶段预烘焙至环境遮蔽贴图（AO
+Texture）中，并在 Shader
+中作为材质参数（<code>Ambient Occlusion</code>）提供 。</li>
+</ul>
+<h3 id="大尺度遮蔽-large-scale-occlusion">3. 大尺度遮蔽 (Large-scale
+Occlusion)</h3>
+<ul>
+<li><strong>作用范围</strong>：遮蔽来自物体之间的相互接触（如脚底与地面、墙角交界处），或来自物体自身跨度较大的几何遮蔽
+。</li>
+<li><strong>计算策略</strong>：大尺度的环境光遮蔽通常使用屏幕空间技术（Screen-Space
+Techniques）实时计算，例如 SSAO、HBAO、GTAO 等 。</li>
+<li><strong>距离关联特性</strong>：值得注意的是，当相机足够接近物体表面时，这些屏幕空间技术也可用于捕捉中等尺度的环境遮蔽细节
+。</li>
+</ul>
+<hr />
+<h2 id="二-屏幕空间遮蔽算法演进-screen-space-ao-evolution">二、
+屏幕空间遮蔽算法演进 (Screen-Space AO Evolution)</h2>
+<p>实时渲染中，大尺度环境光遮蔽（Large-scale
+AO）经历了从早期近似采样到物理精确积分的演进 。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">+------------------+     +------------------+     +------------------+</span><br><span class="line">|   SSAO (2007)    |====&gt;|   HBAO (2008)    |====&gt;|   GTAO (2016)    |</span><br><span class="line">| 半球/球体随机采样|     | 屏幕空间地平线采样|     | 物理半球扇区积分  |</span><br><span class="line">+------------------+     +------------------+     +------------------+</span><br></pre></td></tr></table></figure>
+<h3 id="ssao-screen-space-ambient-occlusion">1. SSAO (Screen-Space
+Ambient Occlusion)</h3>
+<p>由 Crytek 在 <em>Crysis (2007)</em> 中率先引入 。 *
+<strong>基本原理</strong>：以当前像素的视空间 3D
+坐标为中心，在其四周（球体或沿法线半球）随机生成若干采样点
+。将采样点投影回屏幕空间，对比该采样点的深度值与 Depth Buffer
+中的实际深度值 。若采样点位于深度表面下方，则计为被遮挡 。 *
+<strong>局限</strong>：缺乏物理基础，采样点容易受到深度不连续（如前景物体误遮挡远景）影响，产生严重的暗斑与“黑晕”瑕疵
+。</p>
+<h3 id="hbao-horizon-based-ambient-occlusion">2. HBAO (Horizon-Based
+Ambient Occlusion)</h3>
+<p>由 NVIDIA 提出，引入了基于物理地平线角度的几何积分 。 *
+<strong>基本原理</strong>：在屏幕空间以当前像素为中心沿着多个 2D
+方向（Ray
+Directions）步进，记录极坐标系下的<strong>最大地平线仰角（Horizon
+Elevation Angle <span class="math inline">\(\theta\)</span>）</strong>
+。 *
+<strong>优势</strong>：结合表面法线向量，对半球积分进行切片累加，显著降低了误遮挡现象，边缘更加清晰
+。</p>
+<h3 id="gtao-ground-truth-ambient-occlusion">3. GTAO (Ground Truth
+Ambient Occlusion)</h3>
+<p>由 Activision 在 2016 年提出，是现代引擎（如 Unreal Engine 5、Decima
+Engine）中最常用的屏空 AO 方案 。 *
+<strong>基本原理</strong>：将半球积分公式推导分解为<strong>切面视角（Multi-slice
+Horizon Angle）</strong>计算，通过闭式解（Closed-form
+Solution）精确解算出余弦加权的半球遮挡率 。 *
+<strong>优势</strong>：在数学和物理上极其接近光线追踪环境光遮蔽（RTAO）的结果，且能极好地拟合
+PBR 管线中的半球漫反射 。</p>
+<hr />
+<h2 id="三-多尺度-ao-的融合与-pbr-镜面遮蔽-specular-occlusion">三、
+多尺度 AO 的融合与 PBR 镜面遮蔽 (Specular Occlusion)</h2>
+<p>在 PBR 渲染管线中，直接将多尺度 AO
+简单相乘会导致场景边缘过度变暗或破坏镜面高光 。</p>
+<h3 id="混合遮蔽解决过度变暗问题-double-darkening">1.
+混合遮蔽：解决过度变暗问题 (Double Darkening)</h3>
+<p>当同时使用预烘焙的中等尺度遮蔽 <span
+class="math inline">\(\mathrm{AO}_{\mathrm{medium}}\)</span>
+和屏幕空间实时的大尺度遮蔽 <span
+class="math inline">\(\mathrm{AO}_{\mathrm{large}}\)</span>
+时，二者容易在凹陷区域重叠，造成场景被二次暗化（Double Darkening）
+。</p>
+<p>为了防止在使用中等和大尺度遮蔽时过度变暗，Lagarde
+提出了经典的最小权值组合公式 ：</p>
+<p><span class="math display">\[
+\mathrm{AO}_{\mathrm{final}} = \min\left(\mathrm{AO}_{\mathrm{medium}},
+\mathrm{AO}_{\mathrm{large}}\right)
+\]</span></p>
+<p>这种策略取两者中的最强遮挡值，既保留了材质贴图中的高频暗部细节，又避免了屏空
+AO 在叠加时产生的黑斑 。</p>
+<hr />
+<h3 id="镜面反射遮蔽-specular-occlusion-so">2. 镜面反射遮蔽 (Specular
+Occlusion, SO)</h3>
+<p>标准的 AO 仅作用于漫反射环境光（Diffuse Indirect Light）
+。如果在强镜面反射（如高光金属、湿润表面）区域直接应用漫反射
+AO，会导致高光在裂缝中错误地保留，或者相反地被无脑抹去 。</p>
+<p>为了解决这一问题，引擎通常根据<strong>表面粗糙度（Roughness）</strong>、<strong>观察视角（<span
+class="math inline">\(\mathbf{N} \cdot
+\mathbf{V}\)</span>）</strong>以及<strong>漫反射 AO</strong>
+实时推导出<strong>镜面反射遮蔽系数（Specular Occlusion, SO）</strong>
+。</p>
+<p>常见的 Lagarde / Gotanda 镜面遮蔽推导公式为：</p>
+<p><span class="math display">\[
+\mathrm{SO} = \operatorname{clamp}\left( \frac{(\mathbf{N} \cdot
+\mathbf{V} + \mathrm{AO})^2 - 1 + \alpha}{\alpha}, 0.0, 1.0 \right)
+\]</span></p>
+<p>其中 <span class="math inline">\(\alpha =
+\mathrm{Roughness}^2\)</span>
+。当粗糙度较低（表面光滑）且观察角切向较大时，镜面反射遮蔽会适当保留高光反射，确保符合
+PBR 能量守恒定律 。</p>
+<hr />
+<h2 id="四-核心代码实现ssao-片段着色器-glsl">四、 核心代码实现：SSAO
+片段着色器 (GLSL)</h2>
+<p>以下展示了一个包含<strong>视空间重建</strong>、<strong>随机旋转采样核</strong>与<strong>法线定向半球积分</strong>的标准
+SSAO Fragment Shader 示例 ：</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 450</span></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">out</span> <span class="type">float</span> FragColor;</span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">in</span> <span class="type">vec2</span> inTexCoord;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 深度与法线附件</span></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> <span class="type">sampler2D</span> gDepth;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">binding</span> = <span class="number">1</span>) <span class="keyword">uniform</span> <span class="type">sampler2D</span> gNormal;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">binding</span> = <span class="number">2</span>) <span class="keyword">uniform</span> <span class="type">sampler2D</span> texNoise; <span class="comment">// 4x4 随机旋转噪声图</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> <span class="type">int</span> KERNEL_SIZE = <span class="number">32</span>;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">std140</span>, <span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> SSAOUniforms &#123;</span><br><span class="line">    <span class="type">mat4</span> projection;</span><br><span class="line">    <span class="type">mat4</span> invProjection;</span><br><span class="line">    <span class="type">vec4</span> samples[KERNEL_SIZE]; <span class="comment">// 采样核向量</span></span><br><span class="line">    <span class="type">vec2</span> noiseScale;           <span class="comment">// 屏幕尺寸 / 4.0</span></span><br><span class="line">    <span class="type">float</span> radius;              <span class="comment">// 采样半径</span></span><br><span class="line">    <span class="type">float</span> bias;                <span class="comment">// 深度偏置，避免自遮挡</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 根据深度值与屏幕 UV 重建视空间坐标</span></span><br><span class="line"><span class="type">vec3</span> GetViewPos(<span class="type">vec2</span> uv) &#123;</span><br><span class="line">    <span class="type">float</span> depth = <span class="built_in">texture</span>(gDepth, uv).r;</span><br><span class="line">    <span class="type">vec4</span> clipSpacePos = <span class="type">vec4</span>(uv * <span class="number">2.0</span> - <span class="number">1.0</span>, depth * <span class="number">2.0</span> - <span class="number">1.0</span>, <span class="number">1.0</span>);</span><br><span class="line">    <span class="type">vec4</span> viewSpacePos = invProjection * clipSpacePos;</span><br><span class="line">    <span class="keyword">return</span> viewSpacePos.xyz / viewSpacePos.w;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">    <span class="type">vec3</span> fragPos = GetViewPos(inTexCoord);</span><br><span class="line">    <span class="type">vec3</span> normal  = <span class="built_in">normalize</span>(<span class="built_in">texture</span>(gNormal, inTexCoord).rgb);</span><br><span class="line">    <span class="type">vec3</span> randomVec = <span class="built_in">normalize</span>(<span class="built_in">texture</span>(texNoise, inTexCoord * noiseScale).xyz);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 构建切线空间正交基 (TBN)</span></span><br><span class="line">    <span class="type">vec3</span> tangent   = <span class="built_in">normalize</span>(randomVec - normal * <span class="built_in">dot</span>(randomVec, normal));</span><br><span class="line">    <span class="type">vec3</span> bitangent = <span class="built_in">cross</span>(normal, tangent);</span><br><span class="line">    <span class="type">mat3</span> TBN       = <span class="type">mat3</span>(tangent, bitangent, normal);</span><br><span class="line"></span><br><span class="line">    <span class="type">float</span> occlusion = <span class="number">0.0</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; KERNEL_SIZE; ++i) &#123;</span><br><span class="line">        <span class="comment">// 1. 将半球采样点变换至视空间</span></span><br><span class="line">        <span class="type">vec3</span> samplePos = TBN * samples[i].xyz; </span><br><span class="line">        samplePos = fragPos + samplePos * radius;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 2. 将采样点投影回屏幕空间 UV</span></span><br><span class="line">        <span class="type">vec4</span> <span class="keyword">offset</span> = <span class="type">vec4</span>(samplePos, <span class="number">1.0</span>);</span><br><span class="line">        <span class="keyword">offset</span>      = projection * <span class="keyword">offset</span>;</span><br><span class="line">        <span class="keyword">offset</span>.xyz /= <span class="keyword">offset</span>.w;</span><br><span class="line">        <span class="keyword">offset</span>.xyz  = <span class="keyword">offset</span>.xyz * <span class="number">0.5</span> + <span class="number">0.5</span>;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 3. 读取采样点处的实际几何深度</span></span><br><span class="line">        <span class="type">float</span> sampleDepth = GetViewPos(<span class="keyword">offset</span>.xy).z;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 4. 范围检查与遮挡因子累加</span></span><br><span class="line">        <span class="type">float</span> rangeCheck = <span class="built_in">smoothstep</span>(<span class="number">0.0</span>, <span class="number">1.0</span>, radius / <span class="built_in">abs</span>(fragPos.z - sampleDepth));</span><br><span class="line">        occlusion += (sampleDepth &gt;= samplePos.z + bias ? <span class="number">1.0</span> : <span class="number">0.0</span>) * rangeCheck;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 归一化并反转输出 (1.0 代表无遮挡，0.0 代表完全遮挡)</span></span><br><span class="line">    FragColor = <span class="number">1.0</span> - (occlusion / <span class="type">float</span>(KERNEL_SIZE));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h2 id="五-总结与技术方案对比">五、 总结与技术方案对比</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">技术方案</th>
+<th style="text-align: left;">计算阶段</th>
+<th style="text-align: left;">捕捉尺度</th>
+<th style="text-align: left;">物理真实度</th>
+<th style="text-align: left;">带宽与算力开销</th>
+<th style="text-align: left;">适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>BaseColor 烘焙</strong></td>
+<td style="text-align: left;">纹理制作</td>
+<td style="text-align: left;">小尺度（微遮蔽）</td>
+<td style="text-align: left;">较低</td>
+<td style="text-align: left;">无开销</td>
+<td style="text-align: left;">裂缝、孔洞、织物细节</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>AO 贴图材质参数</strong></td>
+<td style="text-align: left;">几何/材质 Pass</td>
+<td style="text-align: left;">中等尺度（宏遮蔽）</td>
+<td style="text-align: left;">中等</td>
+<td style="text-align: left;">低（增加 1 通道纹理采样）</td>
+<td style="text-align: left;">砖墙、模型表面雕刻细节</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SSAO</strong></td>
+<td style="text-align: left;">后处理 Pass</td>
+<td style="text-align: left;">大/中尺度</td>
+<td style="text-align: left;">较弱（有黑晕瑕疵）</td>
+<td style="text-align: left;">中等</td>
+<td style="text-align: left;">中低端设备/移动端项目</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GTAO</strong></td>
+<td style="text-align: left;">后处理 Pass</td>
+<td style="text-align: left;">大/中尺度</td>
+<td style="text-align: left;">极高（接近 Ray Tracing）</td>
+<td style="text-align: left;">中高</td>
+<td style="text-align: left;">AAA 级 PC/主机游戏</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RTAO (硬件光追)</strong></td>
+<td style="text-align: left;">Ray Traced Pass</td>
+<td style="text-align: left;">极全（无视屏幕限制）</td>
+<td style="text-align: left;">理论完美</td>
+<td style="text-align: left;">极高</td>
+<td style="text-align: left;">次世代高端硬件环境</td>
+</tr>
+</tbody>
+</table>
+<p>环境光遮蔽通过微观、中观与宏观的联合作用，构建出阴影的层次感 ： *
+小尺度微遮蔽烘焙于 BaseColor 或漫反射贴图 ； * 中等尺度宏遮蔽通过 AO
+贴图作用于材质 ； * 大尺度遮蔽依靠屏幕空间算法（如 GTAO）动态计算 ； *
+在融合阶段使用 <span class="math inline">\(\mathrm{AO}_{\mathrm{final}}
+= \min(\mathrm{AO}_{\mathrm{medium}},
+\mathrm{AO}_{\mathrm{large}})\)</span> 消除过度暗化 ，并推导 Specular
+Occlusion，方可实现兼具高性能与物理正确性的 PBR 画面效果 。</p>
 
     </div>
 
@@ -288,7 +487,17 @@
           <path d="M7 7h.01"></path>
         </svg>
         
+          <a href="../../../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
+        
+          <a href="../../../../tags/SSAO/" class="tag-link">SSAO</a>
+        
           <a href="../../../../tags/PostProcessing/" class="tag-link">PostProcessing</a>
+        
+          <a href="../../../../tags/PBR/" class="tag-link">PBR</a>
+        
+          <a href="../../../../tags/Ambient-Occlusion/" class="tag-link">Ambient Occlusion</a>
+        
+          <a href="../../../../tags/GTAO/" class="tag-link">GTAO</a>
         
       </div>
     
@@ -307,14 +516,14 @@
       
         <a href="../../../../2026/06/06/clustered_forward_shading/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">集群前向多光照渲染（Clustered Forward Shading）</span>
+          <span class="post-nav-title">深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践</span>
         </a>
       
       
       
         <a href="../%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/" class="post-nav-item next">
           <span class="post-nav-label">下一篇</span>
-          <span class="post-nav-title">延迟渲染-deferred_shading</span>
+          <span class="post-nav-title">深入解析移动端架构与渲染优化：从骁龙 8 Elite 缓存设计到 TBDR 延迟渲染实践</span>
         </a>
       
     </nav>
@@ -326,7 +535,20 @@
       <div class="toc-wrapper">
         <h3 class="toc-title">目录</h3>
         <div class="toc-content">
-          
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E7%8E%AF%E5%A2%83%E5%85%89%E9%81%AE%E8%94%BDambient-occlusion-ao"><span class="toc-text">深入解析环境光遮蔽（Ambient
+Occlusion, AO）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E5%A4%9A%E5%B0%BA%E5%BA%A6%E9%81%AE%E8%94%BD%E6%9E%B6%E6%9E%84-multi-scale-occlusion-framework"><span class="toc-text">一、
+多尺度遮蔽架构 (Multi-Scale Occlusion Framework)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B0%8F%E5%B0%BA%E5%BA%A6%E5%BE%AE%E9%81%AE%E8%94%BD-micro-occlusion"><span class="toc-text">1. 小尺度：微遮蔽
+(Micro-occlusion)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E7%AD%89%E5%B0%BA%E5%BA%A6%E5%AE%8F%E9%81%AE%E8%94%BD-macro-occlusion"><span class="toc-text">2. 中等尺度：宏遮蔽
+(Macro-occlusion)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%A7%E5%B0%BA%E5%BA%A6%E9%81%AE%E8%94%BD-large-scale-occlusion"><span class="toc-text">3. 大尺度遮蔽 (Large-scale
+Occlusion)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-%E5%B1%8F%E5%B9%95%E7%A9%BA%E9%97%B4%E9%81%AE%E8%94%BD%E7%AE%97%E6%B3%95%E6%BC%94%E8%BF%9B-screen-space-ao-evolution"><span class="toc-text">二、
+屏幕空间遮蔽算法演进 (Screen-Space AO Evolution)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ssao-screen-space-ambient-occlusion"><span class="toc-text">1. SSAO (Screen-Space
+Ambient Occlusion)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#hbao-horizon-based-ambient-occlusion"><span class="toc-text">2. HBAO (Horizon-Based
+Ambient Occlusion)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#gtao-ground-truth-ambient-occlusion"><span class="toc-text">3. GTAO (Ground Truth
+Ambient Occlusion)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-%E5%A4%9A%E5%B0%BA%E5%BA%A6-ao-%E7%9A%84%E8%9E%8D%E5%90%88%E4%B8%8E-pbr-%E9%95%9C%E9%9D%A2%E9%81%AE%E8%94%BD-specular-occlusion"><span class="toc-text">三、
+多尺度 AO 的融合与 PBR 镜面遮蔽 (Specular Occlusion)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B7%B7%E5%90%88%E9%81%AE%E8%94%BD%E8%A7%A3%E5%86%B3%E8%BF%87%E5%BA%A6%E5%8F%98%E6%9A%97%E9%97%AE%E9%A2%98-double-darkening"><span class="toc-text">1.
+混合遮蔽：解决过度变暗问题 (Double Darkening)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%95%9C%E9%9D%A2%E5%8F%8D%E5%B0%84%E9%81%AE%E8%94%BD-specular-occlusion-so"><span class="toc-text">2. 镜面反射遮蔽 (Specular
+Occlusion, SO)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E6%A0%B8%E5%BF%83%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0ssao-%E7%89%87%E6%AE%B5%E7%9D%80%E8%89%B2%E5%99%A8-glsl"><span class="toc-text">四、 核心代码实现：SSAO
+片段着色器 (GLSL)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E6%80%BB%E7%BB%93%E4%B8%8E%E6%8A%80%E6%9C%AF%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="toc-text">五、 总结与技术方案对比</span></a></li></ol></li></ol>
         </div>
       </div>
     </aside>
