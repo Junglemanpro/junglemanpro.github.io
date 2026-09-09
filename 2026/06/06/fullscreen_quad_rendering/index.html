@@ -6,16 +6,16 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践 | 萤虫之光</title>
+<title>渲染管线-全屏三角形：无缓冲绘制与片元开销优化 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
-<meta name="keywords" content="Vulkan,Graphics Pipeline,PostProcessing,Shader,Rasterization">
+<meta name="keywords" content="Graphics Pipeline,Optimization">
 <meta name="author" content="Berg Zha">
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践">
+<meta property="og:title" content="渲染管线-全屏三角形：无缓冲绘制与片元开销优化">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2026/06/06/fullscreen_quad_rendering/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -57,6 +57,10 @@
 
 <script>
   MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
     tex: {
       inlineMath: [['\\(', '\\)'], ['$', '$']],
       displayMath: [['\\[', '\\]'], ['$$', '$$']]
@@ -84,38 +88,47 @@
       <ul class="nav-list">
         
           <li class="nav-item">
-            <a href="../../../../index.html" 
-               class="nav-link ">
-              首页
-            </a>
+            
+              <a href="../../../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../archives" 
-               class="nav-link ">
-              归档
-            </a>
+            
+              <a href="../../../../archives" 
+                 class="nav-link ">
+                归档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../tags" 
-               class="nav-link ">
-              标签
-            </a>
+            
+              <a href="../../../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../docs/" 
-               class="nav-link ">
-              文档
-            </a>
+            
+              <a href="../../../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../about" 
-               class="nav-link ">
-              关于
-            </a>
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
           </li>
         
       </ul>
@@ -169,38 +182,47 @@
     <ul class="mobile-nav-list">
       
         <li class="mobile-nav-item">
-          <a href="../../../../index.html" 
-             class="mobile-nav-link ">
-            首页
-          </a>
+          
+            <a href="../../../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../archives" 
-             class="mobile-nav-link ">
-            归档
-          </a>
+          
+            <a href="../../../../archives" 
+               class="mobile-nav-link ">
+              归档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../tags" 
-             class="mobile-nav-link ">
-            标签
-          </a>
+          
+            <a href="../../../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../docs/" 
-             class="mobile-nav-link ">
-            文档
-          </a>
+          
+            <a href="../../../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../about" 
-             class="mobile-nav-link ">
-            关于
-          </a>
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
         </li>
       
     </ul>
@@ -214,7 +236,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">深入解析全屏无缓冲区渲染（Fullscreen Triangle Rendering）：从 2x2 Fragment Quad 硬件开销到 Vulkan 无绑定实践</h1>
+      <h1 class="post-title">渲染管线-全屏三角形：无缓冲绘制与片元开销优化</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -238,8 +260,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-07">
-        更新于 2026-08-07
+      <time datetime="2026-09-10">
+        更新于 2026-09-10
       </time>
     </span>
   
@@ -281,8 +303,7 @@
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
       <h1
-id="深入解析全屏无缓冲区渲染fullscreen-triangle-rendering">深入解析全屏无缓冲区渲染（Fullscreen
-Triangle Rendering）</h1>
+id="渲染管线-全屏三角形无缓冲绘制与片元开销优化">渲染管线-全屏三角形：无缓冲绘制与片元开销优化</h1>
 <p>在实时 3D
 图形渲染管线中，渲染覆盖整个屏幕的区域是一项高频且基础的任务。无论是后处理（Post-Processing）、延迟着色（Deferred
 Lighting
@@ -519,15 +540,9 @@ Clipper）无开销剔除视口外区域，兼具代码优雅性与工业级运�
           <path d="M7 7h.01"></path>
         </svg>
         
-          <a href="../../../../tags/Vulkan/" class="tag-link">Vulkan</a>
-        
           <a href="../../../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
         
-          <a href="../../../../tags/PostProcessing/" class="tag-link">PostProcessing</a>
-        
-          <a href="../../../../tags/Shader/" class="tag-link">Shader</a>
-        
-          <a href="../../../../tags/Rasterization/" class="tag-link">Rasterization</a>
+          <a href="../../../../tags/Optimization/" class="tag-link">Optimization</a>
         
       </div>
     
@@ -544,16 +559,16 @@ Clipper）无开销剔除视口外区域，兼具代码优雅性与工业级运�
     <!-- 上一篇 / 下一篇 -->
     <nav class="post-nav">
       
-        <a href="../../../08/06/Layout/" class="post-nav-item prev">
+        <a href="../../../../2026/06/06/%E5%9F%BA%E4%BA%8E%20Debian%20%E7%9A%84%E7%A7%81%E6%9C%89%20Git%20%E8%BF%9C%E7%A8%8B%E4%BB%93%E5%BA%93%E6%90%AD%E5%BB%BA%E6%8C%87%E5%8D%97/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">深入解析移动端 TBDR 架构与 Vulkan Subpass：片上 Layout Transition 的硬件物理机制与工程实践</span>
+          <span class="post-nav-title">部署运维-Debian 搭建私有 Git 仓库：SSH 认证与权限隔离</span>
         </a>
       
       
       
-        <a href="../deferred_shading/" class="post-nav-item next">
+        <a href="../../../../2026/06/06/deferred_shading/" class="post-nav-item next">
           <span class="post-nav-label">下一篇</span>
-          <span class="post-nav-title">深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化</span>
+          <span class="post-nav-title">渲染管线-延迟渲染：G-Buffer、光照与 Vulkan Subpass</span>
         </a>
       
     </nav>
@@ -565,8 +580,7 @@ Clipper）无开销剔除视口外区域，兼具代码优雅性与工业级运�
       <div class="toc-wrapper">
         <h3 class="toc-title">目录</h3>
         <div class="toc-content">
-          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E5%85%A8%E5%B1%8F%E6%97%A0%E7%BC%93%E5%86%B2%E5%8C%BA%E6%B8%B2%E6%9F%93fullscreen-triangle-rendering"><span class="toc-text">深入解析全屏无缓冲区渲染（Fullscreen
-Triangle Rendering）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E8%8C%83%E5%BC%8F%E6%BC%94%E8%BF%9B%E4%B8%8E-gpu-%E5%85%89%E6%A0%85%E5%8C%96%E5%BE%AE%E6%9E%B6%E6%9E%84%E7%97%9B%E7%82%B9"><span class="toc-text">一、 范式演进与 GPU
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF-%E5%85%A8%E5%B1%8F%E4%B8%89%E8%A7%92%E5%BD%A2%E6%97%A0%E7%BC%93%E5%86%B2%E7%BB%98%E5%88%B6%E4%B8%8E%E7%89%87%E5%85%83%E5%BC%80%E9%94%80%E4%BC%98%E5%8C%96"><span class="toc-text">渲染管线-全屏三角形：无缓冲绘制与片元开销优化</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E8%8C%83%E5%BC%8F%E6%BC%94%E8%BF%9B%E4%B8%8E-gpu-%E5%85%89%E6%A0%85%E5%8C%96%E5%BE%AE%E6%9E%B6%E6%9E%84%E7%97%9B%E7%82%B9"><span class="toc-text">一、 范式演进与 GPU
 光栅化微架构痛点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BC%A0%E7%BB%9F%E5%85%A8%E5%B1%8F%E5%9B%9B%E8%BE%B9%E5%BD%A2quad%E5%8F%8A%E5%85%B6%E7%93%B6%E9%A2%88"><span class="toc-text">1.
 传统全屏四边形（Quad）及其瓶颈</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A1%AC%E4%BB%B6%E5%BE%AE%E6%9E%B6%E6%9E%84%E7%97%9B%E7%82%B92x2-fragment-quad-%E6%96%9C%E5%AF%B9%E8%A7%92%E7%BA%BF%E5%BC%80%E9%94%80"><span class="toc-text">2.
 硬件微架构痛点：2x2 Fragment Quad 斜对角线开销</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E5%85%A8%E5%B1%8F%E5%A4%A7%E4%B8%89%E8%A7%92%E5%BD%A2fullscreen-triangle%E7%9A%84%E4%BC%98%E5%8A%BF"><span class="toc-text">3.
@@ -628,6 +642,30 @@ SPIR-V) 顶点着色器实现</span></a></li></ol></li><li class="toc-item toc-l
     </div>
   </div>
 </footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>联系我</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
 
   
   <!-- 搜索模态框 -->

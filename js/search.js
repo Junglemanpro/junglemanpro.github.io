@@ -63,7 +63,8 @@
 
   // 打开搜索
   function openSearch() {
-    if (!searchModal) return;
+    // 原生弹框打开时，不让搜索快捷键在背景中叠加另一个弹层。
+    if (!searchModal || document.querySelector("dialog[open]")) return;
 
     searchModal.classList.add("active");
     document.body.style.overflow = "hidden";

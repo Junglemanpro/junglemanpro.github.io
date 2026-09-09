@@ -57,6 +57,10 @@
 
 <script>
   MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
     tex: {
       inlineMath: [['\\(', '\\)'], ['$', '$']],
       displayMath: [['\\[', '\\]'], ['$$', '$$']]
@@ -84,38 +88,47 @@
       <ul class="nav-list">
         
           <li class="nav-item">
-            <a href="../../index.html" 
-               class="nav-link ">
-              首页
-            </a>
+            
+              <a href="../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../archives" 
-               class="nav-link ">
-              归档
-            </a>
+            
+              <a href="../../archives" 
+                 class="nav-link ">
+                归档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../tags" 
-               class="nav-link active">
-              标签
-            </a>
+            
+              <a href="../../tags" 
+                 class="nav-link active">
+                标签
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../docs/" 
-               class="nav-link ">
-              文档
-            </a>
+            
+              <a href="../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../about" 
-               class="nav-link ">
-              关于
-            </a>
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
           </li>
         
       </ul>
@@ -169,38 +182,47 @@
     <ul class="mobile-nav-list">
       
         <li class="mobile-nav-item">
-          <a href="../../index.html" 
-             class="mobile-nav-link ">
-            首页
-          </a>
+          
+            <a href="../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../archives" 
-             class="mobile-nav-link ">
-            归档
-          </a>
+          
+            <a href="../../archives" 
+               class="mobile-nav-link ">
+              归档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../tags" 
-             class="mobile-nav-link active">
-            标签
-          </a>
+          
+            <a href="../../tags" 
+               class="mobile-nav-link active">
+              标签
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../docs/" 
-             class="mobile-nav-link ">
-            文档
-          </a>
+          
+            <a href="../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../about" 
-             class="mobile-nav-link ">
-            关于
-          </a>
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
         </li>
       
     </ul>
@@ -220,25 +242,40 @@
         </svg>
         Lighting
       </h1>
-      <p class="archive-count">共 3 篇文章</p>
+      <p class="archive-count">共 6 篇文章</p>
     </header>
 
     <div class="archive-content">
       <ul class="archive-list">
         
           <li class="archive-item">
-            <span class="archive-date">2026-06-06</span>
-            <a href="../../2026/06/06/deferred_shading/" class="archive-link">深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化</a>
+            <span class="archive-date">2026-08-06</span>
+            <a href="../../2026/08/06/SSSAO/" class="archive-link">后处理-SSAO 屏幕空间环境光遮蔽：采样、瑕疵修正与双边滤波</a>
           </li>
         
           <li class="archive-item">
             <span class="archive-date">2026-06-06</span>
-            <a href="../../2026/06/06/forward_plus_shading/" class="archive-link">深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化</a>
+            <a href="../../2026/06/06/deferred_shading/" class="archive-link">渲染管线-延迟渲染：G-Buffer、光照与 Vulkan Subpass</a>
           </li>
         
           <li class="archive-item">
             <span class="archive-date">2026-06-06</span>
-            <a href="../../2026/06/06/clustered_forward_shading/" class="archive-link">深入解析集群前向渲染（Clustered Forward Shading）：原理、Compute Shader 架构与工程实践</a>
+            <a href="../../2026/06/06/cascaded_shadow_map/" class="archive-link">光照技术-级联阴影映射 CSM：视锥分割与稳定阴影</a>
+          </li>
+        
+          <li class="archive-item">
+            <span class="archive-date">2026-06-06</span>
+            <a href="../../2026/06/06/forward_plus_shading/" class="archive-link">渲染管线-Forward+ 分块前向渲染：光源裁剪与计算着色器</a>
+          </li>
+        
+          <li class="archive-item">
+            <span class="archive-date">2026-06-06</span>
+            <a href="../../2026/06/06/clustered_forward_shading/" class="archive-link">渲染管线-Clustered 集群前向渲染：三维光源裁剪与着色</a>
+          </li>
+        
+          <li class="archive-item">
+            <span class="archive-date">2025-05-05</span>
+            <a href="../../2025/05/05/%E9%81%AE%E8%94%BD/" class="archive-link">光照技术-环境光遮蔽 AO：多尺度遮蔽与 PBR 融合</a>
           </li>
         
       </ul>
@@ -294,6 +331,30 @@
     </div>
   </div>
 </footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>联系我</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
 
   
   <!-- 搜索模态框 -->

@@ -6,16 +6,16 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>oh-my-posh配置手册 | 萤虫之光</title>
+<title>开发工具-Oh My Posh 与 PowerShell 终端配置 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
-<meta name="keywords" content="Shell">
+<meta name="keywords" content="Tooling">
 <meta name="author" content="Berg Zha">
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="oh-my-posh配置手册">
+<meta property="og:title" content="开发工具-Oh My Posh 与 PowerShell 终端配置">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2024/04/04/oh-my-posh%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -57,6 +57,10 @@
 
 <script>
   MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
     tex: {
       inlineMath: [['\\(', '\\)'], ['$', '$']],
       displayMath: [['\\[', '\\]'], ['$$', '$$']]
@@ -84,38 +88,47 @@
       <ul class="nav-list">
         
           <li class="nav-item">
-            <a href="../../../../index.html" 
-               class="nav-link ">
-              首页
-            </a>
+            
+              <a href="../../../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../archives" 
-               class="nav-link ">
-              归档
-            </a>
+            
+              <a href="../../../../archives" 
+                 class="nav-link ">
+                归档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../tags" 
-               class="nav-link ">
-              标签
-            </a>
+            
+              <a href="../../../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../docs/" 
-               class="nav-link ">
-              文档
-            </a>
+            
+              <a href="../../../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../about" 
-               class="nav-link ">
-              关于
-            </a>
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
           </li>
         
       </ul>
@@ -169,38 +182,47 @@
     <ul class="mobile-nav-list">
       
         <li class="mobile-nav-item">
-          <a href="../../../../index.html" 
-             class="mobile-nav-link ">
-            首页
-          </a>
+          
+            <a href="../../../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../archives" 
-             class="mobile-nav-link ">
-            归档
-          </a>
+          
+            <a href="../../../../archives" 
+               class="mobile-nav-link ">
+              归档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../tags" 
-             class="mobile-nav-link ">
-            标签
-          </a>
+          
+            <a href="../../../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../docs/" 
-             class="mobile-nav-link ">
-            文档
-          </a>
+          
+            <a href="../../../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../about" 
-             class="mobile-nav-link ">
-            关于
-          </a>
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
         </li>
       
     </ul>
@@ -214,7 +236,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">oh-my-posh配置手册</h1>
+      <h1 class="post-title">开发工具-Oh My Posh 与 PowerShell 终端配置</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -238,8 +260,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-06">
-        更新于 2026-08-06
+      <time datetime="2026-09-10">
+        更新于 2026-09-10
       </time>
     </span>
   
@@ -311,7 +333,7 @@
           <path d="M7 7h.01"></path>
         </svg>
         
-          <a href="../../../../tags/Shell/" class="tag-link">Shell</a>
+          <a href="../../../../tags/Tooling/" class="tag-link">Tooling</a>
         
       </div>
     
@@ -328,16 +350,16 @@
     <!-- 上一篇 / 下一篇 -->
     <nav class="post-nav">
       
-        <a href="../debian%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/" class="post-nav-item prev">
+        <a href="../../../../2024/04/04/debian%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">debian配置手册</span>
+          <span class="post-nav-title">开发工具-Debian 桌面与开发环境配置</span>
         </a>
       
       
       
-        <a href="../vscode%E9%85%8D%E7%BD%AEcpp%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83/" class="post-nav-item next">
+        <a href="../../../../2024/04/04/vscode%E9%85%8D%E7%BD%AEcpp%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83/" class="post-nav-item next">
           <span class="post-nav-label">下一篇</span>
-          <span class="post-nav-title">vscode配置cpp调试环境</span>
+          <span class="post-nav-title">开发工具-VS Code 配置 C++ 构建与调试</span>
         </a>
       
     </nav>
@@ -400,6 +422,30 @@
     </div>
   </div>
 </footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>联系我</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
 
   
   <!-- 搜索模态框 -->

@@ -57,6 +57,10 @@
 
 <script>
   MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
     tex: {
       inlineMath: [['\\(', '\\)'], ['$', '$']],
       displayMath: [['\\[', '\\]'], ['$$', '$$']]
@@ -84,38 +88,47 @@
       <ul class="nav-list">
         
           <li class="nav-item">
-            <a href="../../../index.html" 
-               class="nav-link ">
-              首页
-            </a>
+            
+              <a href="../../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../archives" 
-               class="nav-link active">
-              归档
-            </a>
+            
+              <a href="../../../archives" 
+                 class="nav-link active">
+                归档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../tags" 
-               class="nav-link ">
-              标签
-            </a>
+            
+              <a href="../../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../docs/" 
-               class="nav-link ">
-              文档
-            </a>
+            
+              <a href="../../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../about" 
-               class="nav-link ">
-              关于
-            </a>
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
           </li>
         
       </ul>
@@ -169,38 +182,47 @@
     <ul class="mobile-nav-list">
       
         <li class="mobile-nav-item">
-          <a href="../../../index.html" 
-             class="mobile-nav-link ">
-            首页
-          </a>
+          
+            <a href="../../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../archives" 
-             class="mobile-nav-link active">
-            归档
-          </a>
+          
+            <a href="../../../archives" 
+               class="mobile-nav-link active">
+              归档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../tags" 
-             class="mobile-nav-link ">
-            标签
-          </a>
+          
+            <a href="../../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../docs/" 
-             class="mobile-nav-link ">
-            文档
-          </a>
+          
+            <a href="../../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../about" 
-             class="mobile-nav-link ">
-            关于
-          </a>
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
         </li>
       
     </ul>
@@ -218,12 +240,75 @@
           归档
         
       </h1>
-      <p class="archive-count">共 5 篇文章</p>
+      <p class="archive-count">共 10 篇文章</p>
     </header>
 
     <div class="archive-content">
       
         
+          
+          
+          <h2 class="archive-year">2026</h2>
+          <ul class="archive-list">
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">08-06</span>
+          <a href="../../../2026/08/06/Layout/" class="archive-link">渲染管线-Vulkan Subpass 与布局转换：TBDR 片上数据路径</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">06-06</span>
+          <a href="../../../2026/06/06/%E5%9F%BA%E4%BA%8E%20Debian%20%E7%9A%84%E7%A7%81%E6%9C%89%20Git%20%E8%BF%9C%E7%A8%8B%E4%BB%93%E5%BA%93%E6%90%AD%E5%BB%BA%E6%8C%87%E5%8D%97/" class="archive-link">部署运维-Debian 搭建私有 Git 仓库：SSH 认证与权限隔离</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">06-06</span>
+          <a href="../../../2026/06/06/fullscreen_quad_rendering/" class="archive-link">渲染管线-全屏三角形：无缓冲绘制与片元开销优化</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">06-06</span>
+          <a href="../../../2026/06/06/deferred_shading/" class="archive-link">渲染管线-延迟渲染：G-Buffer、光照与 Vulkan Subpass</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">06-06</span>
+          <a href="../../../2026/06/06/cascaded_shadow_map/" class="archive-link">光照技术-级联阴影映射 CSM：视锥分割与稳定阴影</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">06-06</span>
+          <a href="../../../2026/06/06/forward_plus_shading/" class="archive-link">渲染管线-Forward+ 分块前向渲染：光源裁剪与计算着色器</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">06-06</span>
+          <a href="../../../2026/06/06/multithread_rendering/" class="archive-link">游戏引擎-Vulkan 多线程渲染：并行录制与 UE4 架构改造</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">06-06</span>
+          <a href="../../../2026/06/06/clustered_forward_shading/" class="archive-link">渲染管线-Clustered 集群前向渲染：三维光源裁剪与着色</a>
+        </li>
+      
+        
+          
+            </ul>
           
           
           <h2 class="archive-year">2025</h2>
@@ -232,42 +317,14 @@
         
         <li class="archive-item">
           <span class="archive-date">05-05</span>
-          <a href="../../../2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/" class="archive-link">深入解析移动端架构与渲染优化：从骁龙 8 Elite 缓存设计到 TBDR 延迟渲染实践</a>
+          <a href="../../../2025/05/05/%E9%81%AE%E8%94%BD/" class="archive-link">光照技术-环境光遮蔽 AO：多尺度遮蔽与 PBR 融合</a>
         </li>
       
         
         
         <li class="archive-item">
           <span class="archive-date">05-05</span>
-          <a href="../../../2025/05/05/debian%E6%90%AD%E5%BB%BAgithub%E5%8D%9A%E5%AE%A2%E6%89%8B%E5%86%8C/" class="archive-link">debian搭建github博客手册</a>
-        </li>
-      
-        
-          
-            </ul>
-          
-          
-          <h2 class="archive-year">2024</h2>
-          <ul class="archive-list">
-        
-        
-        <li class="archive-item">
-          <span class="archive-date">04-04</span>
-          <a href="../../../2024/04/04/debian%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/" class="archive-link">debian配置手册</a>
-        </li>
-      
-        
-        
-        <li class="archive-item">
-          <span class="archive-date">04-04</span>
-          <a href="../../../2024/04/04/oh-my-posh%E9%85%8D%E7%BD%AE%E6%89%8B%E5%86%8C/" class="archive-link">oh-my-posh配置手册</a>
-        </li>
-      
-        
-        
-        <li class="archive-item">
-          <span class="archive-date">04-04</span>
-          <a href="../../../2024/04/04/vscode%E9%85%8D%E7%BD%AEcpp%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83/" class="archive-link">vscode配置cpp调试环境</a>
+          <a href="../../../2025/05/05/RenderDoc%E5%9F%BA%E7%A1%80%E8%B0%83%E8%AF%95%E6%AD%A5%E9%AA%A4/" class="archive-link">开发工具-RenderDoc 图形调试与性能分析</a>
         </li>
       
       
@@ -302,17 +359,21 @@
           <span class="page-number current">2</span>
         
       
+        
+          <a href="../3/" class="page-number">3</a>
+        
+      
       
       
     </div>
 
     
-      <span class="page-link next disabled">
+      <a href="../3/" class="page-link next">
         下一页
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m9 18 6-6-6-6"></path>
         </svg>
-      </span>
+      </a>
     
   </nav>
 
@@ -364,6 +425,30 @@
     </div>
   </div>
 </footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>联系我</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
 
   
   <!-- 搜索模态框 -->

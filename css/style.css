@@ -253,6 +253,7 @@ button {
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--text-sm);
   font-weight: 500;
+  line-height: inherit;
   color: var(--text-secondary);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
@@ -336,8 +337,12 @@ button {
 
 .mobile-nav-link {
   display: block;
+  width: 100%;
   padding: var(--spacing-md);
+  font-size: inherit;
   font-weight: 500;
+  line-height: inherit;
+  text-align: left;
   color: var(--text-primary);
   transition: background-color var(--transition-fast);
 }
@@ -1371,6 +1376,80 @@ a.tree-label:hover {
 .doc-nav-title {
   font-weight: 500;
   color: var(--text-primary);
+}
+
+/* ===== 关于弹框 ===== */
+.about-dialog {
+  width: calc(100% - 2 * var(--spacing-md));
+  max-width: 400px;
+  max-height: calc(100vh - 2 * var(--spacing-md));
+  max-height: calc(100dvh - 2 * var(--spacing-md));
+  margin: auto;
+  padding: var(--spacing-lg);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.about-dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.about-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.about-header h2 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+.about-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.about-item + .about-item {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.about-details dt {
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.about-details dd {
+  line-height: var(--leading-relaxed);
+  overflow-wrap: anywhere;
+}
+
+.about-details a {
+  color: var(--primary-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.about-details a:hover {
+  color: var(--text-primary);
+}
+
+.about-toggle:focus-visible,
+.about-dialog :focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
 }
 
 /* ===== 搜索模态框 ===== */

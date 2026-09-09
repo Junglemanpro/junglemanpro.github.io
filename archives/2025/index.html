@@ -57,6 +57,10 @@
 
 <script>
   MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
     tex: {
       inlineMath: [['\\(', '\\)'], ['$', '$']],
       displayMath: [['\\[', '\\]'], ['$$', '$$']]
@@ -84,38 +88,47 @@
       <ul class="nav-list">
         
           <li class="nav-item">
-            <a href="../../index.html" 
-               class="nav-link ">
-              首页
-            </a>
+            
+              <a href="../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../archives" 
-               class="nav-link active">
-              归档
-            </a>
+            
+              <a href="../../archives" 
+                 class="nav-link active">
+                归档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../tags" 
-               class="nav-link ">
-              标签
-            </a>
+            
+              <a href="../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../docs/" 
-               class="nav-link ">
-              文档
-            </a>
+            
+              <a href="../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../about" 
-               class="nav-link ">
-              关于
-            </a>
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
           </li>
         
       </ul>
@@ -169,38 +182,47 @@
     <ul class="mobile-nav-list">
       
         <li class="mobile-nav-item">
-          <a href="../../index.html" 
-             class="mobile-nav-link ">
-            首页
-          </a>
+          
+            <a href="../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../archives" 
-             class="mobile-nav-link active">
-            归档
-          </a>
+          
+            <a href="../../archives" 
+               class="mobile-nav-link active">
+              归档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../tags" 
-             class="mobile-nav-link ">
-            标签
-          </a>
+          
+            <a href="../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../docs/" 
-             class="mobile-nav-link ">
-            文档
-          </a>
+          
+            <a href="../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../about" 
-             class="mobile-nav-link ">
-            关于
-          </a>
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
         </li>
       
     </ul>
@@ -218,7 +240,7 @@
           归档
         
       </h1>
-      <p class="archive-count">共 3 篇文章</p>
+      <p class="archive-count">共 4 篇文章</p>
     </header>
 
     <div class="archive-content">
@@ -232,21 +254,28 @@
         
         <li class="archive-item">
           <span class="archive-date">05-05</span>
-          <a href="../../2025/05/05/%E9%81%AE%E8%94%BD/" class="archive-link">深入解析环境光遮蔽（Ambient Occlusion, AO）：多尺度解构、SSAO/HBAO/GTAO 原理与 PBR 融合实践</a>
+          <a href="../../2025/05/05/%E9%81%AE%E8%94%BD/" class="archive-link">光照技术-环境光遮蔽 AO：多尺度遮蔽与 PBR 融合</a>
         </li>
       
         
         
         <li class="archive-item">
           <span class="archive-date">05-05</span>
-          <a href="../../2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/" class="archive-link">深入解析移动端架构与渲染优化：从骁龙 8 Elite 缓存设计到 TBDR 延迟渲染实践</a>
+          <a href="../../2025/05/05/RenderDoc%E5%9F%BA%E7%A1%80%E8%B0%83%E8%AF%95%E6%AD%A5%E9%AA%A4/" class="archive-link">开发工具-RenderDoc 图形调试与性能分析</a>
         </li>
       
         
         
         <li class="archive-item">
           <span class="archive-date">05-05</span>
-          <a href="../../2025/05/05/debian%E6%90%AD%E5%BB%BAgithub%E5%8D%9A%E5%AE%A2%E6%89%8B%E5%86%8C/" class="archive-link">debian搭建github博客手册</a>
+          <a href="../../2025/05/05/%E7%A7%BB%E5%8A%A8%E7%AB%AF%E4%BC%98%E5%8C%96/" class="archive-link">性能优化-移动 GPU 缓存与 TBDR：带宽、能效与延迟渲染</a>
+        </li>
+      
+        
+        
+        <li class="archive-item">
+          <span class="archive-date">05-05</span>
+          <a href="../../2025/05/05/debian%E6%90%AD%E5%BB%BAgithub%E5%8D%9A%E5%AE%A2%E6%89%8B%E5%86%8C/" class="archive-link">部署运维-Debian 搭建 Hexo 与 GitHub Pages 博客</a>
         </li>
       
       
@@ -305,6 +334,30 @@
     </div>
   </div>
 </footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>联系我</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
 
   
   <!-- 搜索模态框 -->

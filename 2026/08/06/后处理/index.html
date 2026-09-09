@@ -6,16 +6,16 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>深入解析现代图形管线中的后处理架构：从 Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化 | 萤虫之光</title>
+<title>后处理-Bloom、色调映射与 TAA：Vulkan 管线与带宽优化 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
-<meta name="keywords" content="Vulkan,Graphics Pipeline,PostProcessing,Shader,Tone Mapping,Bloom,TAA">
+<meta name="keywords" content="PostProcessing,Graphics Pipeline,Optimization">
 <meta name="author" content="Berg Zha">
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="深入解析现代图形管线中的后处理架构：从 Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化">
+<meta property="og:title" content="后处理-Bloom、色调映射与 TAA：Vulkan 管线与带宽优化">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2026/08/06/%E5%90%8E%E5%A4%84%E7%90%86/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -57,6 +57,10 @@
 
 <script>
   MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
     tex: {
       inlineMath: [['\\(', '\\)'], ['$', '$']],
       displayMath: [['\\[', '\\]'], ['$$', '$$']]
@@ -84,38 +88,47 @@
       <ul class="nav-list">
         
           <li class="nav-item">
-            <a href="../../../../index.html" 
-               class="nav-link ">
-              首页
-            </a>
+            
+              <a href="../../../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../archives" 
-               class="nav-link ">
-              归档
-            </a>
+            
+              <a href="../../../../archives" 
+                 class="nav-link ">
+                归档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../tags" 
-               class="nav-link ">
-              标签
-            </a>
+            
+              <a href="../../../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../docs/" 
-               class="nav-link ">
-              文档
-            </a>
+            
+              <a href="../../../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../about" 
-               class="nav-link ">
-              关于
-            </a>
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
           </li>
         
       </ul>
@@ -169,38 +182,47 @@
     <ul class="mobile-nav-list">
       
         <li class="mobile-nav-item">
-          <a href="../../../../index.html" 
-             class="mobile-nav-link ">
-            首页
-          </a>
+          
+            <a href="../../../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../archives" 
-             class="mobile-nav-link ">
-            归档
-          </a>
+          
+            <a href="../../../../archives" 
+               class="mobile-nav-link ">
+              归档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../tags" 
-             class="mobile-nav-link ">
-            标签
-          </a>
+          
+            <a href="../../../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../docs/" 
-             class="mobile-nav-link ">
-            文档
-          </a>
+          
+            <a href="../../../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../about" 
-             class="mobile-nav-link ">
-            关于
-          </a>
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
         </li>
       
     </ul>
@@ -214,7 +236,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">深入解析现代图形管线中的后处理架构：从 Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化</h1>
+      <h1 class="post-title">后处理-Bloom、色调映射与 TAA：Vulkan 管线与带宽优化</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -238,8 +260,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-07">
-        更新于 2026-08-07
+      <time datetime="2026-09-10">
+        更新于 2026-09-10
       </time>
     </span>
   
@@ -281,8 +303,8 @@
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
       <h1
-id="深入解析现代图形管线中的后处理架构从-dual-bluraces-tone-mapping-到-vulkan-屏障与-ping-pong-优化">深入解析现代图形管线中的后处理架构：从
-Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化</h1>
+id="后处理-bloom色调映射与-taavulkan-管线与带宽优化">后处理-Bloom、色调映射与
+TAA：Vulkan 管线与带宽优化</h1>
 <p>后处理（Post-Processing）是现代 3D
 实时渲染管线中连接“三维物理着色”与“二维屏幕呈现”的关键桥梁。在完成场景的
 G-Buffer 绘制、光照计算与阴影叠加后，帧缓冲（Frame
@@ -632,19 +654,11 @@ Compute Shader 绕过光栅化开销，利用 <code>VkImageMemoryBarrier</code>
           <path d="M7 7h.01"></path>
         </svg>
         
-          <a href="../../../../tags/Vulkan/" class="tag-link">Vulkan</a>
+          <a href="../../../../tags/PostProcessing/" class="tag-link">PostProcessing</a>
         
           <a href="../../../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
         
-          <a href="../../../../tags/PostProcessing/" class="tag-link">PostProcessing</a>
-        
-          <a href="../../../../tags/Shader/" class="tag-link">Shader</a>
-        
-          <a href="../../../../tags/Tone-Mapping/" class="tag-link">Tone Mapping</a>
-        
-          <a href="../../../../tags/Bloom/" class="tag-link">Bloom</a>
-        
-          <a href="../../../../tags/TAA/" class="tag-link">TAA</a>
+          <a href="../../../../tags/Optimization/" class="tag-link">Optimization</a>
         
       </div>
     
@@ -661,16 +675,16 @@ Compute Shader 绕过光栅化开销，利用 <code>VkImageMemoryBarrier</code>
     <!-- 上一篇 / 下一篇 -->
     <nav class="post-nav">
       
-        <a href="../indirectDraw/" class="post-nav-item prev">
+        <a href="../../../../2026/08/06/indirectDraw/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">深入解析 Vulkan Indirect Draw（间接绘制）：从 GPU-Driven 管线、Multi-Draw Indirect 到无绑定（Bindless）工程实践</span>
+          <span class="post-nav-title">渲染管线-Vulkan 间接绘制：GPU 驱动、批量绘制与 Bindless</span>
         </a>
       
       
       
-        <a href="../SSSAO/" class="post-nav-item next">
+        <a href="../../../../2026/08/06/SSSAO/" class="post-nav-item next">
           <span class="post-nav-label">下一篇</span>
-          <span class="post-nav-title">深入解析屏幕空间环境光遮蔽（SSAO）：数学半球积分、采样核优化、深度不连续瑕疵与双边滤波工程实现</span>
+          <span class="post-nav-title">后处理-SSAO 屏幕空间环境光遮蔽：采样、瑕疵修正与双边滤波</span>
         </a>
       
     </nav>
@@ -682,8 +696,8 @@ Compute Shader 绕过光栅化开销，利用 <code>VkImageMemoryBarrier</code>
       <div class="toc-wrapper">
         <h3 class="toc-title">目录</h3>
         <div class="toc-content">
-          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E7%8E%B0%E4%BB%A3%E5%9B%BE%E5%BD%A2%E7%AE%A1%E7%BA%BF%E4%B8%AD%E7%9A%84%E5%90%8E%E5%A4%84%E7%90%86%E6%9E%B6%E6%9E%84%E4%BB%8E-dual-bluraces-tone-mapping-%E5%88%B0-vulkan-%E5%B1%8F%E9%9A%9C%E4%B8%8E-ping-pong-%E4%BC%98%E5%8C%96"><span class="toc-text">深入解析现代图形管线中的后处理架构：从
-Dual Blur、ACES Tone Mapping 到 Vulkan 屏障与 Ping-Pong 优化</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E7%8E%B0%E4%BB%A3%E5%90%8E%E5%A4%84%E7%90%86%E7%AE%A1%E7%BA%BF%E7%9A%84%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E7%A1%AC%E4%BB%B6%E7%93%B6%E9%A2%88"><span class="toc-text">一、
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%90%8E%E5%A4%84%E7%90%86-bloom%E8%89%B2%E8%B0%83%E6%98%A0%E5%B0%84%E4%B8%8E-taavulkan-%E7%AE%A1%E7%BA%BF%E4%B8%8E%E5%B8%A6%E5%AE%BD%E4%BC%98%E5%8C%96"><span class="toc-text">后处理-Bloom、色调映射与
+TAA：Vulkan 管线与带宽优化</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E7%8E%B0%E4%BB%A3%E5%90%8E%E5%A4%84%E7%90%86%E7%AE%A1%E7%BA%BF%E7%9A%84%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E7%A1%AC%E4%BB%B6%E7%93%B6%E9%A2%88"><span class="toc-text">一、
 现代后处理管线的架构设计与硬件瓶颈</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8B%93%E6%89%91%E6%8B%93%E6%89%91%E6%8B%93%E6%89%91ping-pong-%E5%B8%A7%E7%BC%93%E5%86%B2%E4%BA%A4%E6%8D%A2%E6%9C%BA%E5%88%B6"><span class="toc-text">1. 拓扑拓扑拓扑：Ping-Pong
 帧缓冲交换机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#dram-%E5%B8%A6%E5%AE%BD%E7%93%B6%E9%A2%88%E4%B8%8E%E5%88%86%E8%BE%A8%E7%8E%87%E9%87%91%E5%AD%97%E5%A1%94mip-pyramid"><span class="toc-text">2. DRAM
 带宽瓶颈与分辨率金字塔（Mip Pyramid）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#compute-shader-vs-graphics-pipeline"><span class="toc-text">3. Compute Shader vs
@@ -749,6 +763,30 @@ Transient Attachments 与 Memory Aliasing（瞬态附件与内存复用）</span
     </div>
   </div>
 </footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>联系我</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
 
   
   <!-- 搜索模态框 -->

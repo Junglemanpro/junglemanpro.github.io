@@ -79,6 +79,59 @@
     });
   }
 
+  // ===== 关于弹框 =====
+  function initAboutDialog() {
+    const dialog = document.getElementById("about-dialog");
+    const triggers = document.querySelectorAll(".about-toggle");
+    if (!dialog || triggers.length === 0) return;
+
+    let returnFocus = null;
+    let previousOverflow = "";
+    let pointerStartedOutside = false;
+
+    triggers.forEach(function (trigger) {
+      trigger.addEventListener("click", function () {
+        if (dialog.open) return;
+
+        // 移动端导航打开弹框后会收起，关闭时将焦点返回菜单按钮。
+        returnFocus = trigger.closest(".mobile-nav")
+          ? document.querySelector(".menu-toggle")
+          : trigger;
+        previousOverflow = document.body.style.overflow;
+        dialog.showModal();
+        document.body.style.overflow = "hidden";
+      });
+    });
+
+    dialog.querySelector(".about-close").addEventListener("click", function () {
+      dialog.close();
+    });
+
+    function isOutsideDialog(event) {
+      const rect = dialog.getBoundingClientRect();
+      return event.target === dialog && (
+        event.clientX < rect.left || event.clientX > rect.right ||
+        event.clientY < rect.top || event.clientY > rect.bottom
+      );
+    }
+
+    dialog.addEventListener("pointerdown", function (event) {
+      pointerStartedOutside = isOutsideDialog(event);
+    });
+
+    dialog.addEventListener("click", function (event) {
+      if (pointerStartedOutside && isOutsideDialog(event)) {
+        dialog.close();
+      }
+      pointerStartedOutside = false;
+    });
+
+    dialog.addEventListener("close", function () {
+      document.body.style.overflow = previousOverflow;
+      if (returnFocus) returnFocus.focus({ preventScroll: true });
+    });
+  }
+
   // ===== TOC 高亮 =====
   function initTocHighlight() {
     const toc = document.querySelector(".toc-content");
@@ -348,6 +401,7 @@
   function init() {
     initThemeToggle();
     initMobileMenu();
+    initAboutDialog();
     initTocHighlight();
     initLightbox();
     initLazyLoad();

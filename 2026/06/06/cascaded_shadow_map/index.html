@@ -6,16 +6,16 @@
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
 <!-- 标题 -->
-<title>深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化 | 萤虫之光</title>
+<title>光照技术-级联阴影映射 CSM：视锥分割与稳定阴影 | 萤虫之光</title>
 
 <!-- 网站描述 -->
 <meta name="description" content="个人博客">
-<meta name="keywords" content="Shadow,Cascaded Shadow Map,Graphics Pipeline,Shadow Map">
+<meta name="keywords" content="Lighting">
 <meta name="author" content="Berg Zha">
 
 <!-- Open Graph -->
 <meta property="og:type" content="article">
-<meta property="og:title" content="深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化">
+<meta property="og:title" content="光照技术-级联阴影映射 CSM：视锥分割与稳定阴影">
 <meta property="og:description" content="个人博客">
 <meta property="og:url" content="http://junglemanpro.com/2026/06/06/cascaded_shadow_map/index.html">
 <meta property="og:site_name" content="萤虫之光">
@@ -57,6 +57,10 @@
 
 <script>
   MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
     tex: {
       inlineMath: [['\\(', '\\)'], ['$', '$']],
       displayMath: [['\\[', '\\]'], ['$$', '$$']]
@@ -84,38 +88,47 @@
       <ul class="nav-list">
         
           <li class="nav-item">
-            <a href="../../../../index.html" 
-               class="nav-link ">
-              首页
-            </a>
+            
+              <a href="../../../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../archives" 
-               class="nav-link ">
-              归档
-            </a>
+            
+              <a href="../../../../archives" 
+                 class="nav-link ">
+                归档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../tags" 
-               class="nav-link ">
-              标签
-            </a>
+            
+              <a href="../../../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../docs/" 
-               class="nav-link ">
-              文档
-            </a>
+            
+              <a href="../../../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
           </li>
         
           <li class="nav-item">
-            <a href="../../../../about" 
-               class="nav-link ">
-              关于
-            </a>
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
           </li>
         
       </ul>
@@ -169,38 +182,47 @@
     <ul class="mobile-nav-list">
       
         <li class="mobile-nav-item">
-          <a href="../../../../index.html" 
-             class="mobile-nav-link ">
-            首页
-          </a>
+          
+            <a href="../../../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../archives" 
-             class="mobile-nav-link ">
-            归档
-          </a>
+          
+            <a href="../../../../archives" 
+               class="mobile-nav-link ">
+              归档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../tags" 
-             class="mobile-nav-link ">
-            标签
-          </a>
+          
+            <a href="../../../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../docs/" 
-             class="mobile-nav-link ">
-            文档
-          </a>
+          
+            <a href="../../../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
         </li>
       
         <li class="mobile-nav-item">
-          <a href="../../../../about" 
-             class="mobile-nav-link ">
-            关于
-          </a>
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
         </li>
       
     </ul>
@@ -214,7 +236,7 @@
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
-      <h1 class="post-title">深入解析级联阴影映射（Cascaded Shadow Map, CSM）：透视锯齿原理、视锥分割推导与工程平滑优化</h1>
+      <h1 class="post-title">光照技术-级联阴影映射 CSM：视锥分割与稳定阴影</h1>
       
       <!-- 元信息 -->
       <div class="post-meta">
@@ -238,8 +260,8 @@
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <time datetime="2026-08-07">
-        更新于 2026-08-07
+      <time datetime="2026-09-10">
+        更新于 2026-09-10
       </time>
     </span>
   
@@ -281,8 +303,8 @@
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
       <h1
-id="深入解析级联阴影映射cascaded-shadow-map-csm">深入解析级联阴影映射（Cascaded
-Shadow Map, CSM）</h1>
+id="光照技术-级联阴影映射-csm视锥分割与稳定阴影">光照技术-级联阴影映射
+CSM：视锥分割与稳定阴影</h1>
 <p>在实时图形学与 3D
 渲染管线中，阴影渲染不仅是提升场景空间感与真实感的核心技术，也是性能与画质消耗的主要痛点之一。<strong>级联阴影映射（Cascaded
 Shadow Map，简称 CSM）</strong> 是目前工业级渲染引擎（如 Unreal
@@ -600,13 +622,7 @@ PC 游戏的首选阴影方案。</p>
           <path d="M7 7h.01"></path>
         </svg>
         
-          <a href="../../../../tags/Shadow/" class="tag-link">Shadow</a>
-        
-          <a href="../../../../tags/Cascaded-Shadow-Map/" class="tag-link">Cascaded Shadow Map</a>
-        
-          <a href="../../../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
-        
-          <a href="../../../../tags/Shadow-Map/" class="tag-link">Shadow Map</a>
+          <a href="../../../../tags/Lighting/" class="tag-link">Lighting</a>
         
       </div>
     
@@ -623,16 +639,16 @@ PC 游戏的首选阴影方案。</p>
     <!-- 上一篇 / 下一篇 -->
     <nav class="post-nav">
       
-        <a href="../deferred_shading/" class="post-nav-item prev">
+        <a href="../../../../2026/06/06/deferred_shading/" class="post-nav-item prev">
           <span class="post-nav-label">上一篇</span>
-          <span class="post-nav-title">深入解析延迟渲染（Deferred Shading）：原理、Vulkan Subpass 实践与进阶优化</span>
+          <span class="post-nav-title">渲染管线-延迟渲染：G-Buffer、光照与 Vulkan Subpass</span>
         </a>
       
       
       
-        <a href="../forward_plus_shading/" class="post-nav-item next">
+        <a href="../../../../2026/06/06/forward_plus_shading/" class="post-nav-item next">
           <span class="post-nav-label">下一篇</span>
-          <span class="post-nav-title">深入解析 Forward+ 渲染（Forward Plus / Tiled Forward Shading）：原理、Compute Shader 实践与工程优化</span>
+          <span class="post-nav-title">渲染管线-Forward+ 分块前向渲染：光源裁剪与计算着色器</span>
         </a>
       
     </nav>
@@ -644,8 +660,8 @@ PC 游戏的首选阴影方案。</p>
       <div class="toc-wrapper">
         <h3 class="toc-title">目录</h3>
         <div class="toc-content">
-          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E7%BA%A7%E8%81%94%E9%98%B4%E5%BD%B1%E6%98%A0%E5%B0%84cascaded-shadow-map-csm"><span class="toc-text">深入解析级联阴影映射（Cascaded
-Shadow Map, CSM）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E5%BC%95%E8%A8%80%E9%98%B4%E5%BD%B1%E9%80%8F%E8%A7%86%E9%94%AF%E9%BD%BF%E9%97%AE%E9%A2%98-perspective-aliasing"><span class="toc-text">一、
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%85%89%E7%85%A7%E6%8A%80%E6%9C%AF-%E7%BA%A7%E8%81%94%E9%98%B4%E5%BD%B1%E6%98%A0%E5%B0%84-csm%E8%A7%86%E9%94%A5%E5%88%86%E5%89%B2%E4%B8%8E%E7%A8%B3%E5%AE%9A%E9%98%B4%E5%BD%B1"><span class="toc-text">光照技术-级联阴影映射
+CSM：视锥分割与稳定阴影</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E5%BC%95%E8%A8%80%E9%98%B4%E5%BD%B1%E9%80%8F%E8%A7%86%E9%94%AF%E9%BD%BF%E9%97%AE%E9%A2%98-perspective-aliasing"><span class="toc-text">一、
 引言：阴影透视锯齿问题 (Perspective Aliasing)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%88%90%E5%9B%A0%E5%88%86%E6%9E%90"><span class="toc-text">1. 成因分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E7%AE%80%E5%8D%95%E7%9A%84%E6%8F%90%E9%AB%98%E5%88%86%E8%BE%A8%E7%8E%87%E4%B8%8D%E5%8F%AF%E8%A1%8C"><span class="toc-text">2.
 为什么简单的提高分辨率不可行？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-csm-%E6%A0%B8%E5%BF%83%E6%80%9D%E6%83%B3%E4%B8%8E%E8%A7%86%E9%94%A5%E4%BD%93%E5%88%86%E5%89%B2%E7%AD%96%E7%95%A5"><span class="toc-text">二、 CSM
 核心思想与视锥体分割策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E8%80%A6%E6%80%9D%E6%83%B3"><span class="toc-text">1. 解耦思想</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%86%E9%94%A5%E4%BD%93%E5%88%86%E5%89%B2%E6%96%B9%E6%A1%88-frustum-split-schemes"><span class="toc-text">2. 视锥体分割方案 (Frustum
@@ -707,6 +723,30 @@ Unreal Engine 5 Virtual Shadow Maps, VSM）</span></a></li></ol></li><li class="
     </div>
   </div>
 </footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>联系我</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
 
   
   <!-- 搜索模态框 -->
