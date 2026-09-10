@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+<!-- 标题 -->
+<title>性能优化-TBDR 渲染带宽账单：定位开销与管线重组 | 萤虫之光</title>
+
+<!-- 网站描述 -->
+<meta name="description" content="个人博客">
+<meta name="keywords" content="Graphics Pipeline,Optimization">
+<meta name="author" content="Berg Zha">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="性能优化-TBDR 渲染带宽账单：定位开销与管线重组">
+<meta property="og:description" content="个人博客">
+<meta property="og:url" content="https://junglemanpro.com/posts/ab78a68f/">
+<meta property="og:site_name" content="萤虫之光">
+
+
+<!-- Favicon -->
+
+<link rel="icon" href="../../img/berg.jpg">
+
+
+<!-- 预连接 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- 字体 -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- 样式表 -->
+
+<link rel="stylesheet" href="../../css/style.css">
+
+
+<!-- RSS -->
+
+
+<!-- 规范链接 -->
+<link rel="canonical" href="https://junglemanpro.com/posts/ab78a68f/">
+
+<!-- 主题色 -->
+<meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
+
+<!-- 自定义样式变量 -->
+<style>
+  :root {
+    --primary-color: #2563eb;
+  }
+</style>
+
+<script>
+  MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<meta name="generator" content="Hexo 8.1.2"></head>
+<body>
+  <header class="site-header">
+  <div class="header-container">
+    <!-- Logo / 站点标题 -->
+    <div class="site-brand">
+      <a href="../../index.html" class="site-logo">
+        
+          <span class="site-title">萤虫之光</span>
+        
+      </a>
+    </div>
+
+    <!-- 导航菜单 -->
+    <nav class="site-nav">
+      <ul class="nav-list">
+        
+          <li class="nav-item">
+            
+              <a href="../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../archives" 
+                 class="nav-link ">
+                归档
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
+          </li>
+        
+      </ul>
+    </nav>
+
+    <!-- 工具栏 -->
+    <div class="header-tools">
+      <!-- 搜索按钮 -->
+      
+        <button class="tool-btn search-toggle" aria-label="搜索" title="搜索">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 主题切换 -->
+      
+        <button class="tool-btn theme-toggle" aria-label="切换主题" title="切换主题">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 移动端菜单按钮 -->
+      <button class="tool-btn menu-toggle" aria-label="菜单" title="菜单">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" x2="20" y1="12" y2="12"></line>
+          <line x1="4" x2="20" y1="6" y2="6"></line>
+          <line x1="4" x2="20" y1="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 移动端导航 -->
+  <div class="mobile-nav">
+    <ul class="mobile-nav-list">
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../archives" 
+               class="mobile-nav-link ">
+              归档
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
+        </li>
+      
+    </ul>
+  </div>
+</header>
+
+  
+  <main class="main-content">
+    <div class="container">
+      
+<div class="page-layout post-layout has-toc">
+  <article class="post-article">
+    <!-- 文章头部 -->
+    <header class="post-header">
+      <h1 class="post-title">性能优化-TBDR 渲染带宽账单：定位开销与管线重组</h1>
+      
+      <!-- 元信息 -->
+      <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-08-07">
+      2026-08-07
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+    <span class="meta-item meta-updated">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+      </svg>
+      <time datetime="2026-09-10">
+        更新于 2026-09-10
+      </time>
+    </span>
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      17.3k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 58 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+</div>
+
+      
+      <!-- 封面图 -->
+      
+    </header>
+
+    
+      <details class="mobile-post-toc">
+        <summary aria-controls="mobile-post-toc-content">
+          <span>文章目录</span>
+          <svg class="toc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </summary>
+        <nav id="mobile-post-toc-content" class="toc-content" aria-label="文章目录">
+          <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E5%85%88%E8%AE%B2%E6%B8%85%E6%A5%9A%E4%B8%89%E4%BB%B6%E4%BA%8B"><span class="toc-text">一、先讲清楚三件事</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%89%8B%E6%9C%BA-gpu-%E6%98%AF%E6%80%8E%E4%B9%88%E7%94%BB%E4%B8%80%E5%B8%A7%E7%9A%84"><span class="toc-text">1. 手机 GPU 是怎么画一帧的</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E5%8F%AB%E6%90%AC%E4%B8%80%E5%BC%A0%E5%9B%BE"><span class="toc-text">2. 什么叫“搬一张图”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%AC%E6%96%87%E7%9A%84%E8%AE%A1%E4%BB%B7%E5%8D%95%E4%BD%8D%E5%BC%A0"><span class="toc-text">3. 本文的计价单位：「张」</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E5%AE%9E%E9%99%85%E5%BC%95%E6%93%8E%E5%86%85%E4%B8%80%E8%88%AC%E7%AE%A1%E7%BA%BF%E5%9B%BE%E5%8F%8A%E5%AE%8C%E6%95%B4%E8%B4%A6%E5%8D%95"><span class="toc-text">二、实际引擎内一般管线图及完整账单</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BB%A1%E9%85%8D%E5%9F%BA%E7%BA%BF%E6%9C%89%E6%8A%98%E5%B0%84%E4%B8%80%E4%B8%AA-alpha-%E5%B1%82%E6%9C%89%E4%BA%BA%E7%BE%A4%E4%BB%A3%E7%90%86"><span class="toc-text">1. 满配基线：有折射、一个
+Alpha 层、有人群代理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8C%89%E6%AE%B5%E6%B1%87%E6%80%BB"><span class="toc-text">2. 按段汇总</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%A1%E7%BA%BF%E5%9B%BE%E5%93%AA%E4%BA%9B%E8%BE%93%E5%87%BA%E8%A2%AB%E4%BF%9D%E5%AD%98%E5%93%AA%E4%BA%9B%E7%BB%93%E6%9E%9C%E8%A2%AB%E5%86%8D%E6%AC%A1%E9%87%87%E6%A0%B7"><span class="toc-text">3.
+管线图：哪些输出被保存，哪些结果被再次采样</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E8%BF%99%E5%BC%A0%E8%B4%A6%E5%8D%95%E9%87%8C%E6%9C%80%E5%88%BA%E7%9C%BC%E7%9A%84%E4%BA%94%E4%BB%B6%E4%BA%8B"><span class="toc-text">三、这张账单里最刺眼的五件事</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BB%E4%BD%93%E5%8F%AA%E5%8D%A0-8%E4%B8%8D%E8%83%BD%E8%AF%BB%E6%88%90%E7%9D%80%E8%89%B2%E5%8F%AA%E8%8A%B1-8"><span class="toc-text">1. “主体只占 8%”不能读成“着色只花
+8%”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%8F%E6%98%8E%E8%A6%86%E7%9B%96%E5%BE%88%E5%B0%8F%E4%B8%8D%E4%BB%A3%E8%A1%A8%E5%85%A8%E5%B1%8F%E5%90%88%E6%88%90%E5%BE%88%E4%BE%BF%E5%AE%9C"><span class="toc-text">2.
+透明覆盖很小，不代表全屏合成很便宜</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BE%93%E5%87%BA%E5%8F%AA%E6%9C%89%E4%B8%80%E4%B8%AA%E6%95%B0%E4%B9%9F%E5%8F%AF%E8%83%BD%E6%89%AB%E4%BA%86%E4%B8%80%E6%95%B4%E5%B1%8F"><span class="toc-text">3.
+输出只有一个数，也可能扫了一整屏</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E5%88%86%E8%BE%A8%E7%8E%87%E4%B8%8D%E4%BC%9A%E8%87%AA%E5%8A%A8%E6%9B%BF%E4%BD%A0%E5%A4%84%E7%90%86%E5%9B%BA%E5%AE%9A%E5%88%86%E8%BE%A8%E7%8E%87%E9%98%B4%E5%BD%B1"><span class="toc-text">4.
+动态分辨率不会自动替你处理固定分辨率阴影</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#framegraph-%E8%83%BD%E7%9C%81%E9%92%B1%E4%BD%86%E5%89%8D%E6%8F%90%E6%98%AF%E5%A3%B0%E6%98%8E%E7%9C%9F%E5%AE%9E"><span class="toc-text">5. FrameGraph
+能省钱，但前提是声明真实</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E4%BC%98%E5%8C%96%E8%B4%A6%E5%8D%95"><span class="toc-text">四、优化账单</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%88%E7%9C%8B%E5%85%A8%E5%B1%80%E6%94%B6%E7%9B%8A%E6%9D%A1%E4%BB%B6%E5%92%8C%E5%AE%9E%E6%96%BD%E7%8A%B6%E6%80%81"><span class="toc-text">1.
+先看全局：收益、条件和实施状态</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%99%AE%E9%80%9A%E9%80%8F%E6%98%8E%E5%85%88%E5%8F%96%E6%B6%88%E4%B8%AD%E9%97%B4%E5%9B%BE%E5%86%8D%E8%AE%A8%E8%AE%BA%E5%90%88%E5%B9%B6"><span class="toc-text">2.
+普通透明：先取消中间图，再讨论合并</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%8F%E6%98%8E%E4%B8%8E%E4%BA%BA%E7%BE%A4%E7%9C%81%E7%9A%84%E6%98%AF%E7%89%A9%E7%90%86%E8%BE%B9%E7%95%8C%E4%B8%8D%E6%98%AF%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8"><span class="toc-text">3.
+透明与人群：省的是物理边界，不是函数调用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8A%97%E9%94%AF%E9%BD%BF%E4%B8%AD%E8%BD%AC%E8%83%BD%E5%86%99%E6%9C%80%E7%BB%88%E7%9B%AE%E6%A0%87%E5%B0%B1%E4%B8%8D%E5%BF%85%E5%86%8D%E6%8A%84%E4%B8%80%E9%81%8D"><span class="toc-text">4.
+抗锯齿中转：能写最终目标，就不必再抄一遍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9B%B4%E6%96%B9%E5%9B%BE%E5%87%8F%E5%B0%91%E6%A0%B7%E6%9C%AC%E4%B8%8D%E8%A6%81%E5%8F%AA%E5%87%8F%E5%B0%91%E7%BA%BF%E7%A8%8B"><span class="toc-text">5.
+直方图：减少样本，不要只减少线程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8A%98%E5%B0%84%E5%89%AF%E6%9C%AC%E5%BF%85%E9%A1%BB%E4%BB%98%E9%92%B1%E7%9B%B4%E6%8E%A5%E6%B7%B7%E5%90%88%E4%B9%9F%E4%BC%9A%E6%94%B9%E5%8F%98%E9%87%8D%E5%8F%A0%E8%AF%AD%E4%B9%89"><span class="toc-text">6.
+折射：副本必须付钱，直接混合也会改变重叠语义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B4%E5%BD%B1%E5%9B%BA%E5%AE%9A%E9%A2%84%E7%AE%97%E7%94%A8%E7%8B%AC%E7%AB%8B%E8%B4%A8%E9%87%8F%E6%A1%A3%E4%BD%8D%E7%AE%A1%E7%90%86"><span class="toc-text">7.
+阴影：固定预算用独立质量档位管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#msaa%E5%AE%83%E6%98%AF%E7%AE%A1%E7%BA%BF%E6%96%B9%E6%A1%88%E4%B8%8D%E6%98%AF-fxaa-%E7%9A%84%E5%8F%A6%E4%B8%80%E4%B8%AA%E5%BC%80%E5%85%B3"><span class="toc-text">8.
+MSAA：它是管线方案，不是 FXAA 的另一个开关</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%8E%E4%B9%88%E6%8A%8A%E8%BF%99%E4%BA%9B%E6%83%B3%E6%B3%95%E5%8F%98%E6%88%90%E5%8F%AF%E4%BA%A4%E4%BB%98%E7%9A%84%E9%A2%84%E7%AE%97"><span class="toc-text">9.
+怎么把这些想法变成可交付的预算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E6%80%BB%E7%BB%93"><span class="toc-text">五、总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%88%E9%81%BF%E8%BF%99%E5%85%AB%E4%B8%AA%E5%9D%91"><span class="toc-text">1. 先避这八个坑</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%8E%E4%B9%88%E7%9C%81%E5%B7%A5%E7%A8%8B%E9%A2%84%E7%AE%97"><span class="toc-text">2. 怎么省工程预算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%8E%E4%B9%88%E7%9C%81%E5%B8%A6%E5%AE%BD%E9%A2%84%E7%AE%97"><span class="toc-text">3. 怎么省带宽预算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%A8%E6%9C%80%E5%B0%8F%E9%AA%8C%E6%94%B6%E9%97%AD%E7%8E%AF%E6%8E%A7%E5%88%B6%E8%BF%94%E5%B7%A5"><span class="toc-text">4. 用最小验收闭环控制返工</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%E4%B8%8E%E5%AE%9E%E6%96%BD%E8%AE%B0%E5%BD%95"><span class="toc-text">源码与实施记录</span></a></li></ol></li></ol>
+        </nav>
+      </details>
+    
+
+    <!-- 文章内容 -->
+    <div class="post-content markdown-body">
+      <p>本文不讨论“哪种渲染架构永远更快”。我们只解决一个具体问题：在已有画面和功能约束下，怎样减少中间目标的反复读写，同时把工程成本、画质风险和验证成本控制住。</p>
+<hr />
+<h2 id="一先讲清楚三件事">一、先讲清楚三件事</h2>
+<h3 id="手机-gpu-是怎么画一帧的">1. 手机 GPU 是怎么画一帧的</h3>
+<p>许多移动 GPU 采用分块渲染。它们把画面切成
+tile，在片上存储中处理这一块的颜色、深度和混合，适当的时候再把结果写回外存。tile
+的大小和具体调度方式由 GPU
+与驱动决定，不能把某个固定尺寸当作所有设备的规则。</p>
+<p>这个设计给我们的优化机会是：<strong>同一块像素还要接着画，就尽量别先把它写出去，过一会儿再读回来。</strong></p>
+<p>不过，留在 tile
+内不等于完全免费。覆盖测试、着色、混合仍有成本，片上空间也有限；附件过多、格式过宽或
+MSAA 样本过多，仍可能增加工作量。</p>
+<p>还要区分两个经常被混用的概念：</p>
+<ul>
+<li><strong>UMA</strong> 描述 CPU/GPU 共享系统内存的组织方式。</li>
+<li><strong>TBR/TBDR</strong> 描述 GPU
+的分块渲染方式。两者并不等价，不能因为一台设备是集成
+GPU，就把它的测试结果直接外推为移动 TBDR 的收益。</li>
+</ul>
+<h3 id="什么叫搬一张图">2. 什么叫“搬一张图”</h3>
+<p>先约定一个不会算重、也不会漏算的口径：</p>
+<blockquote>
+<p>一次完整图像的读或写，分别计一次。<strong>写出去再读回来，是两次传输，不是一张。</strong></p>
+</blockquote>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>搬法</th>
+<th>什么时候发生</th>
+<th>通俗说法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Store</td>
+<td>一个物理渲染 scope 结束后，结果还需要保留</td>
+<td>把画好的附件存下来</td>
+</tr>
+<tr>
+<td>Load</td>
+<td>要在附件已有内容上继续绘制</td>
+<td>把背景接回来继续画</td>
+</tr>
+<tr>
+<td>Sampled Read</td>
+<td>shader 从另一张图取值</td>
+<td>画这一张时，翻另一张图</td>
+</tr>
+</tbody>
+</table>
+<p>这里的 <strong>scope</strong> 指一次实际的渲染 Begin/End 范围。一个
+scope 可以包含多个引擎逻辑 Pass；多个函数调用、多个 draw
+call，不一定产生多次附件写回。</p>
+<p>反过来，两个 Pass 名字挨着、甚至写在同一个 C++
+函数里，也不代表它们真的共用了一次 Load/Store。</p>
+<p>附件的 <code>Load/Clear/Discard</code> 与 <code>Store/Discard</code>
+应由真实用途决定：不需要旧内容时避免 Load，后面不需要结果时避免
+Store；需要保留内容时则不能乱丢。Khronos 的<a
+target="_blank" rel="noopener" href="https://docs.vulkan.org/samples/latest/samples/performance/render_passes/README.html">附件读写性能示例</a>也采用这一分析方法，并明确说明图像压缩会降低实际传输量。</p>
+<h3 id="本文的计价单位张">3. 本文的计价单位：「张」</h3>
+<p>全文固定以原生分辨率下的一张 HDR 图作为参考单位，记作
+<code>F</code>：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">F = 1080 × 2340 × 8 / 1024²</span><br><span class="line">  = 19.281 MiB</span><br></pre></td></tr></table></figure>
+<p>即 <strong>1 张 = 1F ≈ 19.28 MiB</strong>，格式为
+RGBA16F。后文缩分辨率时，参考单位 F 不变。</p>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th style="text-align: right;">每像素字节</th>
+<th style="text-align: right;">一次完整传输折合</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HDR 主画面 RGBA16F</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1.000F</td>
+</tr>
+<tr>
+<td>深度 Depth32F</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.500F</td>
+</tr>
+<tr>
+<td>LDR / 最终画面 RGBA8 或 BGRA8</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.500F</td>
+</tr>
+<tr>
+<td>半宽半高的 AO 图 RG16F</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.125F</td>
+</tr>
+<tr>
+<td>3 级 × 2048² 的 D16 级联阴影</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">约 1.245F，即 24 MiB</td>
+</tr>
+</tbody>
+</table>
+<p><strong>“半分辨率”在本文指宽、高各减半，像素数是原来的 1/4。</strong>
+“1/4 像素统计”和“宽高各缩到 1/4”不是一回事，后者只有 1/16 像素。</p>
+<p>记账时还要分清三本账：</p>
+<ol type="1">
+<li><strong>结构账</strong>：实际编译出的物理 scope、附件
+Load/Store、资源尺寸和格式。</li>
+<li><strong>采样账</strong>：shader
+请求数量、采样覆盖范围、滤波方式与缓存复用。</li>
+<li><strong>真机账</strong>：GPU external read/write counters、GPU
+帧时、功耗与热稳定表现。</li>
+</ol>
+<p>本文主要使用第一本账，加上便于比较的采样足迹估算。缓存、压缩和未变化
+tile 消除可能让实际流量变小，多
+tap、overdraw、缓存失效又可能让它变大。因此，下表<strong>既不是整帧所有访存的总账，也不是物理
+DRAM 流量的严格下界</strong>。</p>
+<hr />
+<h2
+id="二实际引擎内一般管线图及完整账单">二、实际引擎内一般管线图及完整账单</h2>
+<p>这不是所有引擎的通用模板，而是一条具有代表性的移动端前向链路。先把它分成四段：</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>段</th>
+<th>干什么的</th>
+<th>包含的步骤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 打底</td>
+<td>准备深度、阴影、AO 与光照列表</td>
+<td>Pre-Z、CSM、GTAO/降噪、Clustered Light</td>
+</tr>
+<tr>
+<td>② 画主体</td>
+<td>绘制不透明物体和天空</td>
+<td>Opaque + Sky，满足合同条件时共用 scope</td>
+</tr>
+<tr>
+<td>③ 往画面上贴东西</td>
+<td>叠加折射、透明与人群代理</td>
+<td>Transmission/Mix、Alpha/Composite、CrowdProxy</td>
+</tr>
+<tr>
+<td>④ 调色出片</td>
+<td>从 HDR 得到最终显示图</td>
+<td>Bloom、曝光、Tonemap、FXAA、FinalComposition</td>
+</tr>
+</tbody>
+</table>
+<h3 id="满配基线有折射一个-alpha-层有人群代理">1. 满配基线：有折射、一个
+Alpha 层、有人群代理</h3>
+<p>本例固定 renderScale=1，场景与输出均为
+1080×2340；AO、Bloom、曝光、FXAA 开启；一组三级 CSM
+每帧更新。普通透明材质不实际采样 SceneColor。没有额外 Additive
+层、自定义后处理、编辑器拾取或调试绘制。</p>
+<p>下表计入目标附件的声明读写，以及所列图像的名义采样足迹。没有计入材质纹理、顶点/索引、光照缓冲、主着色中的
+AO/阴影采样、多 tap 放大、UI 等其他流量。Bloom 的级联尺寸按理想 1/2
+缩放近似，实际工程需按取整后的 extent 重算。</p>
+<table>
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+<col style="width: 15%" />
+</colgroup>
+<thead>
+<tr>
+<th>段</th>
+<th>步骤</th>
+<th style="text-align: right;">Store（F）</th>
+<th style="text-align: right;">Load（F）</th>
+<th style="text-align: right;">采样足迹（F）</th>
+<th style="text-align: right;">合计（F）</th>
+<th style="text-align: right;">约 MiB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>①</td>
+<td>Pre-Z</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">9.64</td>
+</tr>
+<tr>
+<td>①</td>
+<td>CSM 3×2048²</td>
+<td style="text-align: right;">1.245</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">1.245</td>
+<td style="text-align: right;">24.00</td>
+</tr>
+<tr>
+<td>①</td>
+<td>GTAO，半宽半高</td>
+<td style="text-align: right;">0.125</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">12.05</td>
+</tr>
+<tr>
+<td>①</td>
+<td>AO 降噪</td>
+<td style="text-align: right;">0.125</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">0.125</td>
+<td style="text-align: right;">0.250</td>
+<td style="text-align: right;">4.82</td>
+</tr>
+<tr>
+<td>②</td>
+<td>Opaque + Sky</td>
+<td style="text-align: right;">1.500†</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">2.000</td>
+<td style="text-align: right;">38.56</td>
+</tr>
+<tr>
+<td>③</td>
+<td>Transmission</td>
+<td style="text-align: right;">1.500†</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">3.000</td>
+<td style="text-align: right;">57.84</td>
+</tr>
+<tr>
+<td>③</td>
+<td>全屏 Mix</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">2.000</td>
+<td style="text-align: right;">3.000</td>
+<td style="text-align: right;">57.84</td>
+</tr>
+<tr>
+<td>③</td>
+<td>Transparency Alpha</td>
+<td style="text-align: right;">1.500†</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">2.000</td>
+<td style="text-align: right;">38.56</td>
+</tr>
+<tr>
+<td>③</td>
+<td>全屏 CompositePremultiplied</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">2.000</td>
+<td style="text-align: right;">3.000</td>
+<td style="text-align: right;">57.84</td>
+</tr>
+<tr>
+<td>③</td>
+<td>CrowdProxy</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">1.500</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">2.500</td>
+<td style="text-align: right;">48.20</td>
+</tr>
+<tr>
+<td>④</td>
+<td>Bloom，4 降 3 升</td>
+<td style="text-align: right;">0.660</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">1.410</td>
+<td style="text-align: right;">2.070</td>
+<td style="text-align: right;">39.92</td>
+</tr>
+<tr>
+<td>④</td>
+<td>BuildHistogram</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">19.28</td>
+</tr>
+<tr>
+<td>④</td>
+<td>Tonemap</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">1.250</td>
+<td style="text-align: right;">1.750</td>
+<td style="text-align: right;">33.74</td>
+</tr>
+<tr>
+<td>④</td>
+<td>FXAA</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">19.28</td>
+</tr>
+<tr>
+<td>④</td>
+<td>FinalComposition</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">19.28</td>
+</tr>
+</tbody>
+</table>
+<p>† 这里的 1.5F 是 <strong>1F 颜色 + 0.5F 深度</strong>。即使该 Pass
+不修改深度，只要后面还消费它，当前 FrameGraph 仍可能声明
+Store。驱动是否省掉了未修改深度的实际写出，要看真机
+counter。本表从“声明账”出发，统一把这些 Store 算上。</p>
+<p>这也修正了早期账单里的一个遗漏：Transmission 和 Alpha 层的只读深度
+Store 没有被计入。原来的“约 24 张 / 460.9
+MiB”不能直接与这里的修订口径混算。</p>
+<h3 id="按段汇总">2. 按段汇总</h3>
+<table>
+<thead>
+<tr>
+<th>段</th>
+<th style="text-align: right;">约 F</th>
+<th style="text-align: right;">约 MiB</th>
+<th style="text-align: right;">占本结构账</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 打底</td>
+<td style="text-align: right;">2.62</td>
+<td style="text-align: right;">50.51</td>
+<td style="text-align: right;">10.5%</td>
+</tr>
+<tr>
+<td>② 画主体</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">38.56</td>
+<td style="text-align: right;">8.0%</td>
+</tr>
+<tr>
+<td>③ 叠加层</td>
+<td style="text-align: right;">13.50</td>
+<td style="text-align: right;">260.29</td>
+<td style="text-align: right;">54.1%</td>
+</tr>
+<tr>
+<td>④ 调色出片</td>
+<td style="text-align: right;">6.82</td>
+<td style="text-align: right;">131.50</td>
+<td style="text-align: right;">27.3%</td>
+</tr>
+<tr>
+<td>合计</td>
+<td style="text-align: right;"><strong>24.94</strong></td>
+<td style="text-align: right;"><strong>480.87</strong></td>
+<td style="text-align: right;"><strong>100%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>各行独立取整，总计先用未取整值相加。这些数字的作用是定位重复搬运，而不是据此断言某台手机已经用满内存总线。</p>
+<h3 id="管线图哪些输出被保存哪些结果被再次采样">3.
+管线图：哪些输出被保存，哪些结果被再次采样</h3>
+<figure>
+<img src="baseline-pipeline.png"
+alt="优化前的 UMA 前向管线与中间目标流转" />
+<figcaption aria-hidden="true">优化前的 UMA
+前向管线与中间目标流转</figcaption>
+</figure>
+<p>读图时注意：</p>
+<ul>
+<li>实线表示结果流向，虚线表示只读深度或绘制/调度依赖。<strong>一条箭头不等于固定一次
+DRAM 读取。</strong></li>
+<li>四个大框只是逻辑分段，不代表框内全部属于同一个物理 scope。基线只假定
+Opaque/Sky 已满足合并条件。</li>
+<li>Clustered Light
+的缓冲开销未纳入纹理主表；当前深度依赖还包含调度用途，不能把它等同于
+shader 真正扫描了深度。</li>
+<li>折射和透明还复用光照、阴影等资源，图中省略这些重复连线。没有对应内容时，相应分支不会执行。</li>
+<li>Additive、自定义 HDR 效果和 AA
+后效果会增加节点或阻断合并，必须按实际帧单独计账。</li>
+</ul>
+<hr />
+<h2 id="三这张账单里最刺眼的五件事">三、这张账单里最刺眼的五件事</h2>
+<h3 id="主体只占-8不能读成着色只花-8">1. “主体只占 8%”不能读成“着色只花
+8%”</h3>
+<p>不透明与天空的目标读写在这张表里确实只占约
+8%，但它们的材质采样、顶点读取和大部分光照采样没有计入。阴影、Pre-Z、透明也都在处理几何，不是只有第二段在“画东西”。</p>
+<p>正确的结论是：<strong>中间目标链已经暴露出一笔值得优先检查的结构成本。</strong>
+至于材质着色是否更贵，要用另一份采样账和 GPU 时间回答。</p>
+<h3 id="透明覆盖很小不代表全屏合成很便宜">2.
+透明覆盖很小，不代表全屏合成很便宜</h3>
+<p>旧路径为普通透明单独开一张全屏 HDR
+图，再读入主画面和透明层，做一次全屏合成。</p>
+<p>即使透明只覆盖一小块，后面的 Composite 仍然遍历完整输出。中间图的实际
+Store 可能受压缩或 tile
+优化影响，但<strong>全屏合成的固定工作不会随着透明几何简单地缩成同样的小比例</strong>。</p>
+<p>因此，先问“这张中间图能不能不存在”，通常比先问“透明 shader
+能不能少算几个乘法”更有价值。</p>
+<h3 id="输出只有一个数也可能扫了一整屏">3.
+输出只有一个数，也可能扫了一整屏</h3>
+<p>直方图最后服务于一个平均亮度值，但当前实现读取完整
+HDR。减少统计样本是合理候选，不过它改变的是统计方法，稀疏高亮和周期性图案仍可能影响曝光结果。</p>
+<p>Bloom 也不能按最终图有多小来判断成本。第一次缩小仍覆盖完整
+HDR，后面还有多级读写。多个 tap 不必然产生等比例 DRAM 流量，减少 mip
+级数也不等于消掉第一次输入读取。</p>
+<h3 id="动态分辨率不会自动替你处理固定分辨率阴影">4.
+动态分辨率不会自动替你处理固定分辨率阴影</h3>
+<p>场景宽高缩小后，像素相关项大致随面积下降；CSM 的 3×2048² 仍然是 24
+MiB 一次完整 Store。</p>
+<p>同样不会简单按 renderScale²
+下降的，还包括原生分辨率输出、部分固定大小缓冲，以及几何/提交成本。不能把整帧账单统一乘一个
+0.49，就宣称 0.7 档已经算完。</p>
+<h3 id="framegraph-能省钱但前提是声明真实">5. FrameGraph
+能省钱，但前提是声明真实</h3>
+<p>后面确实没有消费者时，深度可以在最后一个使用它的 scope 后
+Discard。相反，只读、临时变量、导入资源这些名字，都不足以证明结果可以丢弃。</p>
+<p>声明过宽会阻止合并；声明过窄会制造缺少同步、错误内容或 GPU validation
+错误。<strong>优化的第一步是让图认识真实用途，不是删掉看起来碍事的依赖。</strong></p>
+<hr />
+<h2 id="四优化账单">四、优化账单</h2>
+<p>这里的“账单”不是一张承诺收益表，而是一套改法。每一项都要回答：删掉什么、新增什么、怎样保持语义、失败时走哪条路。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">净收益 = 删除的 Load / Store / 采样开销</span><br><span class="line">       − 新增的副本、Load / Store / 采样开销</span><br></pre></td></tr></table></figure>
+<p>以下伪代码用于解释合同，不是可以直接复制进任意引擎的现成 API。</p>
+<h3 id="先看全局收益条件和实施状态">1.
+先看全局：收益、条件和实施状态</h3>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th>#</th>
+<th>优化思路</th>
+<th>本文口径下的名义预算</th>
+<th>主要条件 / 风险</th>
+<th>当前状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>普通透明直接混合到 HDR</td>
+<td>单个 Alpha 层省 2F，约 38.56 MiB</td>
+<td>必须排除 SceneColor 采样，保持混合与 alpha 合同</td>
+<td>已落地</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Alpha、Additive、人群共用 scope</td>
+<td>单个 Alpha + Crowd 案例再省 3F，约 57.84 MiB</td>
+<td>相同附件、实际相邻、没有采样反馈；不能乱改顺序</td>
+<td>已落地</td>
+</tr>
+<tr>
+<td>3</td>
+<td>FXAA 直接写最终目标</td>
+<td>等尺寸时省 AA 中间图写读，共 1F</td>
+<td>AA 后消费者、缩放、格式与色彩空间</td>
+<td>可选方案，未实施</td>
+</tr>
+<tr>
+<td>4</td>
+<td>直方图只取 1/4 像素数</td>
+<td>名义 texel 读取减少 0.75F，约 14.46 MiB</td>
+<td>改坐标与归一化，做曝光回归；不是 DRAM 保证</td>
+<td>可选方案，未实施</td>
+</tr>
+<tr>
+<td>5</td>
+<td>折射快照 + 直接混合</td>
+<td>半宽半高快照、独立 scope 示例省 1.5F，约 28.92 MiB</td>
+<td>快照成本、重叠折射、细节变糊</td>
+<td>可选方案，未实施</td>
+</tr>
+<tr>
+<td>6</td>
+<td>CSM 从 2048² 降为 1024²</td>
+<td>三层 D16 的完整 Store 差额为 18 MiB</td>
+<td>阴影细节、稳定性、级联和 bias 调参</td>
+<td>可选方案，未实施</td>
+</tr>
+<tr>
+<td>7</td>
+<td>4× MSAA 替换独立 FXAA</td>
+<td>可删除 FXAA 的 1F，但还要扣 MSAA 新成本</td>
+<td>多采样附件不跨 scope 持久化；与 #3 不重复计账</td>
+<td>原型已验证，默认仍 FXAA</td>
+</tr>
+</tbody>
+</table>
+<p>“已落地”表示代码和相应工程验证完成，不表示这些 MiB 已被手机 counter
+证实。</p>
+<h3 id="普通透明先取消中间图再讨论合并">2.
+普通透明：先取消中间图，再讨论合并</h3>
+<p>旧流程是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">画透明层 A → Store A</span><br><span class="line">采样背景 B + 采样 A → Composite → Store 新 HDR</span><br></pre></td></tr></table></figure>
+<p>对不采样当前画面的普通透明，保持原绘制顺序，直接在 B
+上进行硬件混合即可。一次 source-over 的 RGB 公式是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">B_next = a × C + (1 − a) × B</span><br></pre></td></tr></table></figure>
+<p>旧流程先在黑底累积预乘层，再一次合成到
+B；在实数运算下，它与上述递推等价。减少中间存储仍会改变浮点舍入位置，所以目标是保持视觉/数学语义，不是承诺逐
+bit 相同。</p>
+<p><strong>第一个坑：shader 输出是否已经预乘 alpha。</strong>
+当前普通透明输出的是直通 RGB，正确因子仍是
+<code>SrcAlpha / OneMinusSrcAlpha</code>。不能只把 srcColor 改成
+One；那会把透明物体变亮。Crowd 等已经输出预乘 RGB 的 shader
+才使用另一套匹配的因子。</p>
+<p><strong>第二个坑：改了输出附件，却忘了旧的 SceneColor
+采样声明。</strong>
+新旧逻辑资源版本可能仍指向同一个物理图像，不能一边把它当颜色附件写，一边当普通纹理采样。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">Usage colorUse = <span class="built_in">queryExactProgramUsage</span>(allTransparent, SceneColor);</span><br><span class="line">Usage depthUse = <span class="built_in">queryExactProgramUsage</span>(allTransparent, SceneDepth);</span><br><span class="line"></span><br><span class="line"><span class="comment">// Used 和 Unknown 都不能当作“没有使用”。</span></span><br><span class="line"><span class="keyword">if</span> (colorUse != Unused || hasUserData || !outputAlphaContractIsSafe) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">renderOldLayersAndComposite</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">readLightingAndInstances</span>();</span><br><span class="line"><span class="keyword">if</span> (depthUse != Unused)</span><br><span class="line">    <span class="built_in">declareSampledRead</span>(sceneDepth);</span><br><span class="line"><span class="built_in">declareReadOnlyDepthAttachment</span>(sceneDepth);</span><br><span class="line"><span class="built_in">declareColorAttachment</span>(sceneColor, Load); <span class="comment">// 接着画，不能 Clear / Discard</span></span><br><span class="line"><span class="built_in">setBlend</span>(SrcAlpha, OneMinusSrcAlpha);</span><br><span class="line"><span class="built_in">drawAlphaInOriginalOrder</span>();</span><br></pre></td></tr></table></figure>
+<p>第一版适合整段回退：只要 Alpha/Additive
+中有一个特殊材质需要旧背景，就保留整段旧路径。不要为了分出“快材质”而擅自调整透明排序；旧流程中它们可能采样的是同一份冻结背景。</p>
+<p>其他必须保留的细节：</p>
+<ul>
+<li>保留原来的透明排序与分桶规则，不顺手改变 Modulate 的既有含义。</li>
+<li>Additive 的 RGB 可用 One/One，但 alpha 应保护目标值，不能照搬“独立
+Additive 图的 alpha 清零”。</li>
+<li>原 Composite 把整张输出 alpha 设为 1。没有天空、背景未覆盖或下游读取
+alpha 时，要证明新路径合同一致，不能只看 RGB。</li>
+<li>不启用透明 depthWrite，也不丢弃 UserData / 拾取 MRT。</li>
+</ul>
+<p>按本文完整声明账，原 Alpha 层加合成是 5F，单独直混为 3F：<strong>省
+2F</strong>。这个阶段还没有把人群的独立读写算进去。</p>
+<h3 id="透明与人群省的是物理边界不是函数调用">3.
+透明与人群：省的是物理边界，不是函数调用</h3>
+<p>直混完成后，Alpha、Additive、Crowd 都可能在同一张 HDR
+和同一张深度上连续绘制。这时才有机会把它们收进一个物理 scope。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">canMerge = bothPassesAllowMerge</span><br><span class="line">        &amp;&amp; adjacentInCompiledSchedule</span><br><span class="line">        &amp;&amp; samePhysicalColorAndDepth</span><br><span class="line">        &amp;&amp; sameExtentSamplesLayersAndViewMask</span><br><span class="line">        &amp;&amp; noMidScopeClear</span><br><span class="line">        &amp;&amp; noSampledFeedbackOrUnresolvedHazard;</span><br><span class="line"></span><br><span class="line"><span class="built_in">beginScope</span>(HDR = Load, Depth = Load);</span><br><span class="line"><span class="built_in">drawAlpha</span>();</span><br><span class="line"><span class="built_in">drawAdditive</span>(); <span class="comment">// 有则画；原基线账未包含这一层</span></span><br><span class="line"><span class="built_in">drawCrowd</span>();</span><br><span class="line"><span class="built_in">endScope</span>(HDR = Store, Depth = storeIfNeededLater);</span><br></pre></td></tr></table></figure>
+<p>这里有三个容易被低估的工程约束：</p>
+<ol type="1">
+<li><strong>源码相邻不等于调度相邻。</strong>
+上传、计算或自定义效果可能插在中间；要检查最终 execution plan。</li>
+<li><strong>只读深度采样在单 Pass 合法，不等于合并器支持它。</strong>
+当前原型只合并能证明不采样该深度附件的材质，不放宽通用反馈检查。</li>
+<li><strong>UserData、多 MRT、sampleCount、layer/view mask
+都属于附件合同。</strong> 合并不是把两个 mergeable 都设成 true
+就结束了。</li>
+</ol>
+<p>当前 Crowd
+已经允许合并，真正要清理的是透明读取声明与附件合同。也不需要为了这一步先建设完整的
+multi-subpass 或 local-read shader
+系统：相同固定功能附件的逻辑阶段可以共用一个
+Begin/End。是否进一步获得理想的片上驻留，仍需验证。<a
+target="_blank" rel="noopener" href="https://docs.vulkan.org/samples/latest/samples/performance/subpasses/README.html">Khronos
+subpass 示例</a></p>
+<p>单个 Alpha + Crowd 的增量账是：</p>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th style="text-align: right;">Alpha 部分</th>
+<th style="text-align: right;">Crowd</th>
+<th style="text-align: right;">合计</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原路径</td>
+<td style="text-align: right;">层 + 合成，5F</td>
+<td style="text-align: right;">2.5F</td>
+<td style="text-align: right;">7.5F</td>
+</tr>
+<tr>
+<td>只做直混</td>
+<td style="text-align: right;">3F</td>
+<td style="text-align: right;">2.5F</td>
+<td style="text-align: right;">5.5F</td>
+</tr>
+<tr>
+<td>两者同 scope</td>
+<td style="text-align: right;">共用颜色 Load/Store 与一次深度 Load</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">2.5F</td>
+</tr>
+</tbody>
+</table>
+<p>所以 #1 与 #2 合计省 <strong>5F≈96.41
+MiB</strong>。如果采用“不为只读深度记 Store”的另一份近似账，#2 就是
+2.5F、两项合计 4.5F；不要两种口径交叉相加。</p>
+<p>没有折射或中间 HDR 消费者时，还可继续把 Opaque/Sky
+与这组直混阶段连接起来。这是进一步的边界收益，不应在同一条边界上再次记账。</p>
+<h3 id="抗锯齿中转能写最终目标就不必再抄一遍">4.
+抗锯齿中转：能写最终目标，就不必再抄一遍</h3>
+<p>独立 FXAA 先写一张 RGBA8 AA 图，FinalComposition
+再读它并写最终目标。等尺寸时，让 FXAA 直接写最终目标，可以取消 AA 的
+0.5F Store + 0.5F Read。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (finalImage &amp;&amp; fxaaEnabled &amp;&amp; noConsumerAfterAA</span><br><span class="line">    &amp;&amp; input.extent == target.extent &amp;&amp; supportedOutputContract) &#123;</span><br><span class="line">    <span class="built_in">fxaa</span>(input, target, pipelineFormat = target.format);</span><br><span class="line">    <span class="built_in">exportTarget</span>(target, Store);</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    aa = <span class="built_in">fxaa</span>(input);</span><br><span class="line">    <span class="built_in">runOutputAfterAAEffects</span>(aa);</span><br><span class="line">    <span class="built_in">finalCompose</span>(aa, target);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>避坑重点：</p>
+<ul>
+<li>最终 target 可能是离屏相机，不一定是 swapchain。</li>
+<li>pipeline 按目标格式构建，输入 texel size
+按输入纹理计算；别为了原生输出尺寸改坏全局 CameraBlock。</li>
+<li>保留色彩编码、输出 alpha、调试输出、UI overlay 与最终 Store
+合同。</li>
+<li>目标导入
+FrameGraph，只说明所有权，不能代替“输出必须保留”的声明。</li>
+</ul>
+<p><strong>动态分辨率是分界线。</strong> “低分辨率 FXAA
+后再双线性放大”不等于“在显示像素位置运行 FXAA”。在本例 0.7 档，后者
+invocation 数约为前者的 2.06 倍，可能用更多采样和算术换掉中间图。</p>
+<p>因此先做等尺寸快路径；非等尺寸融合单独评估，不能写成“顺带缩放，画面与性能都不变”。</p>
+<h3 id="直方图减少样本不要只减少线程">5.
+直方图：减少样本，不要只减少线程</h3>
+<p>当前 shader 用 GlobalInvocationID 直接取原图 texel。只把 dispatch
+宽高减半，会只统计左上区域；如果平均亮度仍除以原像素数，还会再叠加归一化错误。</p>
+<p>低成本做法是不创建新的缩小 RT，而是在原 HDR 的每个 2×2
+区域取一个代表样本：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sampleExtent = <span class="built_in">ceilDiv</span>(sourceExtent, <span class="number">2</span>);</span><br><span class="line"><span class="built_in">dispatch</span>(<span class="built_in">ceilDiv</span>(sampleExtent, <span class="number">16</span>));</span><br><span class="line">numPixels = sampleExtent.x * sampleExtent.y;</span><br></pre></td></tr></table></figure>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 16×16 threads，256 个 bin；示意省略亮度映射函数。</span></span><br><span class="line">sharedHistogram[localId] = <span class="number">0</span>;</span><br><span class="line"><span class="built_in">barrier</span>();</span><br><span class="line"><span class="keyword">if</span> (<span class="built_in">all</span>(globalId &lt; sampleExtent)) &#123;</span><br><span class="line">    src = <span class="built_in">min</span>(globalId * <span class="number">2</span> + fixedOffset, sourceExtent - <span class="number">1</span>);</span><br><span class="line">    hdr = <span class="built_in">texelFetch</span>(sceneColor, src) / preExposure;</span><br><span class="line">    <span class="built_in">atomicAdd</span>(sharedHistogram[colorToBin(hdr)], <span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="built_in">barrier</span>(); <span class="comment">// 越界线程也必须参与，不能提前 return</span></span><br><span class="line"><span class="built_in">atomicAdd</span>(globalHistogram[localId], sharedHistogram[localId]);</span><br></pre></td></tr></table></figure>
+<p>保持黑色 bin、曝光历史初始化、inversePreExposure
+和适应速度的原有规则。检查奇数尺寸、非 16
+整除尺寸、全黑、稀疏高亮、棋盘格和室内外切换。</p>
+<p>样本数确实减少约 75%，但它并不证明 DRAM 读取也减少 75%：跳着取 texel
+仍可能触及相同纹理块或缓存行。曝光结果也不严格相同，应记录 EV
+差与时间曲线。</p>
+<p>不要直接拿 Bloom 代替测光输入：当前 Bloom 第一层已有 Karis
+权重和亮度阈值，不是未经修改的场景亮度副本。</p>
+<h3 id="折射副本必须付钱直接混合也会改变重叠语义">6.
+折射：副本必须付钱，直接混合也会改变重叠语义</h3>
+<p>普通透明可以不读背景，折射通常不能。合理的结构是：先生成独立、冻结的背景快照，再让折射几何采样快照、直接写主画面。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!visibleTransmission.<span class="built_in">empty</span>()) &#123;</span><br><span class="line">    snapshot = <span class="built_in">downsampleUnmodifiedHDR</span>(sceneColor, halfWidthAndHeight);</span><br><span class="line">    <span class="comment">// snapshot 必须是另一张物理图，不能只是 SceneColor 的新版本号。</span></span><br><span class="line">    <span class="built_in">declareSampledRead</span>(snapshot);</span><br><span class="line">    <span class="built_in">beginScope</span>(HDR = Load, Depth = ReadOnlyLoad);</span><br><span class="line">    <span class="built_in">drawTransmission</span>(snapshot, originalOrder, approvedBlendContract);</span><br><span class="line">    <span class="built_in">endScope</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>快照放在 HDRAfterOpaque
+之后、第一笔折射之前。同一批折射采样同一份快照，保留原来的非递归背景语义。不额外使用
+Bloom 阈值，不无故生成 mip 链，保持原 UV、边界处理和预曝光约定。</p>
+<p><strong>净收益要扣掉生成副本。</strong> 以半宽半高快照、仍独立开折射
+scope、背景采样按完整足迹估算为例：</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th style="text-align: right;">原路径</th>
+<th style="text-align: right;">新路径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>生成副本：读原 HDR + 写小图</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1.25F</td>
+</tr>
+<tr>
+<td>折射颜色附件</td>
+<td style="text-align: right;">中间层 Store，1F</td>
+<td style="text-align: right;">主 HDR Load + Store，2F</td>
+</tr>
+<tr>
+<td>深度 Load + 后续保留的 Store</td>
+<td style="text-align: right;">1F</td>
+<td style="text-align: right;">1F</td>
+</tr>
+<tr>
+<td>折射背景采样足迹</td>
+<td style="text-align: right;">1F</td>
+<td style="text-align: right;">0.25F</td>
+</tr>
+<tr>
+<td>全屏 Mix</td>
+<td style="text-align: right;">3F</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>合计</td>
+<td style="text-align: right;">6F</td>
+<td style="text-align: right;">4.5F</td>
+</tr>
+</tbody>
+</table>
+<p>这个算例省 <strong>1.5F≈28.92 MiB</strong>，不是只看到删了一个 3F
+Mix，就记成省 3F，也不足以支持固定省
+2.4F。实际净值要按折射覆盖率、滤波与缓存重算。</p>
+<p>另一个不能漏掉的画面变化是：原 Transmission
+不开启混合，多层重叠时中间图留下最后一个片元，然后只 Mix
+一次；改成逐片元 source-over 后，前面的半透明折射片元也会累计进来。</p>
+<p>所以，第一版可只开放给能保证 opacity=1
+的材质，其他保留旧路径；否则美术需要同时确认<strong>细节模糊与重叠关系变化</strong>。不能通过打开
+depthWrite 来偷偷改变遮挡语义。</p>
+<h3 id="阴影固定预算用独立质量档位管理">7.
+阴影：固定预算用独立质量档位管理</h3>
+<p>三级 D16 CSM 的精确差额为：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">3 × (2048² − 1024²) × 2 / 1024² = 18 MiB</span><br></pre></td></tr></table></figure>
+<p>这既是该组纹理的名义容量差，也是一次完整 Store
+的等价差额；不是对内存峰值或采样次数的直接承诺。</p>
+<p>建议把 1024/2048 做成设备质量档位，而不是只修改 C++
+默认值：已有场景序列化的尺寸可能覆盖默认值。调整尺寸时一起检查 cascade
+split、lambda、maxDistance、fadeStart 和 bias。</p>
+<p>纹理尺寸变小，不只是边缘变软。接触阴影可能消失，移动时可能闪烁，级联接缝可能更显眼。PCF
+按 textureSize 计算偏移，只能避免硬编码采样步长，不能替你保证画质。</p>
+<p>阴影更新频率、级联数和 caster
+预算是另外的手段；它们涉及缓存失效、光源/相机移动与动态物体，不能把“本帧不更新”直接当成始终正确的省钱方法。</p>
+<h3 id="msaa它是管线方案不是-fxaa-的另一个开关">8.
+MSAA：它是管线方案，不是 FXAA 的另一个开关</h3>
+<p>4× MSAA 对前向分块渲染有吸引力：它改善几何覆盖边缘，不必像 FXAA
+一样对整张最终图做边缘滤波。但条件是，多采样颜色和深度尽量留在同一物理
+scope 内，结束时直接 resolve，并丢弃不再使用的多采样附件。<a
+target="_blank" rel="noopener" href="https://docs.vulkan.org/samples/latest/samples/performance/msaa/README.html">Khronos
+MSAA 性能示例</a></p>
+<p>本例最大的障碍是 <strong>Pre-Z → GTAO →
+Opaque</strong>。如果直接把预渲染深度升级为 4×，即使给 GTAO resolve
+出一张 1× 深度，后续 Opaque 仍需要原 4× 深度做测试，未必能避免它跨 scope
+保存。</p>
+<p>仅深度往返的名义账就变为：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">原 1× D32：Store 0.5F + Load 0.5F = 1F</span><br><span class="line">新 4× D32：Store 2F   + Load 2F   = 4F</span><br><span class="line">增量：3F ≈ 57.84 MiB</span><br></pre></td></tr></table></figure>
+<p>删除独立 FXAA 只省
+1F。还没讨论颜色，多采样深度的这笔新增开销就可能把收益吃掉。</p>
+<h4 id="本次原型选择的路线">本次原型选择的路线</h4>
+<p>保留原来的 1× Pre-Z / GTAO。在主 scope 里另建 transient 4×
+颜色与深度，Opaque 重建自己的深度；Sky、Alpha、Additive、Crowd
+接着画，最后只导出 1× HDR。</p>
+<figure>
+<img src="optimized-msaa-pipeline.png"
+alt="已实现的 MSAA 快路径与整视图回退" />
+<figcaption aria-hidden="true">已实现的 MSAA
+快路径与整视图回退</figcaption>
+</figure>
+<p>图中的 1×/4× 指样本数，不是分辨率倍数；C4/D4 是多采样颜色/深度。AO
+仍按自己的半宽半高尺寸生成。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!<span class="built_in">wholeViewMsaaAdmission</span>(device, materials, outputs, effects)) &#123;</span><br><span class="line">    <span class="built_in">renderSingleSampleSceneAndFXAA</span>();</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">D1 = <span class="built_in">renderOriginalPreZ</span>();</span><br><span class="line">AO = aoEnabled ? <span class="built_in">renderGTAOAndDenoise</span>(D1) : none;</span><br><span class="line">C4 = <span class="built_in">createTransientColor</span>(sampleCount = <span class="number">4</span>);</span><br><span class="line">D4 = <span class="built_in">createTransientDepth</span>(sampleCount = <span class="number">4</span>);</span><br><span class="line">C1 = <span class="built_in">createSampledHDR</span>(sampleCount = <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line"><span class="built_in">beginScope</span>(C4 = ClearThenDiscard, D4 = ClearThenDiscard,</span><br><span class="line">           colorResolveTarget = C1);</span><br><span class="line"><span class="built_in">drawOpaque</span>(AO, depthWrite = <span class="literal">true</span>, depthCompare = LessOrEqual);</span><br><span class="line"><span class="built_in">drawSky</span>();</span><br><span class="line"><span class="built_in">drawAlphaInOriginalOrder</span>();</span><br><span class="line"><span class="built_in">drawAdditivePreservingAlpha</span>();</span><br><span class="line"><span class="built_in">drawCrowd</span>();</span><br><span class="line"><span class="built_in">endScope</span>(); <span class="comment">// 固定功能 resolve；不是另开一次 vkCmdResolveImage</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">runBloomHistogramAndTonemap</span>(C1); <span class="comment">// 后处理保持单采样</span></span><br><span class="line"><span class="built_in">finalComposeToDisplay</span>();         <span class="comment">// 本帧跳过 FXAA</span></span><br></pre></td></tr></table></figure>
+<p>这里并没有“免费重用”原深度：Opaque 不再依赖原 1× 深度做 Equal
+测试，可能增加隐藏片元着色。我们选择这条路线，是为了保留 AO 进入 PBR
+光照的位置，同时避免强迫 4× 深度跨 scope Store/Load。</p>
+<p>把 AO 简单后移，再乘最终 HDR 并不等价；天空、emissive、specular
+等也可能受到影响。那是另一项算法和美术决策。</p>
+<h4 id="接通-msaa-必须检查的实现层">接通 MSAA 必须检查的实现层</h4>
+<ul>
+<li>sampleCount 进入纹理创建、import、尺寸统计、alias key 和资源池完整
+identity。</li>
+<li>sampleCount 进入 pipeline cache key、multisample state、legacy
+附件和 secondary inheritance。</li>
+<li>resolve 目标必须是匹配格式的独立单采样图；普通颜色输出位置和 resolve
+位置即使编号相同，也不能指错资源。</li>
+<li>多采样附件不再需要时明确 Discard；最终导出的 HDR /
+显示目标必须保留。</li>
+<li>secondary 失败后应取消、排空并重录整个
+scope，不能拿半份记录继续提交。</li>
+<li>按实际格式、usage 和设备限制查询支持；不支持就回退，不用 GENERAL
+布局或虚假的“支持标记”掩盖问题。</li>
+</ul>
+<p>原型对
+UserData、特殊屏幕采样、折射、活动自定义效果和调试/描边保守整视图回退。默认仍为
+FXAA，MSAA 显式开启；没有开启 sample shading 或 alpha-to-coverage。</p>
+<p>普通 MSAA
+主要改善几何边缘，不自动解决三角形内部的高光/纹理锯齿，也不会恢复动态分辨率丢失的细节。Masked
+头发与植被需要另外评估。<a
+target="_blank" rel="noopener" href="https://docs.vulkan.org/tutorial/latest/10_Multisampling.html">Khronos
+多采样教程的限制说明</a></p>
+<h4 id="不要把同一张-aa-图省两次">不要把同一张 AA 图省两次</h4>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>对照路线</th>
+<th>可以删除的整图开销</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>独立 FXAA + Final → 融合 FXAA/Final</td>
+<td>AA 中间图的写读，1F</td>
+</tr>
+<tr>
+<td>独立 FXAA + Final → MSAA + Final</td>
+<td>独立 FXAA 的 LDR 读写，1F，再扣 MSAA 新成本</td>
+</tr>
+<tr>
+<td>已融合 FXAA/Final → MSAA + 普通 Final</td>
+<td>没有额外一份 AA 中间图可删；比较的是 shader 工作与 MSAA 成本</td>
+</tr>
+</tbody>
+</table>
+<h3 id="怎么把这些想法变成可交付的预算">9.
+怎么把这些想法变成可交付的预算</h3>
+<p>在第二节的同一套假设下，保持单采样路线、不把 MSAA
+额外加入，纸面算例是：</p>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th style="text-align: right;">本阶段再减</th>
+<th style="text-align: right;">结构账余额，约 MiB/帧</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>基线</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">480.87</td>
+</tr>
+<tr>
+<td>#1 + #2：直混与合并</td>
+<td style="text-align: right;">5F</td>
+<td style="text-align: right;">384.46</td>
+</tr>
+<tr>
+<td>再做 #3 + #4</td>
+<td style="text-align: right;">1.75F</td>
+<td style="text-align: right;">350.72</td>
+</tr>
+<tr>
+<td>再做 #5 + #6</td>
+<td style="text-align: right;">1.5F + 18 MiB</td>
+<td style="text-align: right;">303.80</td>
+</tr>
+</tbody>
+</table>
+<p>这不是发布承诺：#3 要满足等尺寸与消费者条件，#4
+要接受并验证曝光近似，#5 使用本文指定的快照成本假设，#6
+需要阴影档位确认。实际命中率、DRAM 压缩和材质采样未包含在余额中。</p>
+<p>本次已经取得的证据是：</p>
+<ul>
+<li>透明直混 / scope 合并和 MSAA 原型已实现；Windows、Lua 与 Android
+ARM64 核心库编译通过。</li>
+<li>19 项定向回归通过。实体 GPU 回读验证 Dynamic、secondary、legacy 单
+subpass 与异常重录结果一致，没有 validation error。</li>
+<li>完整受控场景的 Opaque、Sky、Alpha、Additive、Crowd 合成一个
+scope；AO 开关、0.7 档、resize 及复杂效果回退均有覆盖。</li>
+<li>编译 IR 中多采样附件的名义 Load/Store 为 0；这不是“手机 DRAM
+流量已经为 0”。桌面测试设备也不能代替移动 TBDR 设备。</li>
+</ul>
+<p>目前没有 Android 实机带宽、热稳定帧时和生产内容美术验收。因此原型仍是
+opt-in，不能写成“MSAA 已在手机上全面胜过 FXAA”。</p>
+<hr />
+<h2 id="五总结">五、总结</h2>
+<h3 id="先避这八个坑">1. 先避这八个坑</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>容易踩的坑</th>
+<th>正确处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>把一次读写往返算成一张；把 MiB 当成帧时</td>
+<td>单独列读和写，字节、GPU 时间、内存峰值分开看</td>
+</tr>
+<tr>
+<td>看 Pass 名字就判断是否合并</td>
+<td>看编译后的 scope、attachmentUniverse 和真实 Begin/End</td>
+</tr>
+<tr>
+<td>认为只读深度一定不需要 Store</td>
+<td>查后续消费者；声明账与驱动实际写回分开统计</td>
+</tr>
+<tr>
+<td>给同一图换个版本号就称为快照</td>
+<td>用物理资源 identity 判断采样读写是否别名</td>
+</tr>
+<tr>
+<td>删中间层时顺手改排序、预乘方式或 alpha</td>
+<td>先证明合同等价，再做图像差分和特殊材质回退</td>
+</tr>
+<tr>
+<td>只改 dispatch，不改坐标和统计分母</td>
+<td>覆盖全屏、统一样本数量，保留 barrier 与曝光历史</td>
+</tr>
+<tr>
+<td>把 MSAA 当作后处理开关或免费画质升级</td>
+<td>先画清楚多采样附件的整个生命周期，再算新增成本</td>
+</tr>
+<tr>
+<td>用桌面通过、19 个测试或 nominal=0 代替手机收益</td>
+<td>分别验收合法性、画面正确性、移动性能和热稳定性</td>
+</tr>
+</tbody>
+</table>
+<p>另外，别把 <code>rasterScopes</code> 与表格行数直接比较：三级
+CSM、七步 Bloom 可以被合并成一行账，而 Histogram 又不是 raster
+scope。逻辑 Pass、物理 scope 和真正的 Vulkan subpass 是不同计数。</p>
+<h3 id="怎么省工程预算">2. 怎么省工程预算</h3>
+<p><strong>先做两个路线都能复用的工作。</strong>
+真实用途查询、透明直混、scope 合并、采样数 identity 与回退统计，既服务
+FXAA 路线，也为 MSAA 原型铺路。不要为了少一次普通透明合成，先上完整
+local-read、复杂 multi-subpass 或新的资源系统。</p>
+<p><strong>先选可控快路径。</strong> 等尺寸最终输出、无屏幕采样透明、无
+UserData 的运行时视图，都是边界清楚、容易验证的起点。Unknown
+先回退，比为了“全覆盖”增加一套脆弱协议更容易维护。</p>
+<p><strong>把三种预算分开批准。</strong></p>
+<ul>
+<li>结构预算：能否删掉中间图、取消物理边界、缩短生命周期。</li>
+<li>画质预算：能否接受曝光采样减少、阴影降档、折射细节变化。</li>
+<li>工程预算：要增加多少 pipeline 变体、缓存状态、烘焙与回归成本。</li>
+</ul>
+<p>本次 material codegen
+签名发生变化，部署已有资产前要走既有离线材质重烘焙流程。测试现场烘焙成功，不代表所有产品资产已经重新打包。</p>
+<h3 id="怎么省带宽预算">3. 怎么省带宽预算</h3>
+<p>先定<strong>本项被分配到的预算</strong>，不要把整条 SoC
+内存总线的理论峰值全部分给渲染目标。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">每帧可用预算 MiB = 分配给该项的 GiB/s × 1024 / 目标 FPS</span><br></pre></td></tr></table></figure>
+<p>例如，假设项目给这一项分配 4 GiB/s，在 60 FPS 下就是约 68.27
+MiB/帧。这只是预算示例，不是对某台手机可用带宽的断言。</p>
+<p>在本文参考尺寸下，每帧少搬 1F，60 FPS 的名义吞吐差约为 1.21
+GB/s。它解释了为什么一张看似普通的中间图值得优化，但不能直接换算成多少毫秒或多少功耗。</p>
+<p>优先顺序通常是：</p>
+<ol type="1">
+<li><strong>先删不必要的中间图与全屏合成。</strong></li>
+<li><strong>再消掉相同附件之间可避免的 Store/Load 边界。</strong></li>
+<li><strong>然后对统计与固定尺寸资源建立质量档位。</strong></li>
+<li><strong>最后评估 MSAA
+等结构性方案，把新增成本一起算进去。</strong></li>
+</ol>
+<p>动态分辨率也要按项目分别算：本例 0.7 档实际为
+752×1629，面积约为原来的 0.485。场景相关目标大致乘这个比例，CSM
+和原生最终输出不跟着乘。</p>
+<h3 id="用最小验收闭环控制返工">4. 用最小验收闭环控制返工</h3>
+<p>固定场景、相机、动画、曝光历史与
+renderScale，先只改一个开关，再做四步：</p>
+<ol type="1">
+<li>导出前后 execution plan：确认到底少了哪张图、哪一次
+Load/Store，且没有新副本把收益吃回去。</li>
+<li>做像素回读 /
+图像差分：包含多层透明、Additive、无天空背景、稀疏亮点、折射重叠、动态分辨率与
+resize。</li>
+<li>在目标设备记录 external read/write、GPU p50/p95、tile/fragment
+工作与热稳定后帧时；冷启动编译时间单独统计。</li>
+<li>记录快路径命中率、回退原因与实际内容权重，再决定默认档位。</li>
+</ol>
+<p>预算不是只看最好的一帧：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">加权平均收益 = Σ（场景出现比例 × 该场景的前后流量差）</span><br></pre></td></tr></table></figure>
+<p>没有透明、没有人群或没有对应效果的帧，这一项的收益就是零。大量内容触发回退时，要先查内容与合同，不能继续沿用“满配场景省
+5F”的数字代表整个游戏。</p>
+<p>最后记住一句话：<strong>TBDR 优化不是把 Pass
+数字做小，而是让同一块像素在正确的生命周期里少出入外存；省下的预算，也必须通过同一口径的账单、真实画面和目标设备来确认。</strong></p>
+<h3 id="源码与实施记录">源码与实施记录</h3>
+<ul>
+<li><a
+href="D:/code/Solnox/Engine/Source/Runtime/Renderer/WorldRenderer/src/WorldRenderer.cpp">WorldRenderer：视图准入、主链路和计账</a></li>
+<li><a
+href="D:/code/Solnox/Engine/Source/Runtime/Renderer/WorldRenderer/src/TransparencyPass.cpp">TransparencyPass：直混与资源用途准入</a></li>
+<li><a
+href="D:/code/Solnox/Engine/Source/Runtime/Renderer/WorldRenderer/src/FrameGraph.cpp">FrameGraph：合并条件与
+Store 推导</a></li>
+<li><a
+href="D:/code/Solnox/Engine/Source/Runtime/Renderer/WorldRenderer/src/FrameGraphData/SceneMsaa.hpp">SceneMsaa：解析后的
+HDR 输出合同</a></li>
+<li><a
+href="D:/code/Solnox/Docs/20-Render/Plan/MSAA4x原型实施记录-2026-09-09.md">MSAA
+原型实施与验证记录</a></li>
+</ul>
+
+    </div>
+
+    <!-- 标签 -->
+    
+      <div class="post-tags">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+          <path d="M7 7h.01"></path>
+        </svg>
+        
+          <a href="../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
+        
+          <a href="../../tags/Optimization/" class="tag-link">Optimization</a>
+        
+      </div>
+    
+
+    <!-- 版权信息 -->
+    
+      <div class="post-copyright">
+        <p><strong>本文作者：</strong>Berg Zha</p>
+        <p><strong>本文链接：</strong><a href="https://junglemanpro.com/posts/ab78a68f/">https://junglemanpro.com/posts/ab78a68f/</a></p>
+        <p><strong>版权声明：</strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！</p>
+      </div>
+    
+
+    <!-- 上一篇 / 下一篇 -->
+    <nav class="post-nav">
+      
+        <div class="post-nav-item prev disabled"></div>
+      
+      
+      
+        <a href="../27a74117/" class="post-nav-item next">
+          <span class="post-nav-label">下一篇</span>
+          <span class="post-nav-title">游戏引擎-帧快照优化实践：从数据交接到高效流水线</span>
+        </a>
+      
+    </nav>
+  </article>
+
+  <!-- TOC 目录 -->
+  
+    <aside class="post-toc">
+      <div class="toc-wrapper">
+        <h3 class="toc-title">目录</h3>
+        <div class="toc-content">
+          <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E5%85%88%E8%AE%B2%E6%B8%85%E6%A5%9A%E4%B8%89%E4%BB%B6%E4%BA%8B"><span class="toc-text">一、先讲清楚三件事</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%89%8B%E6%9C%BA-gpu-%E6%98%AF%E6%80%8E%E4%B9%88%E7%94%BB%E4%B8%80%E5%B8%A7%E7%9A%84"><span class="toc-text">1. 手机 GPU 是怎么画一帧的</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E5%8F%AB%E6%90%AC%E4%B8%80%E5%BC%A0%E5%9B%BE"><span class="toc-text">2. 什么叫“搬一张图”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%AC%E6%96%87%E7%9A%84%E8%AE%A1%E4%BB%B7%E5%8D%95%E4%BD%8D%E5%BC%A0"><span class="toc-text">3. 本文的计价单位：「张」</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E5%AE%9E%E9%99%85%E5%BC%95%E6%93%8E%E5%86%85%E4%B8%80%E8%88%AC%E7%AE%A1%E7%BA%BF%E5%9B%BE%E5%8F%8A%E5%AE%8C%E6%95%B4%E8%B4%A6%E5%8D%95"><span class="toc-text">二、实际引擎内一般管线图及完整账单</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BB%A1%E9%85%8D%E5%9F%BA%E7%BA%BF%E6%9C%89%E6%8A%98%E5%B0%84%E4%B8%80%E4%B8%AA-alpha-%E5%B1%82%E6%9C%89%E4%BA%BA%E7%BE%A4%E4%BB%A3%E7%90%86"><span class="toc-text">1. 满配基线：有折射、一个
+Alpha 层、有人群代理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8C%89%E6%AE%B5%E6%B1%87%E6%80%BB"><span class="toc-text">2. 按段汇总</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%A1%E7%BA%BF%E5%9B%BE%E5%93%AA%E4%BA%9B%E8%BE%93%E5%87%BA%E8%A2%AB%E4%BF%9D%E5%AD%98%E5%93%AA%E4%BA%9B%E7%BB%93%E6%9E%9C%E8%A2%AB%E5%86%8D%E6%AC%A1%E9%87%87%E6%A0%B7"><span class="toc-text">3.
+管线图：哪些输出被保存，哪些结果被再次采样</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E8%BF%99%E5%BC%A0%E8%B4%A6%E5%8D%95%E9%87%8C%E6%9C%80%E5%88%BA%E7%9C%BC%E7%9A%84%E4%BA%94%E4%BB%B6%E4%BA%8B"><span class="toc-text">三、这张账单里最刺眼的五件事</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BB%E4%BD%93%E5%8F%AA%E5%8D%A0-8%E4%B8%8D%E8%83%BD%E8%AF%BB%E6%88%90%E7%9D%80%E8%89%B2%E5%8F%AA%E8%8A%B1-8"><span class="toc-text">1. “主体只占 8%”不能读成“着色只花
+8%”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%8F%E6%98%8E%E8%A6%86%E7%9B%96%E5%BE%88%E5%B0%8F%E4%B8%8D%E4%BB%A3%E8%A1%A8%E5%85%A8%E5%B1%8F%E5%90%88%E6%88%90%E5%BE%88%E4%BE%BF%E5%AE%9C"><span class="toc-text">2.
+透明覆盖很小，不代表全屏合成很便宜</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BE%93%E5%87%BA%E5%8F%AA%E6%9C%89%E4%B8%80%E4%B8%AA%E6%95%B0%E4%B9%9F%E5%8F%AF%E8%83%BD%E6%89%AB%E4%BA%86%E4%B8%80%E6%95%B4%E5%B1%8F"><span class="toc-text">3.
+输出只有一个数，也可能扫了一整屏</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E5%88%86%E8%BE%A8%E7%8E%87%E4%B8%8D%E4%BC%9A%E8%87%AA%E5%8A%A8%E6%9B%BF%E4%BD%A0%E5%A4%84%E7%90%86%E5%9B%BA%E5%AE%9A%E5%88%86%E8%BE%A8%E7%8E%87%E9%98%B4%E5%BD%B1"><span class="toc-text">4.
+动态分辨率不会自动替你处理固定分辨率阴影</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#framegraph-%E8%83%BD%E7%9C%81%E9%92%B1%E4%BD%86%E5%89%8D%E6%8F%90%E6%98%AF%E5%A3%B0%E6%98%8E%E7%9C%9F%E5%AE%9E"><span class="toc-text">5. FrameGraph
+能省钱，但前提是声明真实</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E4%BC%98%E5%8C%96%E8%B4%A6%E5%8D%95"><span class="toc-text">四、优化账单</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%88%E7%9C%8B%E5%85%A8%E5%B1%80%E6%94%B6%E7%9B%8A%E6%9D%A1%E4%BB%B6%E5%92%8C%E5%AE%9E%E6%96%BD%E7%8A%B6%E6%80%81"><span class="toc-text">1.
+先看全局：收益、条件和实施状态</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%99%AE%E9%80%9A%E9%80%8F%E6%98%8E%E5%85%88%E5%8F%96%E6%B6%88%E4%B8%AD%E9%97%B4%E5%9B%BE%E5%86%8D%E8%AE%A8%E8%AE%BA%E5%90%88%E5%B9%B6"><span class="toc-text">2.
+普通透明：先取消中间图，再讨论合并</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%8F%E6%98%8E%E4%B8%8E%E4%BA%BA%E7%BE%A4%E7%9C%81%E7%9A%84%E6%98%AF%E7%89%A9%E7%90%86%E8%BE%B9%E7%95%8C%E4%B8%8D%E6%98%AF%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8"><span class="toc-text">3.
+透明与人群：省的是物理边界，不是函数调用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8A%97%E9%94%AF%E9%BD%BF%E4%B8%AD%E8%BD%AC%E8%83%BD%E5%86%99%E6%9C%80%E7%BB%88%E7%9B%AE%E6%A0%87%E5%B0%B1%E4%B8%8D%E5%BF%85%E5%86%8D%E6%8A%84%E4%B8%80%E9%81%8D"><span class="toc-text">4.
+抗锯齿中转：能写最终目标，就不必再抄一遍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9B%B4%E6%96%B9%E5%9B%BE%E5%87%8F%E5%B0%91%E6%A0%B7%E6%9C%AC%E4%B8%8D%E8%A6%81%E5%8F%AA%E5%87%8F%E5%B0%91%E7%BA%BF%E7%A8%8B"><span class="toc-text">5.
+直方图：减少样本，不要只减少线程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8A%98%E5%B0%84%E5%89%AF%E6%9C%AC%E5%BF%85%E9%A1%BB%E4%BB%98%E9%92%B1%E7%9B%B4%E6%8E%A5%E6%B7%B7%E5%90%88%E4%B9%9F%E4%BC%9A%E6%94%B9%E5%8F%98%E9%87%8D%E5%8F%A0%E8%AF%AD%E4%B9%89"><span class="toc-text">6.
+折射：副本必须付钱，直接混合也会改变重叠语义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%98%B4%E5%BD%B1%E5%9B%BA%E5%AE%9A%E9%A2%84%E7%AE%97%E7%94%A8%E7%8B%AC%E7%AB%8B%E8%B4%A8%E9%87%8F%E6%A1%A3%E4%BD%8D%E7%AE%A1%E7%90%86"><span class="toc-text">7.
+阴影：固定预算用独立质量档位管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#msaa%E5%AE%83%E6%98%AF%E7%AE%A1%E7%BA%BF%E6%96%B9%E6%A1%88%E4%B8%8D%E6%98%AF-fxaa-%E7%9A%84%E5%8F%A6%E4%B8%80%E4%B8%AA%E5%BC%80%E5%85%B3"><span class="toc-text">8.
+MSAA：它是管线方案，不是 FXAA 的另一个开关</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%8E%E4%B9%88%E6%8A%8A%E8%BF%99%E4%BA%9B%E6%83%B3%E6%B3%95%E5%8F%98%E6%88%90%E5%8F%AF%E4%BA%A4%E4%BB%98%E7%9A%84%E9%A2%84%E7%AE%97"><span class="toc-text">9.
+怎么把这些想法变成可交付的预算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E6%80%BB%E7%BB%93"><span class="toc-text">五、总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%88%E9%81%BF%E8%BF%99%E5%85%AB%E4%B8%AA%E5%9D%91"><span class="toc-text">1. 先避这八个坑</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%8E%E4%B9%88%E7%9C%81%E5%B7%A5%E7%A8%8B%E9%A2%84%E7%AE%97"><span class="toc-text">2. 怎么省工程预算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%8E%E4%B9%88%E7%9C%81%E5%B8%A6%E5%AE%BD%E9%A2%84%E7%AE%97"><span class="toc-text">3. 怎么省带宽预算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%A8%E6%9C%80%E5%B0%8F%E9%AA%8C%E6%94%B6%E9%97%AD%E7%8E%AF%E6%8E%A7%E5%88%B6%E8%BF%94%E5%B7%A5"><span class="toc-text">4. 用最小验收闭环控制返工</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%E4%B8%8E%E5%AE%9E%E6%96%BD%E8%AE%B0%E5%BD%95"><span class="toc-text">源码与实施记录</span></a></li></ol></li></ol>
+        </div>
+      </div>
+    </aside>
+  
+</div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-content">
+      <!-- 版权信息 -->
+      <div class="footer-copyright">
+        <p>
+          &copy; 
+          
+            2024 - 
+          
+          2026 
+          <a href="../../index.html">Berg Zha</a>
+        </p>
+      </div>
+
+      <!-- 社交链接 -->
+      
+        <div class="footer-social">
+          
+          
+          
+        </div>
+      
+
+      <!-- 技术支持 -->
+      <div class="footer-powered">
+        <p>
+          Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a>
+          <span class="separator">|</span>
+          Theme Starter
+        </p>
+      </div>
+
+      <!-- 备案信息 -->
+      
+
+      <!-- 自定义内容 -->
+      
+    </div>
+  </div>
+</footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>与我交流</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
+
+  
+  <!-- 搜索模态框 -->
+  
+    <div id="search-modal" class="search-modal">
+  <div class="search-container">
+    <!-- 搜索头部 -->
+    <div class="search-header">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="搜索文章、文档..." 
+          autocomplete="off"
+          autofocus
+        >
+        <button class="search-close" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="search-shortcut">
+        <kbd>ESC</kbd> 关闭
+        <span class="shortcut-divider">|</span>
+        <kbd>↑</kbd><kbd>↓</kbd> 导航
+        <span class="shortcut-divider">|</span>
+        <kbd>Enter</kbd> 打开
+      </div>
+    </div>
+
+    <!-- 搜索结果 -->
+    <div id="search-results" class="search-results">
+      <div class="search-tip">输入关键词开始搜索</div>
+    </div>
+
+    <!-- 搜索页脚 -->
+    <div class="search-footer">
+      <span class="search-footer-text">
+        <kbd>Ctrl</kbd> + <kbd>K</kbd> 快速搜索
+      </span>
+    </div>
+  </div>
+</div>
+
+  
+
+  <!-- 站点配置 -->
+  <script>
+    window.STARTER_CONFIG = {
+      root: '/',
+      searchEnabled: true
+    };
+  </script>
+
+  <!-- 主脚本 -->
+  
+<script src="../../js/main.js"></script>
+
+  
+  
+    
+<script src="../../js/search.js"></script>
+
+  
+  
+  
+    
+<script src="../../js/doc-sidebar.js"></script>
+
+  
+</body>
+</html>

@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+<!-- 标题 -->
+<title>游戏引擎-帧相位与 JobSystem 协同：从执行顺序到完成边界 | 萤虫之光</title>
+
+<!-- 网站描述 -->
+<meta name="description" content="个人博客">
+<meta name="keywords" content="Engine">
+<meta name="author" content="Berg Zha">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="游戏引擎-帧相位与 JobSystem 协同：从执行顺序到完成边界">
+<meta property="og:description" content="个人博客">
+<meta property="og:url" content="https://junglemanpro.com/posts/496458b4/">
+<meta property="og:site_name" content="萤虫之光">
+
+
+<!-- Favicon -->
+
+<link rel="icon" href="../../img/berg.jpg">
+
+
+<!-- 预连接 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- 字体 -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- 样式表 -->
+
+<link rel="stylesheet" href="../../css/style.css">
+
+
+<!-- RSS -->
+
+
+<!-- 规范链接 -->
+<link rel="canonical" href="https://junglemanpro.com/posts/496458b4/">
+
+<!-- 主题色 -->
+<meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
+
+<!-- 自定义样式变量 -->
+<style>
+  :root {
+    --primary-color: #2563eb;
+  }
+</style>
+
+<script>
+  MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<meta name="generator" content="Hexo 8.1.2"></head>
+<body>
+  <header class="site-header">
+  <div class="header-container">
+    <!-- Logo / 站点标题 -->
+    <div class="site-brand">
+      <a href="../../index.html" class="site-logo">
+        
+          <span class="site-title">萤虫之光</span>
+        
+      </a>
+    </div>
+
+    <!-- 导航菜单 -->
+    <nav class="site-nav">
+      <ul class="nav-list">
+        
+          <li class="nav-item">
+            
+              <a href="../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../archives" 
+                 class="nav-link ">
+                归档
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
+          </li>
+        
+      </ul>
+    </nav>
+
+    <!-- 工具栏 -->
+    <div class="header-tools">
+      <!-- 搜索按钮 -->
+      
+        <button class="tool-btn search-toggle" aria-label="搜索" title="搜索">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 主题切换 -->
+      
+        <button class="tool-btn theme-toggle" aria-label="切换主题" title="切换主题">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 移动端菜单按钮 -->
+      <button class="tool-btn menu-toggle" aria-label="菜单" title="菜单">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" x2="20" y1="12" y2="12"></line>
+          <line x1="4" x2="20" y1="6" y2="6"></line>
+          <line x1="4" x2="20" y1="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 移动端导航 -->
+  <div class="mobile-nav">
+    <ul class="mobile-nav-list">
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../archives" 
+               class="mobile-nav-link ">
+              归档
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
+        </li>
+      
+    </ul>
+  </div>
+</header>
+
+  
+  <main class="main-content">
+    <div class="container">
+      
+<div class="page-layout post-layout has-toc">
+  <article class="post-article">
+    <!-- 文章头部 -->
+    <header class="post-header">
+      <h1 class="post-title">游戏引擎-帧相位与 JobSystem 协同：从执行顺序到完成边界</h1>
+      
+      <!-- 元信息 -->
+      <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-08-07">
+      2026-08-07
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+    <span class="meta-item meta-updated">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+      </svg>
+      <time datetime="2026-09-10">
+        更新于 2026-09-10
+      </time>
+    </span>
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      11.8k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 40 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+</div>
+
+      
+      <!-- 封面图 -->
+      
+    </header>
+
+    
+      <details class="mobile-post-toc">
+        <summary aria-controls="mobile-post-toc-content">
+          <span>文章目录</span>
+          <svg class="toc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </summary>
+        <nav id="mobile-post-toc-content" class="toc-content" aria-label="文章目录">
+          <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E7%9B%B8%E4%BD%8D%E9%A1%BA%E5%BA%8F%E6%AD%A3%E7%A1%AE%E6%95%B0%E6%8D%AE%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BB%8D%E7%84%B6%E5%8F%AF%E8%83%BD%E5%87%BA%E9%94%99"><span class="toc-text">一、相位顺序正确，数据为什么仍然可能出错</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E4%BA%94%E7%A7%8D%E8%BE%B9%E7%95%8C%E5%90%84%E5%8F%B8%E5%85%B6%E8%81%8C"><span class="toc-text">二、五种边界各司其职</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E5%8D%8F%E8%B0%83%E8%80%85%E6%8E%A8%E8%BF%9B%E4%B8%96%E7%95%8C%E5%B7%A5%E4%BD%9C%E8%80%85%E6%89%BF%E6%8B%85%E5%8F%97%E6%8E%A7%E8%AE%A1%E7%AE%97"><span class="toc-text">三、协调者推进世界，工作者承担受控计算</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8D%E8%A6%81%E6%8A%8A%E6%95%B4%E4%B8%AA%E7%B3%BB%E7%BB%9F%E6%9B%B4%E6%96%B0%E4%B8%80%E8%82%A1%E8%84%91%E5%A1%9E%E8%BF%9B%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="toc-text">3.1
+不要把整个系统更新一股脑塞进线程池</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B6%E5%B1%82%E5%8D%8F%E8%B0%83%E4%B8%8E%E5%86%85%E9%83%A8%E5%B9%B6%E8%A1%8C%E5%8F%AF%E4%BB%A5%E5%90%8C%E6%97%B6%E5%AD%98%E5%9C%A8"><span class="toc-text">3.2
+顶层协调与内部并行可以同时存在</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%9F%E4%B8%80%E4%BB%BB%E5%8A%A1%E7%B3%BB%E7%BB%9F%E4%B8%8D%E7%AD%89%E4%BA%8E%E6%89%80%E6%9C%89%E5%B7%A5%E4%BD%9C%E5%85%B1%E7%94%A8%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="toc-text">3.3
+统一任务系统，不等于所有工作共用一个线程池</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E5%AE%8C%E6%88%90%E7%BB%84%E6%8A%8A%E7%AD%89%E5%88%B0%E7%BB%93%E6%9D%9F%E8%AF%B4%E6%B8%85%E6%A5%9A"><span class="toc-text">四、完成组：把“等到结束”说清楚</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8F%90%E4%BA%A4%E7%BB%93%E6%9D%9F%E4%B9%8B%E5%90%8E%E8%BF%98%E9%9C%80%E8%A6%81%E5%B0%81%E9%97%AD%E6%88%90%E5%91%98%E9%9B%86%E5%90%88"><span class="toc-text">4.1
+为什么提交结束之后还需要封闭成员集合</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E5%90%8C%E6%AD%A5%E6%89%B9%E6%AC%A1%E9%80%82%E9%85%8D%E5%99%A8%E5%BA%94%E5%BD%93%E4%BF%9D%E8%AF%81%E4%BB%80%E4%B9%88"><span class="toc-text">4.2
+一个同步批次适配器应当保证什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%8C%E6%88%90%E4%B8%8D%E5%BA%94%E6%97%A9%E4%BA%8E%E4%BB%BB%E5%8A%A1%E6%8D%95%E8%8E%B7%E8%B5%84%E6%BA%90%E7%9A%84%E6%94%B6%E5%8F%A3"><span class="toc-text">4.3
+完成不应早于任务捕获资源的收口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E4%B8%80%E4%B8%AA%E8%90%BD%E5%9C%B0%E4%BE%8B%E5%AD%90%E5%B9%B6%E8%A1%8C%E7%94%9F%E6%88%90%E5%91%88%E7%8E%B0%E6%95%B0%E6%8D%AE"><span class="toc-text">五、一个落地例子：并行生成呈现数据</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%88%E5%BB%BA%E7%AB%8B%E8%AF%BB%E5%8F%96%E7%AA%97%E5%8F%A3%E5%86%8D%E6%B4%BE%E5%8F%91%E4%BB%BB%E5%8A%A1"><span class="toc-text">5.1 先建立读取窗口，再派发任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8A%8A%E5%B9%B6%E8%A1%8C%E6%9C%BA%E4%BC%9A%E6%94%BE%E5%9C%A8%E7%9C%9F%E6%AD%A3%E6%97%A0%E5%86%B2%E7%AA%81%E7%9A%84%E5%B7%A5%E4%BD%9C%E4%B8%8A"><span class="toc-text">5.2
+把并行机会放在真正无冲突的工作上</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9B%B8%E4%BD%8D%E6%89%B9%E6%AC%A1%E5%92%8C%E5%AD%90%E6%AD%A5%E4%B8%8D%E8%A6%81%E6%B7%B7%E5%9C%A8%E4%B8%80%E8%B5%B7"><span class="toc-text">5.3
+相位、批次和子步不要混在一起</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E5%A4%B1%E8%B4%A5%E8%B7%AF%E5%BE%84%E5%86%B3%E5%AE%9A%E5%B9%B6%E8%A1%8C%E6%8E%A5%E5%8F%A3%E6%98%AF%E5%90%A6%E7%9C%9F%E6%AD%A3%E5%AE%89%E5%85%A8"><span class="toc-text">六、失败路径决定并行接口是否真正安全</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%96%E6%B6%88%E8%AF%B7%E6%B1%82%E4%B8%8D%E8%83%BD%E6%9B%BF%E4%BB%A3%E6%8E%92%E7%A9%BA"><span class="toc-text">6.1 取消请求不能替代排空</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%8E%E5%A4%87%E6%89%A7%E8%A1%8C%E5%8F%AA%E8%83%BD%E9%87%8D%E8%AF%95%E5%8F%AF%E9%87%8D%E5%A4%8D%E7%9A%84%E9%83%A8%E5%88%86"><span class="toc-text">6.2
+后备执行只能重试可重复的部分</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E7%AD%89%E5%BE%85%E6%98%AF%E5%8F%97%E6%8E%A7%E6%89%A7%E8%A1%8C%E8%BE%B9%E7%95%8C%E4%B8%8D%E6%98%AF%E4%BB%BB%E6%84%8F%E5%B8%AE%E5%BF%99"><span class="toc-text">七、等待是受控执行边界，不是任意帮忙</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%99%AE%E9%80%9A%E5%B8%A7%E4%BB%BB%E5%8A%A1%E4%B8%8D%E5%BA%94%E5%86%8D%E5%B5%8C%E5%A5%97%E5%90%8C%E6%AD%A5%E6%89%B9%E6%AC%A1"><span class="toc-text">7.1
+为什么普通帧任务不应再嵌套同步批次</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%8F%E4%BD%9C%E7%AD%89%E5%BE%85%E5%BF%85%E9%A1%BB%E6%9C%89%E6%9D%83%E9%99%90%E5%92%8C%E8%8C%83%E5%9B%B4"><span class="toc-text">7.2 协作等待必须有权限和范围</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8D%E8%A6%81%E7%94%A8%E8%BF%90%E8%A1%8C%E5%88%B0%E5%85%A8%E5%B1%80%E7%A9%BA%E9%97%B2%E8%A1%A8%E7%A4%BA%E5%B8%A7%E5%AE%8C%E6%88%90"><span class="toc-text">7.3
+不要用“运行到全局空闲”表示帧完成</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E4%BB%BB%E5%8A%A1%E5%85%A8%E9%83%A8%E5%AE%8C%E6%88%90%E4%B9%8B%E5%90%8E%E8%BF%98%E5%B7%AE%E4%B8%80%E6%AC%A1%E5%AE%89%E5%85%A8%E5%8F%91%E5%B8%83"><span class="toc-text">八、任务全部完成之后，还差一次安全发布</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%97%E5%AE%8C%E4%BA%86%E4%B8%8D%E4%BB%A3%E8%A1%A8%E7%BB%93%E6%9E%9C%E4%BB%8D%E7%84%B6%E6%9C%89%E6%95%88"><span class="toc-text">8.1 算完了，不代表结果仍然有效</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8D%E5%8F%AF%E5%8F%98%E6%95%B0%E6%8D%AE%E8%A6%81%E8%A6%86%E7%9B%96%E9%97%B4%E6%8E%A5%E5%BC%95%E7%94%A8"><span class="toc-text">8.2 不可变数据要覆盖间接引用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%88%E5%85%A8%E9%83%A8%E9%A2%84%E6%A3%80%E5%86%8D%E5%BC%80%E5%A7%8B%E5%A4%96%E9%83%A8%E5%89%AF%E4%BD%9C%E7%94%A8"><span class="toc-text">8.3
+先全部预检，再开始外部副作用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BD%93%E5%89%8D%E5%8F%91%E5%B8%83%E4%B8%8E%E5%BB%B6%E8%BF%9F%E5%8F%8D%E9%A6%88%E4%B8%8D%E5%BA%94%E4%BD%BF%E7%94%A8%E5%90%8C%E4%B8%80%E7%A7%8D%E8%BF%87%E6%9C%9F%E8%A7%84%E5%88%99"><span class="toc-text">8.4
+当前发布与延迟反馈，不应使用同一种过期规则</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9Dcpu-%E6%89%B9%E6%AC%A1%E5%AE%8C%E6%88%90%E4%B8%8E-gpu-%E5%AE%8C%E6%88%90%E4%B9%8B%E9%97%B4%E8%BF%98%E6%9C%89%E5%87%A0%E9%81%93%E8%BE%B9%E7%95%8C"><span class="toc-text">九、CPU 批次完成与
+GPU 完成之间，还有几道边界</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E8%81%94%E5%8A%A8%E6%80%A7%E8%83%BD%E7%9C%8B%E5%85%B3%E9%94%AE%E8%B7%AF%E5%BE%84%E4%B8%8D%E7%9C%8B%E7%BA%BF%E7%A8%8B%E6%9C%89%E5%A4%9A%E5%BF%99"><span class="toc-text">十、联动性能看关键路径，不看线程有多忙</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9B%B8%E4%BD%8D%E6%97%B6%E9%97%B4%E5%8F%96%E5%86%B3%E4%BA%8E%E6%9C%80%E6%99%9A%E5%AE%8C%E6%88%90%E7%9A%84%E5%BF%85%E8%A6%81%E4%BE%9D%E8%B5%96"><span class="toc-text">10.1
+相位时间取决于最晚完成的必要依赖</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B2%92%E5%BA%A6%E9%A2%84%E7%AE%97%E4%B8%8E%E9%98%9F%E5%88%97%E6%8E%A5%E7%BA%B3%E8%A6%81%E4%B8%80%E8%B5%B7%E8%AE%BE%E8%AE%A1"><span class="toc-text">10.2
+粒度、预算与队列接纳要一起设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E9%87%8F%E4%BB%8E%E6%8E%92%E9%98%9F%E5%88%B0%E5%8F%91%E5%B8%83%E7%9A%84%E6%95%B4%E6%9D%A1%E9%93%BE"><span class="toc-text">10.3 测量从排队到发布的整条链</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E6%8A%8A%E6%95%B4%E6%9D%A1%E5%8D%8F%E5%90%8C%E9%93%BE%E6%94%BE%E8%BF%9B%E4%B8%80%E6%AE%B5%E4%BC%AA%E4%BB%A3%E7%A0%81"><span class="toc-text">十一、把整条协同链放进一段伪代码</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E7%94%A8%E8%BE%B9%E7%95%8C%E6%B5%8B%E8%AF%95%E8%AF%81%E6%98%8E%E8%81%94%E5%8A%A8%E6%88%90%E7%AB%8B"><span class="toc-text">十二、用边界测试证明联动成立</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AF%AD%E5%B9%B6%E8%A1%8C%E4%B8%8D%E5%BA%94%E8%AF%A5%E5%89%8A%E5%BC%B1%E6%97%B6%E9%97%B4%E5%A5%91%E7%BA%A6"><span class="toc-text">结语：并行不应该削弱时间契约</span></a></li></ol>
+        </nav>
+      </details>
+    
+
+    <!-- 文章内容 -->
+    <div class="post-content markdown-body">
+      <p>把一个耗时函数提交给线程池，往往只需要改几行代码。但从这一刻开始，原来隐含在函数调用中的保证，也可能一起消失了。</p>
+<p>过去，函数返回意味着它的计算已经完成，下一段代码可以读取结果。现在，提交函数返回，可能只意味着任务进入了队列。调用顺序没有变，数据的生产与消费顺序却已经变了。</p>
+<p>帧相位解决“什么工作应该先发生”，JobSystem
+解决“工作由谁执行、怎样完成”。两者真正联动的关键，不是给每个阶段配一个线程池，而是把逻辑先后转化成可靠的完成边界，再把完成结果转化成安全的数据交接。</p>
+<p>本文采用一种容易落地的基线：可变世界由协调者推进，经过约束的计算在阶段内部并行，必需任务在交接前收口，消费者读取冻结后的帧数据。跨帧重叠是可以继续扩展的能力，不是这套架构成立的前提。</p>
+<h2
+id="一相位顺序正确数据为什么仍然可能出错">一、相位顺序正确，数据为什么仍然可能出错</h2>
+<p>考虑一条简单流程：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">更新世界 → 整理呈现数据 → 开始绘制</span><br></pre></td></tr></table></figure>
+<p>串行执行时，“整理呈现数据”返回之后，绘制可以使用其结果。若只做下面这样的改动：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">更新世界</span><br><span class="line">将“整理呈现数据”提交给任务系统</span><br><span class="line">开始绘制</span><br></pre></td></tr></table></figure>
+<p>相位名称仍然按顺序出现，但绘制可能读到尚未填完的数组。</p>
+<p>这类问题不能仅靠“阶段序号不得回退”发现。游标只能证明已经进入了哪个阶段，不能证明这个阶段发出的异步工作已经完成。</p>
+<p>需要补上的关系是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">前置计算真正完成</span><br><span class="line">  → 其写入对消费者可见</span><br><span class="line">  → 消费者才允许开始</span><br></pre></td></tr></table></figure>
+<p>对于本文的同步交接模型，一个阶段能够成功向后推进，至少要满足：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">进入顺序合法</span><br><span class="line">且 本阶段交接所需的任务全部成功结束</span><br><span class="line">且 当前世界与帧仍然有效</span><br></pre></td></tr></table></figure>
+<p>注意这里说的是“交接所需的任务”，不是“整个任务系统中的所有任务”。后台资源加载可以跨越多个显示帧，不应因为仍在运行，就阻止每一帧进入呈现。</p>
+<p>这也是第一个设计原则：帧推进依赖明确的完成集合，而不是全局队列是否清空。</p>
+<h2 id="二五种边界各司其职">二、五种边界各司其职</h2>
+<p>很多调度问题来自把不同概念混成一个对象：既用它表示本帧，又用它表示线程归属，还希望它负责取消和发布。</p>
+<p>更清楚的划分如下：</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>概念</th>
+<th>回答的问题</th>
+<th>不应被误认为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>帧相位</td>
+<td>哪些数据关系必须先成立？</td>
+<td>工作已经完成的证明</td>
+</tr>
+<tr>
+<td>完成组</td>
+<td>当前等待的任务究竟有哪些？</td>
+<td>全局任务队列或自动包含所有后代的任务树</td>
+</tr>
+<tr>
+<td>生命周期作用域</td>
+<td>谁拥有这些任务，何时必须取消并收口？</td>
+<td>任务优先级或线程池选择</td>
+</tr>
+<tr>
+<td>执行域</td>
+<td>任务允许在哪里执行，使用哪类执行资源？</td>
+<td>世界数据的所有权</td>
+</tr>
+<tr>
+<td>发布边界</td>
+<td>哪些结果已经完整、有效，可以交给消费者？</td>
+<td>CPU 或 GPU 所有工作都已结束</td>
+</tr>
+</tbody>
+</table>
+<p>例如，一个呈现准备任务可以属于某一帧的生命周期作用域，被加入某个实例提取完成组，并在通用工作池执行。三者并不冲突：作用域描述归属，完成组描述等待集合，执行域描述执行权限。</p>
+<p>同样，长期服务可以持续提交新任务，但某一帧只接纳它已经完成、且版本有效的结果。服务作用域还活着，并不意味着当前帧还不能完成。</p>
+<p>这些概念可以通过轻量适配器组合起来，不必让普通业务任务直接操作全部底层机制。对于一个纯计算片段，知道自己的输入范围和输出位置，往往已经足够。</p>
+<h2
+id="三协调者推进世界工作者承担受控计算">三、协调者推进世界，工作者承担受控计算</h2>
+<h3 id="不要把整个系统更新一股脑塞进线程池">3.1
+不要把整个系统更新一股脑塞进线程池</h3>
+<p>一个名为“更新角色”或“更新物理”的入口，内部可能混合了多种行为：修改组件、触发生命周期回调、访问脚本环境、调用线程相关的设备接口，以及等待更细粒度的内部任务。</p>
+<p>这样的入口不能仅凭耗时较长，就变成普通工作线程任务。</p>
+<p>一种稳健的分工是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">协调者：</span><br><span class="line">    接纳输入和已完成外部结果</span><br><span class="line">    推进可变世界</span><br><span class="line">    执行有线程要求的顶层入口</span><br><span class="line">    建立稳定的读取窗口</span><br><span class="line">    拆分任务、等待收口、归并和发布</span><br><span class="line"></span><br><span class="line">工作者：</span><br><span class="line">    读取明确的输入</span><br><span class="line">    计算自己的片段</span><br><span class="line">    写入私有结果或不重叠区间</span><br><span class="line">    返回，不自行推进世界生命周期</span><br></pre></td></tr></table></figure>
+<p>这不意味着世界计算永远不能并行，而是先把可证明安全的部分开放出来。组件类型没有交集，也不等于系统之间没有共享状态；事件分发器、全局缓存、资源管理器和设备上下文都可能构成隐藏依赖。</p>
+<p>特别要警惕“看起来只读”的接口。读取变换时补算缓存、访问材质时触发加载、查询组件时创建存储，都可能产生写入。建立只读窗口之前，应完成这些必要的求值与准备。</p>
+<h3 id="顶层协调与内部并行可以同时存在">3.2
+顶层协调与内部并行可以同时存在</h3>
+<p>物理更新是一个典型例子：顶层入口留在协调者，求解过程中的任务仍可交给专门的执行域并行。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">协调者进入一个仿真步</span><br><span class="line">  → 物理适配器组织内部依赖任务</span><br><span class="line">  → 允许的执行者推进这些任务</span><br><span class="line">  → 内部任务与完成通知全部收口</span><br><span class="line">  → 返回协调者</span><br></pre></td></tr></table></figure>
+<p>顶层入口没有变成线程池任务，不代表内部只能串行。反过来，如果把一个会阻塞等待子任务的顶层入口先放进普通工作池，就可能制造嵌套等待，后文会讨论这种风险。</p>
+<p>有些内部任务还会在执行过程中生成新的任务。对此，适配器需要保留动态依赖与完成协议，不能在开始时随意封闭一个静态成员集合，就宣称所有后续任务都会自动被覆盖。</p>
+<h3 id="统一任务系统不等于所有工作共用一个线程池">3.3
+统一任务系统，不等于所有工作共用一个线程池</h3>
+<p>通用计算、物理求解、受限的命令录制，可以使用不同执行域，但统一遵守接纳、取消、完成和诊断契约，并由上层统一预算线程资源。</p>
+<p>串行通道也不一定拥有专用线程。它可以借用共享工作池，只保证某条通道上的任务按顺序、互不重叠地执行。如果代码要求每次都在同一条物理线程上运行，仅有串行保证并不够。</p>
+<p>某些执行资源还属于已注册的执行位置，例如私有暂存区或命令分配器。此时必须验证执行身份和代次，不能假设“任务编号就是工作线程编号”，更不能给临时协作执行者伪造一个资源槽位。</p>
+<h2 id="四完成组把等到结束说清楚">四、完成组：把“等到结束”说清楚</h2>
+<h3 id="为什么提交结束之后还需要封闭成员集合">4.1
+为什么提交结束之后还需要封闭成员集合</h3>
+<p>假设一个阶段准备提交三个任务。第一个任务执行得很快，在第三个任务提交之前就结束了。</p>
+<p>如果把“当前待处理计数为零”直接理解为整组完成，就可能在成员仍然增加时过早发布终态。</p>
+<p>解决方法是区分两个事实：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">成员是否已经全部确定？</span><br><span class="line">已接纳的成员是否都已结束？</span><br></pre></td></tr></table></figure>
+<p>完成组可以采用下面的状态模型：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">接纳中</span><br><span class="line">  → 封闭成员集合</span><br><span class="line">  → 所有已接纳成员收口</span><br><span class="line">  → 成功 / 失败 / 取消</span><br></pre></td></tr></table></figure>
+<p>“封闭”只表示不再接纳新成员，不表示任何任务已经执行完成。成功也不同于终止：被取消或执行失败的组可以已经安全收口，但不能被当成成功结果使用。</p>
+<p>显式完成组只覆盖显式加入的成员。任务内部发出的其他异步请求，不会因为逻辑上像“子任务”，就自动成为该组的一部分。普通帧任务可以禁止这种脱离管理的派发；确实需要动态子任务的模块，则应提供经过验证的专用协议。</p>
+<h3 id="一个同步批次适配器应当保证什么">4.2
+一个同步批次适配器应当保证什么</h3>
+<p>对上层而言，可以将组和作用域隐藏在一个同步接口后面：内部并行，返回时全部收口。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">执行并行批次（片段列表、帧凭证）：</span><br><span class="line">    确认调用者是协调者</span><br><span class="line">    确认帧凭证仍有效</span><br><span class="line">    创建带清理保护的生命周期作用域与完成组</span><br><span class="line"></span><br><span class="line">    对每个片段：</span><br><span class="line">        尝试将纯计算任务加入该组</span><br><span class="line">        如果提交失败：转入失败收尾</span><br><span class="line"></span><br><span class="line">    封闭成员集合</span><br><span class="line">    在允许的执行域内等待该组</span><br><span class="line">    如果任务失败或取消：转入失败收尾</span><br><span class="line">    如果帧凭证已经失效：转入失败收尾</span><br><span class="line"></span><br><span class="line">    回收成功完成的组记录与作用域记录</span><br><span class="line">    返回成功</span><br><span class="line"></span><br><span class="line">失败收尾：</span><br><span class="line">    请求取消已经接纳的成员</span><br><span class="line">    确保成员集合不再扩展</span><br><span class="line">    排空已接纳任务及其捕获资源</span><br><span class="line">    清理本批临时状态</span><br><span class="line">    返回失败原因</span><br></pre></td></tr></table></figure>
+<p>这个接口的重要承诺不是“任务可能并行”，而是：任何返回路径都不遗留仍在访问调用者临时数据的任务。创建、提交和回调抛出异常时，也必须进入同样的清理保护。</p>
+<p>成功路径只需要回收已经完成的记录，不应为了方便统一处理，仍然对成功任务发出取消请求。取消回调可能具有可观察行为，正常结束与失败清理应该具有不同语义。</p>
+<h3 id="完成不应早于任务捕获资源的收口">4.3
+完成不应早于任务捕获资源的收口</h3>
+<p>任务函数执行完最后一行，未必意味着它已经不再触碰外部资源。闭包销毁、暂存对象释放、引用归还，也可能属于执行尾部的一部分。</p>
+<p>因此，若上层约定“等待完成后即可释放批次输入”，完成通知就必须覆盖这些尾部操作，或者用等价的所有权协议保证它们安全。</p>
+<p>跨线程读取结果还需要真实的同步语义。普通计数器归零或阶段编号递增，不能自动建立正确的
+happens-before
+关系；完成实现应通过合适的同步操作使生产者写入对消费者可见。相关原则可参见
+<a target="_blank" rel="noopener" href="https://eel.is/c++draft/intro.races">C++
+工作草案：数据竞争与执行顺序</a>。</p>
+<h2
+id="五一个落地例子并行生成呈现数据">五、一个落地例子：并行生成呈现数据</h2>
+<p>比起让整个世界任意并行，更适合作为起点的是纯数据准备：从稳定输入中筛选对象、统计数量、填充数组，最后生成只读结果。</p>
+<h3 id="先建立读取窗口再派发任务">5.1 先建立读取窗口，再派发任务</h3>
+<p>准备开始前，协调者需要完成影响输入的世界写入，例如变换更新、最终姿态整理、相机求值和附着关系调整。</p>
+<p>随后建立一个受控读取窗口：任务可以临时借用稳定的输入范围，但这段时间内不允许结构修改，也不允许输入对象被释放。窗口一直持续到任务全部收口。</p>
+<p>这和“输入已经是一份独立快照”不是同一回事。受控借用依赖协调边界保持稳定；独立快照则拥有自己的数据与资源持有关系。两者都可以用于准备阶段，但不能把一包只读指针误认为已经拥有独立生命周期。</p>
+<p>后台服务此时可以继续计算自己的结果，却不应绕过接纳边界修改活跃世界。</p>
+<h3 id="把并行机会放在真正无冲突的工作上">5.2
+把并行机会放在真正无冲突的工作上</h3>
+<p>生成可变长输出时，一种常见结构是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">稳定输入</span><br><span class="line">  → 并行筛选并统计各块数量</span><br><span class="line">  → 计算输出偏移</span><br><span class="line">  → 并行填充互不重叠的区间</span><br><span class="line">  → 按稳定规则归并</span><br><span class="line">  → 冻结结果</span><br></pre></td></tr></table></figure>
+<p>对应的伪代码如下：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">块列表 = 按稳定输入次序分块</span><br><span class="line"></span><br><span class="line">并行执行并收口：</span><br><span class="line">    每个块计算自己的输出数量</span><br><span class="line"></span><br><span class="line">协调者计算各块输出偏移</span><br><span class="line">分配最终输出存储</span><br><span class="line"></span><br><span class="line">并行执行并收口：</span><br><span class="line">    每个块只写自己的输出区间</span><br><span class="line"></span><br><span class="line">协调者校验数量、区间与资源版本</span><br><span class="line">按块序归并需要统一编号的数据</span><br><span class="line">移交结果所有权，结束可写阶段</span><br></pre></td></tr></table></figure>
+<p>这样不需要多个任务同时向同一个动态数组追加，也不需要未经审计就共享一个暂存分配器或去重表。</p>
+<p>如果还需要材质编号、姿态去重或资源索引映射，可以先由各块生成局部结果，再由协调者确定性地归并。不要按工作线程编号或完成先后来分配最终编号，否则调度抖动可能变成输出抖动。</p>
+<p>写入区间不重叠解决的是正确性基础，并不保证性能理想。相邻区间共享缓存行、块间工作量差异过大、归并阶段过重，仍可能抵消并行收益。</p>
+<h3 id="相位批次和子步不要混在一起">5.3
+相位、批次和子步不要混在一起</h3>
+<p>一个呈现准备阶段可以包含多个依赖批次：统计批次完成，才允许填充批次开始。批次只是相位内部的执行结构，不必为每个批次增加一个全局相位。</p>
+<p>整批收口是一种保守、容易审计的实现。若以后需要更细粒度的重叠，可以让某个下游任务在自己的全部前驱完成后被唤醒，而不是等待所有无关工作。改变的是调度粒度，不能改变必要依赖的完成语义。</p>
+<p>固定步仿真又是另一层循环。若本显示帧需要推进多个物理步，每个子步都必须完成自身的必要工作，再进入下一子步。帧级数据提取通常发生在这些子步和后续世界整理完成之后，不能因为“每个阶段都有任务组”，就把不同子步的输入和结果混在一起。</p>
+<h2
+id="六失败路径决定并行接口是否真正安全">六、失败路径决定并行接口是否真正安全</h2>
+<h3 id="取消请求不能替代排空">6.1 取消请求不能替代排空</h3>
+<p>设一个阶段准备提交四个片段：前两个已经接纳，第三个因为队列已满而被拒绝。</p>
+<p>此时不能直接释放输出数组并返回失败。第一个任务可能正在写数组，第二个任务可能刚被工作线程取走。甚至在零工作线程配置下，任务还可能已经由提交者协作执行过。</p>
+<p>安全的处理顺序是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">发现局部提交失败</span><br><span class="line">  → 停止继续接纳</span><br><span class="line">  → 请求取消已经接纳的任务</span><br><span class="line">  → 等待它们全部收口</span><br><span class="line">  → 释放或重建临时输出</span><br><span class="line">  → 返回错误，或执行允许的后备路径</span><br></pre></td></tr></table></figure>
+<p>取消只是表达“不再需要这些结果”。尚未开始的任务可以被跳过，已经执行中的任务通常只能在检查到取消条件后退出，或者完成当前计算后返回。</p>
+<p>排空才保证：不再有这些任务继续访问借用的数据。</p>
+<p>因此，“请求取消后立刻清空容器”和“等待超时后直接析构输入”，都不能构成安全的失败路径。若需要超时返回，必须将仍存活的任务和数据交给另一个明确的生命周期持有者，而不是假定它们已经停止。</p>
+<h3 id="后备执行只能重试可重复的部分">6.2
+后备执行只能重试可重复的部分</h3>
+<p>纯提取任务读取稳定输入，写入可丢弃的临时结果。全部任务排空后，可以丢弃这次输出，按相同输入串行重算。</p>
+<p>但不能因此设计一个通用规则：“并行失败，就把整个阶段重新执行一次。”</p>
+<p>如果阶段包含仿真推进、脚本事件、资源挂载或音频播放，部分操作可能已经发生。整体重试会把副作用执行两遍。</p>
+<p>正确的分界是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">可重复的纯准备：</span><br><span class="line">    排空 → 丢弃临时结果 → 从头串行计算</span><br><span class="line"></span><br><span class="line">已经发生副作用的世界推进：</span><br><span class="line">    不自动重放 → 按失败策略终止或恢复</span><br></pre></td></tr></table></figure>
+<p>后备执行还应区分原因。容量不足或某种可恢复的执行条件，可能允许纯计算重试；世界已经替换、帧已取消、运行环境正在关闭，就不应该靠串行重试“挽救”一个已经失去发布资格的结果。</p>
+<p>另外，排空时不能持有任务结束所必需的锁。若协调者拿着世界锁等待任务，而任务正在等待同一把锁，即使有完善的取消标记，也可能无法结束。</p>
+<h2
+id="七等待是受控执行边界不是任意帮忙">七、等待是受控执行边界，不是任意帮忙</h2>
+<h3 id="为什么普通帧任务不应再嵌套同步批次">7.1
+为什么普通帧任务不应再嵌套同步批次</h3>
+<p>假设工作池有四条线程。四个外层任务分别占住一条线程，每个任务又提交一批子任务并阻塞等待。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">四条工作线程：全部在等子任务</span><br><span class="line">子任务队列：需要工作线程才能继续</span><br></pre></td></tr></table></figure>
+<p>这就是典型的线程池饥饿风险。某些运行时支持任务挂起、继续任务或经过证明的嵌套协作，但不能因为“理论上可以支持”，就默认任何同步等待都安全。</p>
+<p>对于一般帧准备，最容易审计的规则是：同步批次由协调者发起，普通片段任务不再调用需要等待的顶层准备入口。</p>
+<p>把多轮依赖放回协调层即可：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">协调者等待统计批次</span><br><span class="line">协调者计算偏移</span><br><span class="line">协调者等待填充批次</span><br></pre></td></tr></table></figure>
+<p>不必把上述整段流程再包装成一个工作线程任务。</p>
+<p>拥有动态任务生成和专用进度协议的模块，需要单独保留其正确性机制。禁止一般帧任务嵌套等待，不等于可以删除这些模块的内部完成协议。</p>
+<h3 id="协作等待必须有权限和范围">7.2 协作等待必须有权限和范围</h3>
+<p>等待期间，协调者可以执行部分允许的任务，减少空等，也为某些零工作线程配置提供前进能力。</p>
+<p>但“帮助执行”不应理解为从所有队列随便取一个任务。可执行集合至少受到两类约束：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">属于本次允许推进的完成边界</span><br><span class="line">且 位于调用者有能力执行的执行域</span><br></pre></td></tr></table></figure>
+<p>具有线程或专用资源要求的录制任务，不能因为协调者正在等待，就被一个没有对应执行身份的线程顺手执行。串行通道也不能为了推进当前任务而跳过尚未完成的前驱，破坏原有顺序。</p>
+<p>如果当前边界无法由现有工作线程或合法协作执行者推进，就应报告明确原因，或由上层先满足必要条件，而不是无限自旋，更不能偷偷扩大权限。</p>
+<p>零工作线程也不意味着所有执行域都必须自动退回调用线程。纯 CPU
+片段可以支持调用者推进；受限执行域可以明确拒绝接纳，由业务层选择另一种合法策略。</p>
+<h3 id="不要用运行到全局空闲表示帧完成">7.3
+不要用“运行到全局空闲”表示帧完成</h3>
+<p>长期服务可能持续提交解码、编译或网络相关任务。等待全局空闲，会把当前帧的截止时间绑定到与它无关的工作上。</p>
+<p>帧批次应该等待自己的显式成员。其他工作仍可由工作线程正常调度，但不应被计入本帧的完成条件。</p>
+<p>“等待得足够少”并不是漏等，而是把依赖边界描述得足够准确。</p>
+<h2
+id="八任务全部完成之后还差一次安全发布">八、任务全部完成之后，还差一次安全发布</h2>
+<h3 id="算完了不代表结果仍然有效">8.1 算完了，不代表结果仍然有效</h3>
+<p>想象一个加载或准备任务开始时，世界还在运行；任务完成前，用户已经切换了场景。</p>
+<p>旧任务可能成功算出完整结果，但这个结果已经不属于当前世界。任务成功与结果可用，是两件不同的事。</p>
+<p>可以为准备工作携带一个轻量身份：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">世界身份 + 世界代次 + 帧序号</span><br></pre></td></tr></table></figure>
+<p>协调者在开始准备、任务收口、冻结和发布前检查身份。世界替换使旧代失效，本帧取消使当前结果失去发布资格，新帧推进也可以使旧帧不再具有“当前发布者”的资格。</p>
+<p>身份检查并不负责保活。一个弱凭证只能判断结果是否过期，不能让任务安全访问已经析构的世界。受控借用仍然需要窗口内的生命周期保证；跨窗口使用的数据则需要独立持有。</p>
+<p>切换或关闭世界时，可以先使旧身份失效并停止相关接纳，再取消、排空仍持有借用的任务，最后销毁被借用对象。底层执行环境也必须晚于需要借助它完成清理的任务作用域退出。</p>
+<h3 id="不可变数据要覆盖间接引用">8.2 不可变数据要覆盖间接引用</h3>
+<p>把顶层对象标为只读，不代表整个数据包真的不可变。</p>
+<p>它可能仍然指向会被修改的材质参数、骨骼数组、视图缓存或临时调试几何。消费者沿指针继续读取，仍可能重新进入可变世界。</p>
+<p>冻结结果时，应明确区分：</p>
+<ul>
+<li>需要复制或移交的帧级值数据；</li>
+<li>可以共享、但必须持有生命周期并校验版本的资源；</li>
+<li>仅在准备窗口内有效、发布前必须消除的临时借用。</li>
+</ul>
+<p>消费者得到的应是一份封闭、可解释的输入，而不是“顶层只读、内部继续访问活跃世界”的外壳。</p>
+<p>版本校验用于拒绝不匹配的结果，不能让并发读写同一份资源自动变安全。资源仍需采用不可变版本，或由同步协议保护其访问与替换。</p>
+<h3 id="先全部预检再开始外部副作用">8.3
+先全部预检，再开始外部副作用</h3>
+<p>一份帧结果可能包含图像、音频命令、界面和调试数据。若逐份“校验一个、消费一个”，后面某份数据才发现无效时，前面的声音或设备操作可能已经发生。</p>
+<p>更稳健的发布结构是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">完成最后的世界写入</span><br><span class="line">  → 执行必要准备批次并全部收口</span><br><span class="line">  → 归并并冻结各类结果</span><br><span class="line">  → 释放准备期的临时世界借用</span><br><span class="line">  → 预检所有必需结果</span><br><span class="line">  → 取得本帧一次性发布资格</span><br><span class="line">  → 按消费依赖派发</span><br></pre></td></tr></table></figure>
+<p>“任务组封闭”和“数据冻结”在这里是两种动作：前者关闭任务接纳，后者终止数据写入。不能因为任务组已经封闭，就把尚未写完的数据交出去。</p>
+<p>所有必需结果预检完成后，不依赖绘图的音频命令可以先交给音频侧处理，无需等待
+GPU。界面叠加是否依赖场景目标，则由具体消费关系决定。共享发布边界，不意味着所有消费者都必须挂在渲染模块后面，更不意味着增加了独立音频线程。</p>
+<p>这仍然不是跨设备事务。消费开始后，某个设备失败或本帧被取消，已经发生的外部效果未必能够撤销。合理策略是停止后续消费并禁止整包重放，而不是再次发布整帧，让已经应用的音频或其他命令重复发生。</p>
+<p>一次性发布资格也不是全局锁。它用于防止重复发布；世界写入、资源版本变化和跨线程取消，仍需有明确的协调与同步协议。</p>
+<h3 id="当前发布与延迟反馈不应使用同一种过期规则">8.4
+当前发布与延迟反馈，不应使用同一种过期规则</h3>
+<p>发布新帧通常要求身份对应当前可发布帧。但 GPU
+读回、性能时间戳等反馈天然会晚到，不能因为它们来自前几帧就全部丢弃。</p>
+<p>对延迟反馈，更合适的判断通常是：来自同一世界与同一代次，源帧身份有效，并且涉及的对象、视图或输出代次仍然匹配。</p>
+<p>这样既能拒绝旧世界的迟到结果，也不会错误丢弃仍属于当前世界的合法反馈。</p>
+<h2 id="九cpu-批次完成与-gpu-完成之间还有几道边界">九、CPU 批次完成与
+GPU 完成之间，还有几道边界</h2>
+<p>在多层流水线中，“完成”不能只用一个布尔值表示。</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>边界</th>
+<th>已经成立的事实</th>
+<th>仍不能推断的事情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>准备任务收口</td>
+<td>本批 CPU 准备工作不再访问临时输入输出</td>
+<td>结果已经校验并发布</td>
+</tr>
+<tr>
+<td>帧数据发布</td>
+<td>结果满足交接条件，可交给消费者</td>
+<td>CPU 消费或设备执行已经结束</td>
+</tr>
+<tr>
+<td>CPU 消费结束</td>
+<td>对应 CPU 消费者不再读取这些数据</td>
+<td>GPU 不再使用相关资源</td>
+</tr>
+<tr>
+<td>GPU 提交成功</td>
+<td>设备队列接纳了工作</td>
+<td>设备已经完成工作</td>
+</tr>
+<tr>
+<td>GPU 完成确认</td>
+<td>对应提交达到规定的完成条件</td>
+<td>图像已经实际显示到屏幕上</td>
+</tr>
+</tbody>
+</table>
+<p>CPU 命令录制任务可以被 JobSystem
+管理，但录制完成只说明命令准备完毕。命令提交后的设备生命周期仍应由图形后端的完成协议管理。以图形
+API
+的命令缓冲生命周期为例，待执行状态与执行完成后的状态具有不同使用限制，参见
+<a
+target="_blank" rel="noopener" href="https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle">Vulkan
+规范：命令缓冲生命周期</a>。</p>
+<p>工程上可以把大块 CPU 帧数据与 GPU 资源持有关系拆开：CPU
+消费结束、且没有其他读取者后，部分 CPU
+存储可以释放；上传页、命令分配器和设备资源则继续由提交持有物保留，直到真实
+GPU 完成，或确认未提交工作已经安全放弃。</p>
+<p>不能用 CPU 帧号增长、帧数据对象析构或任务组完成，替代真实 GPU
+完成证明。</p>
+<p>这套边界在同线程直接交接时就已经有价值，不需要先增加渲染线程或跨帧队列。若后续要重叠多帧，还必须单独设计背压，并计算“正在构建、等待消费、正在消费”的全部存活数据，而不是只看队列长度。</p>
+<h2
+id="十联动性能看关键路径不看线程有多忙">十、联动性能看关键路径，不看线程有多忙</h2>
+<h3 id="相位时间取决于最晚完成的必要依赖">10.1
+相位时间取决于最晚完成的必要依赖</h3>
+<p>假设一个准备批次包含三个独立片段，纯计算耗时分别为 3、3、2
+个时间单位。在执行资源充足且忽略额外成本的示意模型里，串行需要 8
+个单位，并行下限可以接近 3 个单位。</p>
+<p>但真实耗时还包括提交、排队、同步、缓存竞争、分配与归并。这组数字只是解释模型，不是性能测量。</p>
+<p>如果某个片段承担了大部分工作，即使另外几条线程一直忙碌，也未必缩短关键路径。若统计完成后还必须串行做一次昂贵归并，归并同样会成为阶段下限。</p>
+<p>可以用一个理想化下界帮助思考：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">并行执行时间 ≥ 最大值（总计算工作量 ÷ 可用执行者数量，关键依赖链长度）</span><br></pre></td></tr></table></figure>
+<p>实际系统通常还要加上调度与数据移动成本，而且不同执行域的资源未必可以互换。因此，增加线程数量不能无限缩短一帧。</p>
+<h3 id="粒度预算与队列接纳要一起设计">10.2
+粒度、预算与队列接纳要一起设计</h3>
+<p>任务太小，计算量不足以覆盖提交和同步开销；任务太大，负载不平衡和尾部等待会变重。</p>
+<p>可以设置串行阈值，并依据实例数、骨骼数量、几何展开成本等估计分块，而不是只按固定对象数量盲目平分。一个复杂对象的工作量，可能远大于多个简单对象。</p>
+<p>线程预算应覆盖通用计算、物理和录制等所有执行域，避免各模块都按“机器核心数”创建一整套工作线程。</p>
+<p>另外，帧作用域只是生命周期标签，不会自动给予任务高优先级。帧内关键计算如果与长时后台工作共享执行资源，仍需关注排队延迟、负载隔离和接纳策略。</p>
+<p>有界队列可以在过载时明确拒绝接纳，但它只约束相应队列的排队数量，不自动限制已经运行的任务、同时活跃的队列数量，以及仍被消费者持有的帧数据。内存预算应覆盖这些存活对象。</p>
+<h3 id="测量从排队到发布的整条链">10.3 测量从排队到发布的整条链</h3>
+<p>只测任务函数体，容易遗漏真正的问题。至少应区分：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">提交 → 开始执行：排队延迟</span><br><span class="line">开始 → 结束：计算与执行成本</span><br><span class="line">进入等待 → 批次收口：组等待时间</span><br><span class="line">准备开始 → 发布：整体准备与交接延迟</span><br></pre></td></tr></table></figure>
+<p>还应记录局部提交失败、取消、后备执行、任务粒度和归并成本，并按世界、帧、相位与子步关联。</p>
+<p>等待时间也不能直接等同于线程空闲时间：协作等待期间，协调者可能正在执行任务。诊断时要区分真正阻塞与协作执行。</p>
+<p>调度遥测宜按需开启，避免在每个热路径查询中扫描全部任务状态。没有开启采样，应报告“未测量”，而不是把缺失样本显示成零耗时。</p>
+<h2
+id="十一把整条协同链放进一段伪代码">十一、把整条协同链放进一段伪代码</h2>
+<p>前面的概念可以组合成下面的显示帧协调流程。它是职责示意，不要求每一行都成为新的全局相位。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">推进一个显示帧：</span><br><span class="line">    确认当前线程具有协调权限，且没有重入帧推进</span><br><span class="line">    开始新帧，取得包含世界身份、代次与帧序号的凭证</span><br><span class="line"></span><br><span class="line">    按明确截止点接纳输入和已完成的外部结果</span><br><span class="line">    未完成的服务任务继续留在自己的生命周期内</span><br><span class="line"></span><br><span class="line">    按相位推进本轮仿真准备与入站交接</span><br><span class="line">    如果帧失效：结束本轮，不继续发布</span><br><span class="line"></span><br><span class="line">    对固定步时钟要求的每个子步：</span><br><span class="line">        由协调者调用本步仿真</span><br><span class="line">        允许内部适配器组织受控并行</span><br><span class="line">        等待本步必要任务、依赖通知与资源借用收口</span><br><span class="line">        如果失败：标记本帧失败，结束本轮</span><br><span class="line"></span><br><span class="line">    完成帧级结果整理以及所有影响准备输入的世界写入</span><br><span class="line"></span><br><span class="line">    建立受控读取窗口</span><br><span class="line">    按依赖顺序执行各类数据准备：</span><br><span class="line">        无冲突的纯计算片段 → 同步批次适配器</span><br><span class="line">        必须串行或具有线程要求的工作 → 协调者</span><br><span class="line"></span><br><span class="line">        如果某个纯批次失败：</span><br><span class="line">            先排空该批已接纳任务</span><br><span class="line">            仅当输入仍有效、失败可恢复且计算可重复时：</span><br><span class="line">                丢弃该批临时结果，串行重算纯准备部分</span><br><span class="line">            否则：取消本轮准备，清理后返回失败</span><br><span class="line"></span><br><span class="line">    确认全部必需准备已经收口</span><br><span class="line">    按稳定规则归并，冻结各类结果</span><br><span class="line">    释放临时世界借用，结束读取窗口</span><br><span class="line"></span><br><span class="line">    如果凭证失效或任一必需结果预检失败：</span><br><span class="line">        丢弃未发布结果，不启动消费者</span><br><span class="line"></span><br><span class="line">    取得本帧一次性发布资格</span><br><span class="line">    按消费依赖派发音频、图像、界面等结果</span><br><span class="line">    若中途失败：停止后续消费，不重放已应用的结果</span><br><span class="line"></span><br><span class="line">    设备提交成功后，由实际设备完成协议持有相关资源</span><br><span class="line">    CPU 消费结束后，释放不再被任何 CPU 消费者使用的存储</span><br></pre></td></tr></table></figure>
+<p>所有失败和异常出口，都必须遵守已经建立的清理契约。伪代码中的“结束本轮”不表示可以跳过排空、提前释放活跃任务的数据，也不表示回滚已经完成的仿真或设备副作用。</p>
+<p>这条流程中，帧相位没有被任务系统取代，任务系统也没有变成第二套世界更新规则。相位提供语义顺序，协调者将阶段拆成可完成的工作，JobSystem
+提供受控执行与收口，发布层则负责最后的数据交接。</p>
+<h2 id="十二用边界测试证明联动成立">十二、用边界测试证明联动成立</h2>
+<p>一次成功运行只能证明某条路径走通，不能证明提交拒绝、迟到结果和部分失败时仍然正确。</p>
+<p>测试应围绕边界设置反例：</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>验证场景</th>
+<th>需要证明的性质</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>零、一、多工作线程执行同一纯准备输入</td>
+<td>结果一致、归并顺序稳定，允许的零线程路径能够前进</td>
+</tr>
+<tr>
+<td>提交到一半被拒绝</td>
+<td>已接纳任务全部收口，不遗留访问临时输出的执行者</td>
+</tr>
+<tr>
+<td>某个任务或捕获对象的清理被刻意阻塞</td>
+<td>完成通知不会早于该边界要求的资源收口</td>
+</tr>
+<tr>
+<td>普通帧任务调用需要等待的顶层批次</td>
+<td>明确拒绝或由经过验证的机制处理，不发生隐式嵌套阻塞</td>
+</tr>
+<tr>
+<td>等待者没有某执行域所需能力</td>
+<td>不越权执行，不伪造资源身份</td>
+</tr>
+<tr>
+<td>只等待一个显式任务组</td>
+<td>无关服务任务不会被计入该组的完成条件</td>
+</tr>
+<tr>
+<td>准备期间取消本帧或替换世界</td>
+<td>已接纳工作安全收尾，旧结果不发布</td>
+</tr>
+<tr>
+<td>后一份结果预检失败</td>
+<td>前面的消费者也尚未开始</td>
+</tr>
+<tr>
+<td>重复请求发布，或某消费者已经执行后失败</td>
+<td>不重放整包，不重复已发生的外部效果</td>
+</tr>
+<tr>
+<td>一帧执行多个固定子步</td>
+<td>子步完成边界不混淆，帧级提取读取正确结果</td>
+</tr>
+<tr>
+<td>CPU 已完成而 GPU 仍未完成</td>
+<td>设备使用的资源保持有效</td>
+</tr>
+<tr>
+<td>延迟反馈来自旧世界或旧对象代次</td>
+<td>拒绝错误归属，但保留仍合法的延迟反馈</td>
+</tr>
+</tbody>
+</table>
+<p>这是一份验证设计，不是某套测试已经通过的声明。可以用同步闸门、计数器和受控故障注入精确制造时序，避免依赖“睡眠若干毫秒，任务应该已经开始”这样的概率假设。</p>
+<p>纯准备的串行实现还可以作为参考路径，与并行实现比较字段、数量、稳定编号和资源引用。对于浮点归约或物理求解，则应先定义可重复性要求：固定输入与稳定归并有助于复现，但不自动保证任意平台、线程数下逐比特一致。</p>
+<p>性能验收与正确性验收应分别进行。先确认边界成立，再比较相同负载下的准备时间、队列延迟、等待尾部、内存峰值和端到端延迟。工作线程利用率上升，不能单独作为联动优化成功的证据。</p>
+<h2 id="结语并行不应该削弱时间契约">结语：并行不应该削弱时间契约</h2>
+<p>串行程序把许多保证藏在函数返回里。引入 JobSystem
+之后，这些保证需要被重新表达出来：谁属于当前批次，何时算真正结束，失败后怎样收口，结果是否仍有效，以及哪个消费者可以从哪个边界开始使用它。</p>
+<p>帧相位与任务系统的协同，不是把“先后执行”简单改成“同时执行”，而是把必要的先后变成明确的依赖，把可并行的部分限制在安全窗口内，再用完成与发布协议连接两侧。</p>
+<p><strong>相位告诉我们什么时候可以开始，完成边界告诉我们什么时候可以继续，发布边界告诉我们什么时候可以交付。</strong></p>
+<p>当这三个问题都能被代码和测试回答，更多线程才会成为执行能力的扩展，而不是时间语义的漏洞。</p>
+
+    </div>
+
+    <!-- 标签 -->
+    
+      <div class="post-tags">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+          <path d="M7 7h.01"></path>
+        </svg>
+        
+          <a href="../../tags/Engine/" class="tag-link">Engine</a>
+        
+      </div>
+    
+
+    <!-- 版权信息 -->
+    
+      <div class="post-copyright">
+        <p><strong>本文作者：</strong>Berg Zha</p>
+        <p><strong>本文链接：</strong><a href="https://junglemanpro.com/posts/496458b4/">https://junglemanpro.com/posts/496458b4/</a></p>
+        <p><strong>版权声明：</strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！</p>
+      </div>
+    
+
+    <!-- 上一篇 / 下一篇 -->
+    <nav class="post-nav">
+      
+        <a href="../5623d276/" class="post-nav-item prev">
+          <span class="post-nav-label">上一篇</span>
+          <span class="post-nav-title">游戏引擎-帧相位与执行顺序：从约定到可验证契约</span>
+        </a>
+      
+      
+      
+        <a href="../29be1544/" class="post-nav-item next">
+          <span class="post-nav-label">下一篇</span>
+          <span class="post-nav-title">游戏引擎-JobSystem 与可控并发：任务归属、等待与生命周期</span>
+        </a>
+      
+    </nav>
+  </article>
+
+  <!-- TOC 目录 -->
+  
+    <aside class="post-toc">
+      <div class="toc-wrapper">
+        <h3 class="toc-title">目录</h3>
+        <div class="toc-content">
+          <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E7%9B%B8%E4%BD%8D%E9%A1%BA%E5%BA%8F%E6%AD%A3%E7%A1%AE%E6%95%B0%E6%8D%AE%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BB%8D%E7%84%B6%E5%8F%AF%E8%83%BD%E5%87%BA%E9%94%99"><span class="toc-text">一、相位顺序正确，数据为什么仍然可能出错</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E4%BA%94%E7%A7%8D%E8%BE%B9%E7%95%8C%E5%90%84%E5%8F%B8%E5%85%B6%E8%81%8C"><span class="toc-text">二、五种边界各司其职</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E5%8D%8F%E8%B0%83%E8%80%85%E6%8E%A8%E8%BF%9B%E4%B8%96%E7%95%8C%E5%B7%A5%E4%BD%9C%E8%80%85%E6%89%BF%E6%8B%85%E5%8F%97%E6%8E%A7%E8%AE%A1%E7%AE%97"><span class="toc-text">三、协调者推进世界，工作者承担受控计算</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8D%E8%A6%81%E6%8A%8A%E6%95%B4%E4%B8%AA%E7%B3%BB%E7%BB%9F%E6%9B%B4%E6%96%B0%E4%B8%80%E8%82%A1%E8%84%91%E5%A1%9E%E8%BF%9B%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="toc-text">3.1
+不要把整个系统更新一股脑塞进线程池</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B6%E5%B1%82%E5%8D%8F%E8%B0%83%E4%B8%8E%E5%86%85%E9%83%A8%E5%B9%B6%E8%A1%8C%E5%8F%AF%E4%BB%A5%E5%90%8C%E6%97%B6%E5%AD%98%E5%9C%A8"><span class="toc-text">3.2
+顶层协调与内部并行可以同时存在</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%9F%E4%B8%80%E4%BB%BB%E5%8A%A1%E7%B3%BB%E7%BB%9F%E4%B8%8D%E7%AD%89%E4%BA%8E%E6%89%80%E6%9C%89%E5%B7%A5%E4%BD%9C%E5%85%B1%E7%94%A8%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="toc-text">3.3
+统一任务系统，不等于所有工作共用一个线程池</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E5%AE%8C%E6%88%90%E7%BB%84%E6%8A%8A%E7%AD%89%E5%88%B0%E7%BB%93%E6%9D%9F%E8%AF%B4%E6%B8%85%E6%A5%9A"><span class="toc-text">四、完成组：把“等到结束”说清楚</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8F%90%E4%BA%A4%E7%BB%93%E6%9D%9F%E4%B9%8B%E5%90%8E%E8%BF%98%E9%9C%80%E8%A6%81%E5%B0%81%E9%97%AD%E6%88%90%E5%91%98%E9%9B%86%E5%90%88"><span class="toc-text">4.1
+为什么提交结束之后还需要封闭成员集合</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E5%90%8C%E6%AD%A5%E6%89%B9%E6%AC%A1%E9%80%82%E9%85%8D%E5%99%A8%E5%BA%94%E5%BD%93%E4%BF%9D%E8%AF%81%E4%BB%80%E4%B9%88"><span class="toc-text">4.2
+一个同步批次适配器应当保证什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%8C%E6%88%90%E4%B8%8D%E5%BA%94%E6%97%A9%E4%BA%8E%E4%BB%BB%E5%8A%A1%E6%8D%95%E8%8E%B7%E8%B5%84%E6%BA%90%E7%9A%84%E6%94%B6%E5%8F%A3"><span class="toc-text">4.3
+完成不应早于任务捕获资源的收口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E4%B8%80%E4%B8%AA%E8%90%BD%E5%9C%B0%E4%BE%8B%E5%AD%90%E5%B9%B6%E8%A1%8C%E7%94%9F%E6%88%90%E5%91%88%E7%8E%B0%E6%95%B0%E6%8D%AE"><span class="toc-text">五、一个落地例子：并行生成呈现数据</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%88%E5%BB%BA%E7%AB%8B%E8%AF%BB%E5%8F%96%E7%AA%97%E5%8F%A3%E5%86%8D%E6%B4%BE%E5%8F%91%E4%BB%BB%E5%8A%A1"><span class="toc-text">5.1 先建立读取窗口，再派发任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8A%8A%E5%B9%B6%E8%A1%8C%E6%9C%BA%E4%BC%9A%E6%94%BE%E5%9C%A8%E7%9C%9F%E6%AD%A3%E6%97%A0%E5%86%B2%E7%AA%81%E7%9A%84%E5%B7%A5%E4%BD%9C%E4%B8%8A"><span class="toc-text">5.2
+把并行机会放在真正无冲突的工作上</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9B%B8%E4%BD%8D%E6%89%B9%E6%AC%A1%E5%92%8C%E5%AD%90%E6%AD%A5%E4%B8%8D%E8%A6%81%E6%B7%B7%E5%9C%A8%E4%B8%80%E8%B5%B7"><span class="toc-text">5.3
+相位、批次和子步不要混在一起</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E5%A4%B1%E8%B4%A5%E8%B7%AF%E5%BE%84%E5%86%B3%E5%AE%9A%E5%B9%B6%E8%A1%8C%E6%8E%A5%E5%8F%A3%E6%98%AF%E5%90%A6%E7%9C%9F%E6%AD%A3%E5%AE%89%E5%85%A8"><span class="toc-text">六、失败路径决定并行接口是否真正安全</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%96%E6%B6%88%E8%AF%B7%E6%B1%82%E4%B8%8D%E8%83%BD%E6%9B%BF%E4%BB%A3%E6%8E%92%E7%A9%BA"><span class="toc-text">6.1 取消请求不能替代排空</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%8E%E5%A4%87%E6%89%A7%E8%A1%8C%E5%8F%AA%E8%83%BD%E9%87%8D%E8%AF%95%E5%8F%AF%E9%87%8D%E5%A4%8D%E7%9A%84%E9%83%A8%E5%88%86"><span class="toc-text">6.2
+后备执行只能重试可重复的部分</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E7%AD%89%E5%BE%85%E6%98%AF%E5%8F%97%E6%8E%A7%E6%89%A7%E8%A1%8C%E8%BE%B9%E7%95%8C%E4%B8%8D%E6%98%AF%E4%BB%BB%E6%84%8F%E5%B8%AE%E5%BF%99"><span class="toc-text">七、等待是受控执行边界，不是任意帮忙</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%99%AE%E9%80%9A%E5%B8%A7%E4%BB%BB%E5%8A%A1%E4%B8%8D%E5%BA%94%E5%86%8D%E5%B5%8C%E5%A5%97%E5%90%8C%E6%AD%A5%E6%89%B9%E6%AC%A1"><span class="toc-text">7.1
+为什么普通帧任务不应再嵌套同步批次</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%8F%E4%BD%9C%E7%AD%89%E5%BE%85%E5%BF%85%E9%A1%BB%E6%9C%89%E6%9D%83%E9%99%90%E5%92%8C%E8%8C%83%E5%9B%B4"><span class="toc-text">7.2 协作等待必须有权限和范围</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8D%E8%A6%81%E7%94%A8%E8%BF%90%E8%A1%8C%E5%88%B0%E5%85%A8%E5%B1%80%E7%A9%BA%E9%97%B2%E8%A1%A8%E7%A4%BA%E5%B8%A7%E5%AE%8C%E6%88%90"><span class="toc-text">7.3
+不要用“运行到全局空闲”表示帧完成</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E4%BB%BB%E5%8A%A1%E5%85%A8%E9%83%A8%E5%AE%8C%E6%88%90%E4%B9%8B%E5%90%8E%E8%BF%98%E5%B7%AE%E4%B8%80%E6%AC%A1%E5%AE%89%E5%85%A8%E5%8F%91%E5%B8%83"><span class="toc-text">八、任务全部完成之后，还差一次安全发布</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%97%E5%AE%8C%E4%BA%86%E4%B8%8D%E4%BB%A3%E8%A1%A8%E7%BB%93%E6%9E%9C%E4%BB%8D%E7%84%B6%E6%9C%89%E6%95%88"><span class="toc-text">8.1 算完了，不代表结果仍然有效</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8D%E5%8F%AF%E5%8F%98%E6%95%B0%E6%8D%AE%E8%A6%81%E8%A6%86%E7%9B%96%E9%97%B4%E6%8E%A5%E5%BC%95%E7%94%A8"><span class="toc-text">8.2 不可变数据要覆盖间接引用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%88%E5%85%A8%E9%83%A8%E9%A2%84%E6%A3%80%E5%86%8D%E5%BC%80%E5%A7%8B%E5%A4%96%E9%83%A8%E5%89%AF%E4%BD%9C%E7%94%A8"><span class="toc-text">8.3
+先全部预检，再开始外部副作用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BD%93%E5%89%8D%E5%8F%91%E5%B8%83%E4%B8%8E%E5%BB%B6%E8%BF%9F%E5%8F%8D%E9%A6%88%E4%B8%8D%E5%BA%94%E4%BD%BF%E7%94%A8%E5%90%8C%E4%B8%80%E7%A7%8D%E8%BF%87%E6%9C%9F%E8%A7%84%E5%88%99"><span class="toc-text">8.4
+当前发布与延迟反馈，不应使用同一种过期规则</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9Dcpu-%E6%89%B9%E6%AC%A1%E5%AE%8C%E6%88%90%E4%B8%8E-gpu-%E5%AE%8C%E6%88%90%E4%B9%8B%E9%97%B4%E8%BF%98%E6%9C%89%E5%87%A0%E9%81%93%E8%BE%B9%E7%95%8C"><span class="toc-text">九、CPU 批次完成与
+GPU 完成之间，还有几道边界</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E8%81%94%E5%8A%A8%E6%80%A7%E8%83%BD%E7%9C%8B%E5%85%B3%E9%94%AE%E8%B7%AF%E5%BE%84%E4%B8%8D%E7%9C%8B%E7%BA%BF%E7%A8%8B%E6%9C%89%E5%A4%9A%E5%BF%99"><span class="toc-text">十、联动性能看关键路径，不看线程有多忙</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9B%B8%E4%BD%8D%E6%97%B6%E9%97%B4%E5%8F%96%E5%86%B3%E4%BA%8E%E6%9C%80%E6%99%9A%E5%AE%8C%E6%88%90%E7%9A%84%E5%BF%85%E8%A6%81%E4%BE%9D%E8%B5%96"><span class="toc-text">10.1
+相位时间取决于最晚完成的必要依赖</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B2%92%E5%BA%A6%E9%A2%84%E7%AE%97%E4%B8%8E%E9%98%9F%E5%88%97%E6%8E%A5%E7%BA%B3%E8%A6%81%E4%B8%80%E8%B5%B7%E8%AE%BE%E8%AE%A1"><span class="toc-text">10.2
+粒度、预算与队列接纳要一起设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E9%87%8F%E4%BB%8E%E6%8E%92%E9%98%9F%E5%88%B0%E5%8F%91%E5%B8%83%E7%9A%84%E6%95%B4%E6%9D%A1%E9%93%BE"><span class="toc-text">10.3 测量从排队到发布的整条链</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E6%8A%8A%E6%95%B4%E6%9D%A1%E5%8D%8F%E5%90%8C%E9%93%BE%E6%94%BE%E8%BF%9B%E4%B8%80%E6%AE%B5%E4%BC%AA%E4%BB%A3%E7%A0%81"><span class="toc-text">十一、把整条协同链放进一段伪代码</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%BA%8C%E7%94%A8%E8%BE%B9%E7%95%8C%E6%B5%8B%E8%AF%95%E8%AF%81%E6%98%8E%E8%81%94%E5%8A%A8%E6%88%90%E7%AB%8B"><span class="toc-text">十二、用边界测试证明联动成立</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AF%AD%E5%B9%B6%E8%A1%8C%E4%B8%8D%E5%BA%94%E8%AF%A5%E5%89%8A%E5%BC%B1%E6%97%B6%E9%97%B4%E5%A5%91%E7%BA%A6"><span class="toc-text">结语：并行不应该削弱时间契约</span></a></li></ol>
+        </div>
+      </div>
+    </aside>
+  
+</div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-content">
+      <!-- 版权信息 -->
+      <div class="footer-copyright">
+        <p>
+          &copy; 
+          
+            2024 - 
+          
+          2026 
+          <a href="../../index.html">Berg Zha</a>
+        </p>
+      </div>
+
+      <!-- 社交链接 -->
+      
+        <div class="footer-social">
+          
+          
+          
+        </div>
+      
+
+      <!-- 技术支持 -->
+      <div class="footer-powered">
+        <p>
+          Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a>
+          <span class="separator">|</span>
+          Theme Starter
+        </p>
+      </div>
+
+      <!-- 备案信息 -->
+      
+
+      <!-- 自定义内容 -->
+      
+    </div>
+  </div>
+</footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>与我交流</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
+
+  
+  <!-- 搜索模态框 -->
+  
+    <div id="search-modal" class="search-modal">
+  <div class="search-container">
+    <!-- 搜索头部 -->
+    <div class="search-header">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="搜索文章、文档..." 
+          autocomplete="off"
+          autofocus
+        >
+        <button class="search-close" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="search-shortcut">
+        <kbd>ESC</kbd> 关闭
+        <span class="shortcut-divider">|</span>
+        <kbd>↑</kbd><kbd>↓</kbd> 导航
+        <span class="shortcut-divider">|</span>
+        <kbd>Enter</kbd> 打开
+      </div>
+    </div>
+
+    <!-- 搜索结果 -->
+    <div id="search-results" class="search-results">
+      <div class="search-tip">输入关键词开始搜索</div>
+    </div>
+
+    <!-- 搜索页脚 -->
+    <div class="search-footer">
+      <span class="search-footer-text">
+        <kbd>Ctrl</kbd> + <kbd>K</kbd> 快速搜索
+      </span>
+    </div>
+  </div>
+</div>
+
+  
+
+  <!-- 站点配置 -->
+  <script>
+    window.STARTER_CONFIG = {
+      root: '/',
+      searchEnabled: true
+    };
+  </script>
+
+  <!-- 主脚本 -->
+  
+<script src="../../js/main.js"></script>
+
+  
+  
+    
+<script src="../../js/search.js"></script>
+
+  
+  
+  
+    
+<script src="../../js/doc-sidebar.js"></script>
+
+  
+</body>
+</html>

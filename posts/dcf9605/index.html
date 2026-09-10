@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+<!-- 标题 -->
+<title>渲染管线-延迟渲染：G-Buffer、光照与 Vulkan Subpass | 萤虫之光</title>
+
+<!-- 网站描述 -->
+<meta name="description" content="个人博客">
+<meta name="keywords" content="Lighting,Graphics Pipeline">
+<meta name="author" content="Berg Zha">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="渲染管线-延迟渲染：G-Buffer、光照与 Vulkan Subpass">
+<meta property="og:description" content="个人博客">
+<meta property="og:url" content="https://junglemanpro.com/posts/dcf9605/">
+<meta property="og:site_name" content="萤虫之光">
+
+
+<!-- Favicon -->
+
+<link rel="icon" href="../../img/berg.jpg">
+
+
+<!-- 预连接 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- 字体 -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- 样式表 -->
+
+<link rel="stylesheet" href="../../css/style.css">
+
+
+<!-- RSS -->
+
+
+<!-- 规范链接 -->
+<link rel="canonical" href="https://junglemanpro.com/posts/dcf9605/">
+
+<!-- 主题色 -->
+<meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
+
+<!-- 自定义样式变量 -->
+<style>
+  :root {
+    --primary-color: #2563eb;
+  }
+</style>
+
+<script>
+  MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<meta name="generator" content="Hexo 8.1.2"></head>
+<body>
+  <header class="site-header">
+  <div class="header-container">
+    <!-- Logo / 站点标题 -->
+    <div class="site-brand">
+      <a href="../../index.html" class="site-logo">
+        
+          <span class="site-title">萤虫之光</span>
+        
+      </a>
+    </div>
+
+    <!-- 导航菜单 -->
+    <nav class="site-nav">
+      <ul class="nav-list">
+        
+          <li class="nav-item">
+            
+              <a href="../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../archives" 
+                 class="nav-link ">
+                归档
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
+          </li>
+        
+      </ul>
+    </nav>
+
+    <!-- 工具栏 -->
+    <div class="header-tools">
+      <!-- 搜索按钮 -->
+      
+        <button class="tool-btn search-toggle" aria-label="搜索" title="搜索">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 主题切换 -->
+      
+        <button class="tool-btn theme-toggle" aria-label="切换主题" title="切换主题">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 移动端菜单按钮 -->
+      <button class="tool-btn menu-toggle" aria-label="菜单" title="菜单">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" x2="20" y1="12" y2="12"></line>
+          <line x1="4" x2="20" y1="6" y2="6"></line>
+          <line x1="4" x2="20" y1="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 移动端导航 -->
+  <div class="mobile-nav">
+    <ul class="mobile-nav-list">
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../archives" 
+               class="mobile-nav-link ">
+              归档
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
+        </li>
+      
+    </ul>
+  </div>
+</header>
+
+  
+  <main class="main-content">
+    <div class="container">
+      
+<div class="page-layout post-layout has-toc">
+  <article class="post-article">
+    <!-- 文章头部 -->
+    <header class="post-header">
+      <h1 class="post-title">渲染管线-延迟渲染：G-Buffer、光照与 Vulkan Subpass</h1>
+      
+      <!-- 元信息 -->
+      <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2026-06-06">
+      2026-06-06
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+    <span class="meta-item meta-updated">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+      </svg>
+      <time datetime="2026-09-10">
+        更新于 2026-09-10
+      </time>
+    </span>
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      10.1k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 34 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+</div>
+
+      
+      <!-- 封面图 -->
+      
+    </header>
+
+    
+      <details class="mobile-post-toc">
+        <summary aria-controls="mobile-post-toc-content">
+          <span>文章目录</span>
+          <svg class="toc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </summary>
+        <nav id="mobile-post-toc-content" class="toc-content" aria-label="文章目录">
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF-%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93g-buffer%E5%85%89%E7%85%A7%E4%B8%8E-vulkan-subpass"><span class="toc-text">渲染管线-延迟渲染：G-Buffer、光照与
+Vulkan Subpass</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E6%B8%B2%E6%9F%93%E8%8C%83%E5%BC%8F%E5%8F%98%E9%9D%A9%E4%BB%8E%E6%AD%A3%E5%90%91%E5%88%B0%E5%BB%B6%E8%BF%9F"><span class="toc-text">一、
+渲染范式变革：从正向到延迟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%AD%A3%E5%90%91%E6%B8%B2%E6%9F%93forward-rendering%E7%9A%84%E7%97%9B%E7%82%B9"><span class="toc-text">1. 正向渲染（Forward
+Rendering）的痛点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E7%9A%84%E6%A0%B8%E5%BF%83%E8%A7%A3%E8%80%A6%E6%80%9D%E6%83%B3"><span class="toc-text">2. 延迟渲染的核心解耦思想</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-g-buffer-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AD%98%E5%82%A8%E4%BC%98%E5%8C%96"><span class="toc-text">二、 G-Buffer
+架构设计与存储优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E5%85%B8-g-buffer-%E5%B8%83%E5%B1%80"><span class="toc-text">1. 经典 G-Buffer 布局</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E4%B8%9A%E7%BA%A7-g-buffer-%E5%B8%A6%E5%AE%BD%E4%BC%98%E5%8C%96%E6%89%A9%E5%B1%95"><span class="toc-text">2. 工业级 G-Buffer
+带宽优化扩展</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E7%9A%84%E6%9D%83%E8%A1%A1%E5%88%A9%E5%BC%8A"><span class="toc-text">三、 延迟渲染的权衡利弊</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B1%80%E9%99%90%E6%80%A7%E7%9A%84%E4%B8%BB%E6%B5%81%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-text">局限性的主流解决方案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E5%B7%A5%E7%A8%8B%E5%AE%9E%E7%8E%B0%E5%9F%BA%E4%BA%8E-vulkan-subpass-%E7%9A%84%E7%8E%B0%E4%BB%A3%E7%AE%A1%E7%BA%BF%E5%AE%9E%E8%B7%B5"><span class="toc-text">四、
+工程实现：基于 Vulkan Subpass 的现代管线实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#subpass-0%E5%87%A0%E4%BD%95%E9%98%B6%E6%AE%B5-geometry-pass"><span class="toc-text">1. Subpass 0：几何阶段
+(Geometry Pass)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#subpass-1%E5%BB%B6%E8%BF%9F%E5%85%89%E7%85%A7%E9%98%B6%E6%AE%B5-lighting-pass"><span class="toc-text">2. Subpass 1：延迟光照阶段
+(Lighting Pass)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E6%B7%B7%E5%90%88%E6%B8%B2%E6%9F%93%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%A4%84%E7%90%86%E5%8D%8A%E9%80%8F%E6%98%8E%E4%B8%8E%E8%B0%83%E8%AF%95%E5%87%A0%E4%BD%95%E4%BD%93"><span class="toc-text">五、
+混合渲染工作流：处理半透明与调试几何体</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B7%B1%E5%BA%A6%E5%A4%8D%E7%94%A8%E4%B8%8E%E7%8A%B6%E6%80%81%E9%85%8D%E7%BD%AE-depth-buffer-reuse"><span class="toc-text">深度复用与状态配置 (Depth
+Buffer Reuse)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E8%BF%9B%E9%98%B6%E5%85%89%E7%85%A7%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-text">六、 进阶光照优化策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%89%E4%BD%93%E7%A7%AF%E6%88%AA%E6%96%AD-light-volumes-attenuation-bounds"><span class="toc-text">1. 光体积截断
+(Light Volumes &amp; Attenuation Bounds)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E4%BB%A3%E6%9E%B6%E6%9E%84%E6%BC%94%E8%BF%9Btiled-clustered-deferred-shading"><span class="toc-text">2.
+现代架构演进：Tiled &amp; Clustered Deferred Shading</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83-%E6%80%BB%E7%BB%93"><span class="toc-text">七、 总结</span></a></li></ol></li></ol>
+        </nav>
+      </details>
+    
+
+    <!-- 文章内容 -->
+    <div class="post-content markdown-body">
+      <h1
+id="渲染管线-延迟渲染g-buffer光照与-vulkan-subpass">渲染管线-延迟渲染：G-Buffer、光照与
+Vulkan Subpass</h1>
+<p>延迟渲染（Deferred Shading）是现代图形渲染引擎（如 Unreal
+Engine、Unity HDRP 及自定义 Vulkan/DirectX12
+引擎）中处理多光源场景的核心渲染范式。本文将从<strong>基本原理</strong>、<strong>G-Buffer
+设计</strong>、<strong>Vulkan Subpass
+工程实践</strong>、<strong>混合渲染工作流</strong>到<strong>进阶光照优化</strong>进行全面解构与扩展。</p>
+<hr />
+<h2 id="一-渲染范式变革从正向到延迟">一、
+渲染范式变革：从正向到延迟</h2>
+<h3 id="正向渲染forward-rendering的痛点">1. 正向渲染（Forward
+Rendering）的痛点</h3>
+<p>在传统的正向渲染管线中，光照计算直接在几何体的片元着色器（Fragment
+Shader）阶段执行。渲染复杂度通常表示为： <span
+class="math display">\[\text{Complexity} = O(N_{\text{objects}} \times
+M_{\text{lights}} \times \text{Overdraw})\]</span></p>
+<ul>
+<li><strong>光照计算冗余 (Overdraw Overhead)</strong>：即便启用了
+Early-Z（早期深度测试），在存在复杂遮挡、Alpha
+测试或无序绘制的场景中，许多片元在执行完极耗性能的光照算法后，仍可能在后续测试中被丢弃，造成大量的算力浪费。</li>
+<li><strong>多光源性能骤降</strong>：每增加一个光源，每个受影响的几何体都需要重新绘制一次（或在单个
+Shader
+内用循环遍历所有光源），导致着色器指令膨胀、变体激增，性能随光源数量呈线性甚至指数级下降。</li>
+</ul>
+<h3 id="延迟渲染的核心解耦思想">2. 延迟渲染的核心解耦思想</h3>
+<p>延迟渲染的核心在于<strong>“将几何处理与光照计算彻底解耦”</strong>。整个渲染过程分为两个主阶段：</p>
+<ol type="1">
+<li><strong>几何阶段（Geometry
+Pass）</strong>：渲染场景几何体，但不计算任何光照，仅将光照计算所需的表面属性（位置、法线、材质参数等）写入一组称为
+<strong>G-Buffer（G-缓冲区）</strong> 的帧缓冲附件中。</li>
+<li><strong>光照阶段（Lighting Pass）</strong>：以全屏矩形（Screen
+Quad）或光源体积为驱动，逐像素读取 G-Buffer
+中的信息，统一执行光照计算并输出最终颜色。</li>
+</ol>
+<p>解耦后的计算复杂度降为： <span
+class="math display">\[\text{Complexity} = O(N_{\text{objects}}) +
+O(\text{Screen Pixels} \times M_{\text{visible\_lights}})\]</span></p>
+<p><strong>关键优势</strong>：在此流程下，光照计算仅对<strong>最终在屏幕上可见的像素</strong>执行一次，彻底消除了
+Lighting 阶段的 Overdraw 浪费。</p>
+<hr />
+<h2 id="二-g-buffer-架构设计与存储优化">二、 G-Buffer
+架构设计与存储优化</h2>
+<p>G-Buffer（Geometry Buffer）是连接几何阶段与光照阶段的数据纽带。合理的
+G-Buffer 布局不仅能节约显存空间，还能大幅降低带宽占用。</p>
+<h3 id="经典-g-buffer-布局">1. 经典 G-Buffer 布局</h3>
+<p>以计算 Blinn-Phong 或基础 PBR 光照为例，标准 G-Buffer
+包含以下物理量：</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">附件名称</th>
+<th style="text-align: left;">记录数据</th>
+<th style="text-align: left;">推荐格式</th>
+<th style="text-align: left;">占用内存/像素</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>G-Position</strong></td>
+<td style="text-align: left;">观察空间/世界空间位置 <span
+class="math inline">\((X, Y, Z)\)</span></td>
+<td
+style="text-align: left;"><code>VK_FORMAT_R16G16B16A16_SFLOAT</code></td>
+<td style="text-align: left;">8 Bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>G-Normal</strong></td>
+<td style="text-align: left;">表面法线向量 <span
+class="math inline">\((N_x, N_y, N_z)\)</span></td>
+<td
+style="text-align: left;"><code>VK_FORMAT_R16G16B16A16_SFLOAT</code></td>
+<td style="text-align: left;">8 Bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>G-AlbedoSpec</strong></td>
+<td style="text-align: left;">漫反射颜色 <span class="math inline">\((R,
+G, B)\)</span> + 镜面强度/粗糙度</td>
+<td style="text-align: left;"><code>VK_FORMAT_R8G8B8A8_UNORM</code></td>
+<td style="text-align: left;">4 Bytes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>G-Depth</strong></td>
+<td style="text-align: left;">硬件深度缓冲区 (Depth Buffer)</td>
+<td style="text-align: left;"><code>VK_FORMAT_D32_SFLOAT</code></td>
+<td style="text-align: left;">4 Bytes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="工业级-g-buffer-带宽优化扩展">2. 工业级 G-Buffer
+带宽优化扩展</h3>
+<p>在实际工程中，8 字节/像素的 <code>G-Position</code>
+会带来巨大的显存带宽开销。现代引擎通常采用以下优化手段：</p>
+<ol type="1">
+<li><strong>深度重建位置 (Position Reconstruction from Depth)</strong>：
+<ul>
+<li><strong>原理</strong>：取消独立的 <code>G-Position</code>
+附件。在光照阶段，利用 <code>G-Depth</code> 中的深度值 <span
+class="math inline">\(d\)</span>，结合像素的屏幕坐标 <span
+class="math inline">\((u, v)\)</span>
+和相机的<strong>逆投影矩阵（Inverse Projection
+Matrix）</strong>，实时反算出视空间或世界空间坐标。</li>
+<li><strong>收益</strong>：直接将 G-Buffer 的写出带宽降低约
+<strong>30%~40%</strong>。</li>
+</ul></li>
+<li><strong>法线编码压缩 (Normal Encoding)</strong>：
+<ul>
+<li>利用八面体编码（Octahedral Normal Encoding）将单位法线向量 <span
+class="math inline">\((N_x, N_y, N_z)\)</span> 压缩存储至 2 个 8-bit 或
+16-bit 通道，进一步节省显存。</li>
+</ul></li>
+</ol>
+<hr />
+<h2 id="三-延迟渲染的权衡利弊">三、 延迟渲染的权衡利弊</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">维度</th>
+<th style="text-align: left;">延迟渲染（Deferred Shading）</th>
+<th style="text-align: left;">正向渲染（Forward Rendering）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>多光源扩展性</strong></td>
+<td style="text-align: left;">极其优秀，可轻松支持上千动态光源</td>
+<td style="text-align: left;">较差，受限于 Shader 遍历或多 Pass
+绘制</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Overdraw 消耗</strong></td>
+<td style="text-align: left;">光照计算无 Overdraw</td>
+<td style="text-align: left;">光照计算存在严重 Overdraw</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>半透明渲染</strong></td>
+<td
+style="text-align: left;">原生<strong>不支持</strong>（只能存储单层片元）</td>
+<td style="text-align: left;">原生支持（从后往前排序混合）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>显存与带宽</strong></td>
+<td style="text-align: left;">极高（G-Buffer 频繁读写）</td>
+<td style="text-align: left;">极低（直接写入 Render Target）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>抗锯齿 (AA)</strong></td>
+<td style="text-align: left;">无法原生使用硬件 MSAA</td>
+<td style="text-align: left;">原生完美支持硬件 MSAA</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>材质多样性</strong></td>
+<td style="text-align: left;">受限（所有物体倾向共享同一种 Shader）</td>
+<td style="text-align: left;">灵活（每个物体可独立编写复杂 Shader）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="局限性的主流解决方案">局限性的主流解决方案</h3>
+<ul>
+<li><strong>半透明物体</strong>：使用<strong>混合渲染流</strong>，即先用延迟渲染处理不透明物体，再用正向渲染
+Pass 叠加透明物体。</li>
+<li><strong>硬件 MSAA 缺失</strong>：使用后处理抗锯齿技术（如
+<strong>TAA</strong>、<strong>SMAA</strong> 或
+<strong>FXAA</strong>）。</li>
+<li><strong>材质单一</strong>：在 G-Buffer 中增加 <strong>Material
+ID</strong> 通道，光照阶段根据 ID 进行着色分支处理（Branching）。</li>
+</ul>
+<hr />
+<h2 id="四-工程实现基于-vulkan-subpass-的现代管线实践">四、
+工程实现：基于 Vulkan Subpass 的现代管线实践</h2>
+<p>在移动端 Tile-Based GPU（TBR/TBDR）及现代 PC 显卡架构下，传统的
+Multi-Pass 延迟渲染（将 G-Buffer 写入 VRAM，再从 VRAM
+读取）会导致极高的显存带宽消耗与发热。</p>
+<p>Vulkan 引入了 <strong>Subpass</strong> 和 <strong>Input
+Attachment</strong> 机制，允许 G-Buffer 数据保存在 <strong>Tile
+Memory（片上 SRAM 高速缓存）</strong>
+中，甚至不需要写回主显存，从而实现极其高效的延迟光照。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+-------------------------------------------------------------------+</span><br><span class="line">|                        VkRenderPass                               |</span><br><span class="line">|  +---------------------------+     +---------------------------+  |</span><br><span class="line">|  |     Subpass 0 (Geometry)  |     |     Subpass 1 (Lighting)  |  |</span><br><span class="line">|  |                           |     |                           |  |</span><br><span class="line">|  |  Writes to G-Buffer       |====&gt;|  Reads via subpassInput   |  |</span><br><span class="line">|  |  Attachments              |     |  (Kept in Tile Memory!)   |  |</span><br><span class="line">|  +---------------------------+     +---------------------------+  |</span><br><span class="line">+-------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+<h3 id="subpass-0几何阶段-geometry-pass">1. Subpass 0：几何阶段
+(Geometry Pass)</h3>
+<p>几何 Pass 的使命是将场景物体的表面属性渲染并填入 G-Buffer
+附件中。</p>
+<h4 id="glsl-几何阶段着色器示例-geometry-shader">GLSL 几何阶段着色器示例
+(Geometry Shader)</h4>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 450</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 对应 Vulkan VkSubpassDescription 中 pColorAttachments 的索引</span></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">out</span> <span class="type">vec4</span> gPosition;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">1</span>) <span class="keyword">out</span> <span class="type">vec4</span> gNormal;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">2</span>) <span class="keyword">out</span> <span class="type">vec4</span> gAlbedoSpec;</span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">in</span> <span class="type">vec2</span> inTexCoords;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">1</span>) <span class="keyword">in</span> <span class="type">vec3</span> inFragPos;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">2</span>) <span class="keyword">in</span> <span class="type">vec3</span> inNormal;</span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span> (set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> <span class="type">sampler2D</span> textureDiffuse;</span><br><span class="line"><span class="keyword">layout</span> (set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">1</span>) <span class="keyword">uniform</span> <span class="type">sampler2D</span> textureSpecular;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main()</span><br><span class="line">&#123;    </span><br><span class="line">    <span class="comment">// 1. 存储片段世界/视空间位置向量</span></span><br><span class="line">    gPosition = <span class="type">vec4</span>(inFragPos, <span class="number">1.0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 存储归一化法线向量</span></span><br><span class="line">    gNormal = <span class="type">vec4</span>(<span class="built_in">normalize</span>(inNormal), <span class="number">1.0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 存储漫反射 RGB，并将镜面反射强度 (Specular) 存入 Alpha 通道</span></span><br><span class="line">    gAlbedoSpec.rgb = <span class="built_in">texture</span>(textureDiffuse, inTexCoords).rgb;</span><br><span class="line">    gAlbedoSpec.a   = <span class="built_in">texture</span>(textureSpecular, inTexCoords).r;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h3 id="subpass-1延迟光照阶段-lighting-pass">2. Subpass 1：延迟光照阶段
+(Lighting Pass)</h3>
+<p>在第二个 Subpass 中，G-Buffer 被配置为
+<code>Input Attachments</code>。着色器通过 <code>subpassInput</code>
+内置类型和 <code>subpassLoad()</code>
+函数直接读取<strong>当前像素</strong>在片上缓存中的数据。</p>
+<h4 id="依赖同步-vksubpassdependency-配置">依赖同步
+(VkSubpassDependency) 配置</h4>
+<p>为了确保几何阶段写操作完成后再进行光照读取，必须配置 Subpass
+依赖：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">VkSubpassDependency dependency = &#123;&#125;;</span><br><span class="line">dependency.srcSubpass = <span class="number">0</span>; <span class="comment">// 几何 Subpass</span></span><br><span class="line">dependency.dstSubpass = <span class="number">1</span>; <span class="comment">// 光照 Subpass</span></span><br><span class="line">dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;</span><br><span class="line">dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;</span><br><span class="line">dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;</span><br><span class="line">dependency.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;</span><br><span class="line">dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT; <span class="comment">// 保证像素级按 Region 同步</span></span><br></pre></td></tr></table></figure>
+<h4 id="glsl-光照阶段着色器示例-lighting-shader">GLSL 光照阶段着色器示例
+(Lighting Shader)</h4>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 450</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">out</span> <span class="type">vec4</span> FragColor;</span><br><span class="line"><span class="keyword">layout</span> (<span class="keyword">location</span> = <span class="number">0</span>) <span class="keyword">in</span> <span class="type">vec2</span> inTexCoords;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 在 Vulkan 中使用 subpassInput 直接从片上 Tile 内存中读取像素数据</span></span><br><span class="line"><span class="keyword">layout</span> (input_attachment_index = <span class="number">0</span>, set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> subpassInput inPosition;</span><br><span class="line"><span class="keyword">layout</span> (input_attachment_index = <span class="number">1</span>, set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">1</span>) <span class="keyword">uniform</span> subpassInput inNormal;</span><br><span class="line"><span class="keyword">layout</span> (input_attachment_index = <span class="number">2</span>, set = <span class="number">0</span>, <span class="keyword">binding</span> = <span class="number">2</span>) <span class="keyword">uniform</span> subpassInput inAlbedoSpec;</span><br><span class="line"></span><br><span class="line">struct PointLight &#123;</span><br><span class="line">    <span class="type">vec3</span> position;</span><br><span class="line">    <span class="type">vec3</span> color;</span><br><span class="line">    <span class="type">float</span> intensity;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> <span class="type">int</span> MAX_LIGHTS = <span class="number">32</span>;</span><br><span class="line"><span class="keyword">layout</span> (set = <span class="number">1</span>, <span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> LightBuffer &#123;</span><br><span class="line">    PointLight lights[MAX_LIGHTS];</span><br><span class="line">    <span class="type">vec3</span> viewPos;</span><br><span class="line">    <span class="type">int</span> lightCount;</span><br><span class="line">&#125; ubo;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> main()</span><br><span class="line">&#123;             </span><br><span class="line">    <span class="comment">// 使用 subpassLoad 读取当前像素位置对应的 G-Buffer 属性</span></span><br><span class="line">    <span class="type">vec3</span> fragPos  = subpassLoad(inPosition).rgb;</span><br><span class="line">    <span class="type">vec3</span> normal   = subpassLoad(inNormal).rgb;</span><br><span class="line">    <span class="type">vec3</span> albedo   = subpassLoad(inAlbedoSpec).rgb;</span><br><span class="line">    <span class="type">float</span> specStr = subpassLoad(inAlbedoSpec).a; </span><br><span class="line"></span><br><span class="line">    <span class="comment">// 环境光计算</span></span><br><span class="line">    <span class="type">vec3</span> lighting = albedo * <span class="number">0.1</span>;</span><br><span class="line">    <span class="type">vec3</span> viewDir  = <span class="built_in">normalize</span>(ubo.viewPos - fragPos);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 累加所有光源的光照影响 (Blinn-Phong 算法)</span></span><br><span class="line">    <span class="keyword">for</span>(<span class="type">int</span> i = <span class="number">0</span>; i &lt; ubo.lightCount; ++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="type">vec3</span> lightDir = <span class="built_in">normalize</span>(ubo.lights[i].position - fragPos);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 漫反射 (Diffuse)</span></span><br><span class="line">        <span class="type">float</span> diff = <span class="built_in">max</span>(<span class="built_in">dot</span>(normal, lightDir), <span class="number">0.0</span>);</span><br><span class="line">        <span class="type">vec3</span> diffuse = diff * albedo * ubo.lights[i].color;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 高光 (Specular - Blinn-Phong)</span></span><br><span class="line">        <span class="type">vec3</span> halfWayDir = <span class="built_in">normalize</span>(lightDir + viewDir);</span><br><span class="line">        <span class="type">float</span> spec = <span class="built_in">pow</span>(<span class="built_in">max</span>(<span class="built_in">dot</span>(normal, halfWayDir), <span class="number">0.0</span>), <span class="number">32.0</span>);</span><br><span class="line">        <span class="type">vec3</span> specular = ubo.lights[i].color * spec * specStr;</span><br><span class="line"></span><br><span class="line">        lighting += (diffuse + specular) * ubo.lights[i].intensity;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    FragColor = <span class="type">vec4</span>(lighting, <span class="number">1.0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<hr />
+<h2 id="五-混合渲染工作流处理半透明与调试几何体">五、
+混合渲染工作流：处理半透明与调试几何体</h2>
+<p>延迟渲染无法直接渲染半透明物体（如玻璃、烟雾）或需要特殊着色器的小控件（如光源代理
+3D
+立方体）。通常的解决方案是将管线分为<strong>延迟阶段</strong>与<strong>正向阶段</strong>。</p>
+<h3 id="深度复用与状态配置-depth-buffer-reuse">深度复用与状态配置 (Depth
+Buffer Reuse)</h3>
+<p>传统 OpenGL 做法可能需要调用 <code>glBlitFramebuffer</code>
+拷贝深度缓冲，但在 Vulkan 中，可通过合理的 RenderPass
+规划避免拷贝性能损失：</p>
+<ol type="1">
+<li><strong>共享深度附件</strong>：在随后执行的正向渲染 Pass
+中，直接绑定几何 Pass 所填充的 <code>VkImageView</code> 深度附件。</li>
+<li><strong>深度加载指令</strong>：将该深度附件的加载操作设置为
+<code>VK_ATTACHMENT_LOAD_OP_LOAD</code>，这会完整保留几何阶段写入的场景深度信息。</li>
+<li><strong>管线测试状态</strong>：在正向渲染管线中开启深度测试、关闭深度写入：
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">VkPipelineDepthStencilStateCreateInfo depthStencil = &#123;&#125;;</span><br><span class="line">depthStencil.depthTestEnable  = VK_TRUE;  <span class="comment">// 开启深度测试（保证正确遮挡关系）</span></span><br><span class="line">depthStencil.depthWriteEnable = VK_FALSE; <span class="comment">// 关闭深度写入（避免半透明物体遮挡后续绘制）</span></span><br><span class="line">depthStencil.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;</span><br></pre></td></tr></table></figure></li>
+</ol>
+<hr />
+<h2 id="六-进阶光照优化策略">六、 进阶光照优化策略</h2>
+<p>全屏绘制光照阶段（Screen-space Quad
+Lighting）会导致场景中的每一个像素都遍历计算所有光源，导致 <span
+class="math inline">\(O(\text{Pixels} \times \text{Lights})\)</span>
+的复杂度。在成千上万个动态光源的场景下，性能依然会遭遇瓶颈。</p>
+<h3 id="光体积截断-light-volumes-attenuation-bounds">1. 光体积截断
+(Light Volumes &amp; Attenuation Bounds)</h3>
+<p>由于点光源的照射强度随距离衰减，距离光源较远的片元受到的光照影响微乎其微。我们可以通过数学公式推导出一个<strong>极限受光半径
+<span
+class="math inline">\(R_{\text{light}}\)</span></strong>，并仅在该半径封装的几何体积（如简易球体或网格）覆盖的屏幕区域计算光照。</p>
+<h4 id="点光源衰减公式与半径推导">点光源衰减公式与半径推导</h4>
+<p>常用的点光源衰减方程如下：</p>
+<p><span class="math display">\[
+F_{\text{attenuation}} = \frac{1}{K_c + K_l d + K_q d^2}
+\]</span></p>
+<p>其中： * <span class="math inline">\(d\)</span> 为片元到光源的距离。
+* <span class="math inline">\(K_c\)</span> 为常数项（Constant），<span
+class="math inline">\(K_l\)</span> 为一次线性项（Linear），<span
+class="math inline">\(K_q\)</span> 为二次项（Quadratic）。</p>
+<p>假设定义当光照贡献低于极限色彩阈值 <span
+class="math inline">\(I_{\text{threshold}}\)</span>（例如在 8-bit
+帧缓冲下取值 <span class="math inline">\(I_{\text{threshold}} =
+\frac{5}{256} \approx
+0.0195\)</span>）时，光照视作不可见。令强度边界方程成立：</p>
+<p><span class="math display">\[
+I_{\text{max}} \cdot \frac{1}{K_c + K_l d + K_q d^2} =
+I_{\text{threshold}}
+\]</span></p>
+<p>将其整理为关于距离 <span class="math inline">\(d\)</span>
+的标准一元二次方程：</p>
+<p><span class="math display">\[
+K_q d^2 + K_l d + \left(K_c -
+\frac{I_{\text{max}}}{I_{\text{threshold}}}\right) = 0
+\]</span></p>
+<p>根据一元二次方程求根公式，解得光源的最大影响半径 <span
+class="math inline">\(R_{\text{light}}\)</span> 为：</p>
+<p><span class="math display">\[
+R_{\text{light}} = \frac{-K_l + \sqrt{K_l^2 - 4 K_q \left(K_c -
+\frac{I_{\text{max}}}{I_{\text{threshold}}}\right)}}{2 K_q}
+\]</span></p>
+<h4 id="实施方式">实施方式</h4>
+<p>在光照 Pass 中，不再绘制全屏矩形，而是为每个点光源绘制一个半径为
+<span class="math inline">\(R_{\text{light}}\)</span>
+的低模球体。球体覆盖的像素即为受光影响的像素，大幅缩减了无效片段的
+Lighting Shader 执行次数。</p>
+<hr />
+<h3 id="现代架构演进tiled-clustered-deferred-shading">2.
+现代架构演进：Tiled &amp; Clustered Deferred Shading</h3>
+<p>随着场景光源数量进一步增加（如上万个光源），频繁提交光照几何体（Light
+Volume Proxy）会导致 Draw Call 和几何顶点过高。现代 3D
+引擎采用了更高效的空间分块策略：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">+------------------------+---------------------------------------+</span><br><span class="line">| 渲染技术 (Technology)  | 空间划分维度                           |</span><br><span class="line">+------------------------+---------------------------------------+</span><br><span class="line">| Traditional Deferred   | 全屏幕逐像素处理                      |</span><br><span class="line">| Light Volumes          | 3D 几何代理 (Proxy Sphere/Cone) Mesh  |</span><br><span class="line">| Tiled Deferred         | 2D 屏幕分块 (如 16x16 像素 Tile)       |</span><br><span class="line">| Clustered Deferred     | 3D 空间切块 (2D Tile + Z-Depth 视锥切片)|</span><br><span class="line">+------------------------+---------------------------------------+</span><br></pre></td></tr></table></figure>
+<ol type="1">
+<li><strong>分块延迟渲染 (Tiled Deferred Shading)</strong>：
+<ul>
+<li>将屏幕切割为 <span class="math inline">\(16 \times 16\)</span>
+像素的小块（Tiles）。</li>
+<li>使用 Compute Shader 在视锥体空间内求交，计算每个 Tile
+覆盖的光源列表，将光源索引存入 Buffer。</li>
+<li>光照 Pass 逐像素读取当前 Tile 的光源列表，避免全屏光源遍历。</li>
+</ul></li>
+<li><strong>集群延迟渲染 (Clustered Deferred / Forward+)</strong>：
+<ul>
+<li>在 Tiled 的基础上的，将 View Frustum 在 Z
+轴深度方向上进一步切片，形成 3D 空间栅格（Clusters/Voxels）。</li>
+<li>彻底解决了 2D Tile
+在深度跨度较大时（例如景深极深处与近处物体重叠在同一个
+Tile）导致的<strong>光源误判</strong>与计算浪费。同时，这种集群裁剪思想还能无缝扩展至
+Forward+ 管线，实现透明物体与不透明物体的统一光照管理。</li>
+</ul></li>
+</ol>
+<hr />
+<h2 id="七-总结">七、 总结</h2>
+<p>延迟渲染通过<strong>“空间换时间”</strong>与<strong>“计算解耦”</strong>的思想，为现代
+3D 引擎提供了强大的多光源渲染能力。在工程实践中： * 理解
+<strong>G-Buffer 布局设计</strong>是降低渲染带宽的关键； * 结合
+<strong>Vulkan Subpass 与 Tile Memory</strong> 是移动端与现代图形 API
+发挥硬件极致性能的必然选择； * 配合
+<strong>深度重建位置</strong>、<strong>光体积裁剪</strong> 及
+<strong>Clustered
+方案</strong>，使得千万级光照渲染在实时应用中成为可能。</p>
+
+    </div>
+
+    <!-- 标签 -->
+    
+      <div class="post-tags">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+          <path d="M7 7h.01"></path>
+        </svg>
+        
+          <a href="../../tags/Lighting/" class="tag-link">Lighting</a>
+        
+          <a href="../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
+        
+      </div>
+    
+
+    <!-- 版权信息 -->
+    
+      <div class="post-copyright">
+        <p><strong>本文作者：</strong>Berg Zha</p>
+        <p><strong>本文链接：</strong><a href="https://junglemanpro.com/posts/dcf9605/">https://junglemanpro.com/posts/dcf9605/</a></p>
+        <p><strong>版权声明：</strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！</p>
+      </div>
+    
+
+    <!-- 上一篇 / 下一篇 -->
+    <nav class="post-nav">
+      
+        <a href="../9ee1edb0/" class="post-nav-item prev">
+          <span class="post-nav-label">上一篇</span>
+          <span class="post-nav-title">渲染管线-全屏三角形：无缓冲绘制与片元开销优化</span>
+        </a>
+      
+      
+      
+        <a href="../85c48ccc/" class="post-nav-item next">
+          <span class="post-nav-label">下一篇</span>
+          <span class="post-nav-title">光照技术-级联阴影映射 CSM：视锥分割与稳定阴影</span>
+        </a>
+      
+    </nav>
+  </article>
+
+  <!-- TOC 目录 -->
+  
+    <aside class="post-toc">
+      <div class="toc-wrapper">
+        <h3 class="toc-title">目录</h3>
+        <div class="toc-content">
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF-%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93g-buffer%E5%85%89%E7%85%A7%E4%B8%8E-vulkan-subpass"><span class="toc-text">渲染管线-延迟渲染：G-Buffer、光照与
+Vulkan Subpass</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E6%B8%B2%E6%9F%93%E8%8C%83%E5%BC%8F%E5%8F%98%E9%9D%A9%E4%BB%8E%E6%AD%A3%E5%90%91%E5%88%B0%E5%BB%B6%E8%BF%9F"><span class="toc-text">一、
+渲染范式变革：从正向到延迟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%AD%A3%E5%90%91%E6%B8%B2%E6%9F%93forward-rendering%E7%9A%84%E7%97%9B%E7%82%B9"><span class="toc-text">1. 正向渲染（Forward
+Rendering）的痛点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E7%9A%84%E6%A0%B8%E5%BF%83%E8%A7%A3%E8%80%A6%E6%80%9D%E6%83%B3"><span class="toc-text">2. 延迟渲染的核心解耦思想</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-g-buffer-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AD%98%E5%82%A8%E4%BC%98%E5%8C%96"><span class="toc-text">二、 G-Buffer
+架构设计与存储优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E5%85%B8-g-buffer-%E5%B8%83%E5%B1%80"><span class="toc-text">1. 经典 G-Buffer 布局</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E4%B8%9A%E7%BA%A7-g-buffer-%E5%B8%A6%E5%AE%BD%E4%BC%98%E5%8C%96%E6%89%A9%E5%B1%95"><span class="toc-text">2. 工业级 G-Buffer
+带宽优化扩展</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E7%9A%84%E6%9D%83%E8%A1%A1%E5%88%A9%E5%BC%8A"><span class="toc-text">三、 延迟渲染的权衡利弊</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B1%80%E9%99%90%E6%80%A7%E7%9A%84%E4%B8%BB%E6%B5%81%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-text">局限性的主流解决方案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E5%B7%A5%E7%A8%8B%E5%AE%9E%E7%8E%B0%E5%9F%BA%E4%BA%8E-vulkan-subpass-%E7%9A%84%E7%8E%B0%E4%BB%A3%E7%AE%A1%E7%BA%BF%E5%AE%9E%E8%B7%B5"><span class="toc-text">四、
+工程实现：基于 Vulkan Subpass 的现代管线实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#subpass-0%E5%87%A0%E4%BD%95%E9%98%B6%E6%AE%B5-geometry-pass"><span class="toc-text">1. Subpass 0：几何阶段
+(Geometry Pass)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#subpass-1%E5%BB%B6%E8%BF%9F%E5%85%89%E7%85%A7%E9%98%B6%E6%AE%B5-lighting-pass"><span class="toc-text">2. Subpass 1：延迟光照阶段
+(Lighting Pass)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E6%B7%B7%E5%90%88%E6%B8%B2%E6%9F%93%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%A4%84%E7%90%86%E5%8D%8A%E9%80%8F%E6%98%8E%E4%B8%8E%E8%B0%83%E8%AF%95%E5%87%A0%E4%BD%95%E4%BD%93"><span class="toc-text">五、
+混合渲染工作流：处理半透明与调试几何体</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B7%B1%E5%BA%A6%E5%A4%8D%E7%94%A8%E4%B8%8E%E7%8A%B6%E6%80%81%E9%85%8D%E7%BD%AE-depth-buffer-reuse"><span class="toc-text">深度复用与状态配置 (Depth
+Buffer Reuse)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E8%BF%9B%E9%98%B6%E5%85%89%E7%85%A7%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-text">六、 进阶光照优化策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%89%E4%BD%93%E7%A7%AF%E6%88%AA%E6%96%AD-light-volumes-attenuation-bounds"><span class="toc-text">1. 光体积截断
+(Light Volumes &amp; Attenuation Bounds)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E4%BB%A3%E6%9E%B6%E6%9E%84%E6%BC%94%E8%BF%9Btiled-clustered-deferred-shading"><span class="toc-text">2.
+现代架构演进：Tiled &amp; Clustered Deferred Shading</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83-%E6%80%BB%E7%BB%93"><span class="toc-text">七、 总结</span></a></li></ol></li></ol>
+        </div>
+      </div>
+    </aside>
+  
+</div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-content">
+      <!-- 版权信息 -->
+      <div class="footer-copyright">
+        <p>
+          &copy; 
+          
+            2024 - 
+          
+          2026 
+          <a href="../../index.html">Berg Zha</a>
+        </p>
+      </div>
+
+      <!-- 社交链接 -->
+      
+        <div class="footer-social">
+          
+          
+          
+        </div>
+      
+
+      <!-- 技术支持 -->
+      <div class="footer-powered">
+        <p>
+          Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a>
+          <span class="separator">|</span>
+          Theme Starter
+        </p>
+      </div>
+
+      <!-- 备案信息 -->
+      
+
+      <!-- 自定义内容 -->
+      
+    </div>
+  </div>
+</footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>与我交流</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
+
+  
+  <!-- 搜索模态框 -->
+  
+    <div id="search-modal" class="search-modal">
+  <div class="search-container">
+    <!-- 搜索头部 -->
+    <div class="search-header">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="搜索文章、文档..." 
+          autocomplete="off"
+          autofocus
+        >
+        <button class="search-close" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="search-shortcut">
+        <kbd>ESC</kbd> 关闭
+        <span class="shortcut-divider">|</span>
+        <kbd>↑</kbd><kbd>↓</kbd> 导航
+        <span class="shortcut-divider">|</span>
+        <kbd>Enter</kbd> 打开
+      </div>
+    </div>
+
+    <!-- 搜索结果 -->
+    <div id="search-results" class="search-results">
+      <div class="search-tip">输入关键词开始搜索</div>
+    </div>
+
+    <!-- 搜索页脚 -->
+    <div class="search-footer">
+      <span class="search-footer-text">
+        <kbd>Ctrl</kbd> + <kbd>K</kbd> 快速搜索
+      </span>
+    </div>
+  </div>
+</div>
+
+  
+
+  <!-- 站点配置 -->
+  <script>
+    window.STARTER_CONFIG = {
+      root: '/',
+      searchEnabled: true
+    };
+  </script>
+
+  <!-- 主脚本 -->
+  
+<script src="../../js/main.js"></script>
+
+  
+  
+    
+<script src="../../js/search.js"></script>
+
+  
+  
+  
+    
+<script src="../../js/doc-sidebar.js"></script>
+
+  
+</body>
+</html>

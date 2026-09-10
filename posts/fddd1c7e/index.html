@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+<!-- 标题 -->
+<title>开发工具-RenderDoc 图形调试与性能分析 | 萤虫之光</title>
+
+<!-- 网站描述 -->
+<meta name="description" content="个人博客">
+<meta name="keywords" content="Tooling,Graphics Pipeline">
+<meta name="author" content="Berg Zha">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="开发工具-RenderDoc 图形调试与性能分析">
+<meta property="og:description" content="个人博客">
+<meta property="og:url" content="https://junglemanpro.com/posts/fddd1c7e/">
+<meta property="og:site_name" content="萤虫之光">
+
+
+<!-- Favicon -->
+
+<link rel="icon" href="../../img/berg.jpg">
+
+
+<!-- 预连接 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- 字体 -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- 样式表 -->
+
+<link rel="stylesheet" href="../../css/style.css">
+
+
+<!-- RSS -->
+
+
+<!-- 规范链接 -->
+<link rel="canonical" href="https://junglemanpro.com/posts/fddd1c7e/">
+
+<!-- 主题色 -->
+<meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
+
+<!-- 自定义样式变量 -->
+<style>
+  :root {
+    --primary-color: #2563eb;
+  }
+</style>
+
+<script>
+  MathJax = {
+    options: {
+      // 摘要中的代码变量和截断公式不参与排版，保留正文的公式渲染。
+      ignoreHtmlClass: 'tex2jax_ignore|mathjax_ignore|post-excerpt'
+    },
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    }
+  };
+</script>
+
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<meta name="generator" content="Hexo 8.1.2"></head>
+<body>
+  <header class="site-header">
+  <div class="header-container">
+    <!-- Logo / 站点标题 -->
+    <div class="site-brand">
+      <a href="../../index.html" class="site-logo">
+        
+          <span class="site-title">萤虫之光</span>
+        
+      </a>
+    </div>
+
+    <!-- 导航菜单 -->
+    <nav class="site-nav">
+      <ul class="nav-list">
+        
+          <li class="nav-item">
+            
+              <a href="../../index.html" 
+                 class="nav-link ">
+                首页
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../archives" 
+                 class="nav-link ">
+                归档
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../tags" 
+                 class="nav-link ">
+                标签
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <a href="../../docs/" 
+                 class="nav-link ">
+                文档
+              </a>
+            
+          </li>
+        
+          <li class="nav-item">
+            
+              <button type="button" class="nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+                关于
+              </button>
+            
+          </li>
+        
+      </ul>
+    </nav>
+
+    <!-- 工具栏 -->
+    <div class="header-tools">
+      <!-- 搜索按钮 -->
+      
+        <button class="tool-btn search-toggle" aria-label="搜索" title="搜索">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 主题切换 -->
+      
+        <button class="tool-btn theme-toggle" aria-label="切换主题" title="切换主题">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2"></path>
+            <path d="M12 20v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="m17.66 17.66 1.41 1.41"></path>
+            <path d="M2 12h2"></path>
+            <path d="M20 12h2"></path>
+            <path d="m6.34 17.66-1.41 1.41"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+          </svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+      
+
+      <!-- 移动端菜单按钮 -->
+      <button class="tool-btn menu-toggle" aria-label="菜单" title="菜单">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" x2="20" y1="12" y2="12"></line>
+          <line x1="4" x2="20" y1="6" y2="6"></line>
+          <line x1="4" x2="20" y1="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 移动端导航 -->
+  <div class="mobile-nav">
+    <ul class="mobile-nav-list">
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../index.html" 
+               class="mobile-nav-link ">
+              首页
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../archives" 
+               class="mobile-nav-link ">
+              归档
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../tags" 
+               class="mobile-nav-link ">
+              标签
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <a href="../../docs/" 
+               class="mobile-nav-link ">
+              文档
+            </a>
+          
+        </li>
+      
+        <li class="mobile-nav-item">
+          
+            <button type="button" class="mobile-nav-link about-toggle" aria-haspopup="dialog" aria-controls="about-dialog">
+              关于
+            </button>
+          
+        </li>
+      
+    </ul>
+  </div>
+</header>
+
+  
+  <main class="main-content">
+    <div class="container">
+      
+<div class="page-layout post-layout ">
+  <article class="post-article">
+    <!-- 文章头部 -->
+    <header class="post-header">
+      <h1 class="post-title">开发工具-RenderDoc 图形调试与性能分析</h1>
+      
+      <!-- 元信息 -->
+      <div class="post-meta">
+  <!-- 发布日期 -->
+  <span class="meta-item meta-date">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+      <line x1="16" x2="16" y1="2" y2="6"></line>
+      <line x1="8" x2="8" y1="2" y2="6"></line>
+      <line x1="3" x2="21" y1="10" y2="10"></line>
+    </svg>
+    <time datetime="2025-05-05">
+      2025-05-05
+    </time>
+  </span>
+
+  <!-- 更新日期 -->
+  
+    <span class="meta-item meta-updated">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+      </svg>
+      <time datetime="2026-09-10">
+        更新于 2026-09-10
+      </time>
+    </span>
+  
+
+  <!-- 字数统计 -->
+  
+    <span class="meta-item meta-wordcount">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 6.1H3"></path>
+        <path d="M21 12.1H3"></path>
+        <path d="M15.1 18H3"></path>
+      </svg>
+      
+      7.8k 字
+    </span>
+  
+
+  <!-- 阅读时间 -->
+  
+    <span class="meta-item meta-readtime">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      
+      约 27 分钟
+    </span>
+  
+
+  <!-- 标签（仅在列表页显示前几个） -->
+  
+</div>
+
+      
+      <!-- 封面图 -->
+      
+    </header>
+
+    
+
+    <!-- 文章内容 -->
+    <div class="post-content markdown-body">
+      <ol type="1">
+<li>正确查看 GPU 时间：
+<ol type="1">
+<li>打开 .rdc 捕获。</li>
+<li>菜单选择 Window → Performance Counter Viewer。</li>
+<li>点击 Capture Counters。</li>
+<li>勾选通用计数器 GPU Duration。</li>
+<li>点击 Sample Counters。</li>
+<li>点击 GPU Duration 列，按耗时从大到小排序。 GPU Duration 是事件前后
+GPU timestamp 的差值，单位通常显示为 µs 或 ms。</li>
+</ol></li>
+<li>快速定位目标 Draw 或 Dispatch：
+<ol type="1">
+<li>打开 .rdc 捕获。</li>
+<li>在 Event Browser 中按 Ctrl+F 打开查找栏。</li>
+<li>输入 Pass 标记名、API 调用名或准确的 EID。</li>
+<li>按 Enter 在匹配事件间跳转。</li>
+<li>选中目标事件，并观察 Texture Viewer 中的输出是否对应问题画面。 EID
+按 API 调用顺序递增；先定位到正确事件，再分析管线状态，可以避免在无关
+Draw 上浪费时间。</li>
+</ol></li>
+<li>使用书签在关键事件间快速对比：
+<ol type="1">
+<li>在 Event Browser 中选中正常结果出现前的事件。</li>
+<li>按 Ctrl+B 添加书签。</li>
+<li>对出现异常后的事件重复添加书签。</li>
+<li>点击顶部书签，或使用 Ctrl+1 到 Ctrl+0 在书签间切换。</li>
+<li>对比两个事件的纹理、缓冲区和 Pipeline State。 书签适合比较同一 Pass
+的写入前后状态，也适合在“正常 Draw”和“异常 Draw”之间反复切换。</li>
+</ol></li>
+<li>查看默认隐藏的状态设置调用：
+<ol type="1">
+<li>在 Event Browser 中选中可疑 Draw。</li>
+<li>调整事件过滤器，使状态设置类调用也显示出来。</li>
+<li>打开 Window → API Inspector。</li>
+<li>展开上一个 Action 到当前 Action 之间的 API 调用及参数。</li>
+<li>检查 Shader、资源、Viewport、Scissor 和 Pipeline/PSO 的绑定调用。
+Event Browser 默认主要显示 Action；API Inspector 能补出 Draw
+前发生的状态变化，常用于定位“谁把正确状态覆盖了”。</li>
+</ol></li>
+<li>用 Pipeline State 查找未绑定或绑定错误的资源：
+<ol type="1">
+<li>在 Event Browser 中选中目标 Draw 或 Dispatch。</li>
+<li>打开 Window → Pipeline State。</li>
+<li>依次查看当前参与工作的各个管线阶段。</li>
+<li>打开 Show Unused Items 和 Show Empty Items。</li>
+<li>重点检查红色背景的空绑定，以及格式、Mip 或 Slice 被特殊解释的绑定。
+红色空绑定通常表示 Shader
+可能读取了未绑定资源；蓝色或绿色背景通常表示资源 View
+具有额外的格式或子资源参数。</li>
+</ol></li>
+<li>导出 Pipeline State 比较正常帧与异常帧：
+<ol type="1">
+<li>选中一个结果正确的事件。</li>
+<li>在 Pipeline State 中点击导出按钮，保存为 HTML。</li>
+<li>选中结果错误的对应事件。</li>
+<li>再导出一份 Pipeline State HTML。</li>
+<li>对比两份文件中的 Shader、资源绑定、光栅化、深度模板和混合状态。
+Pipeline State
+导出比截图更完整，适合定位不同帧、不同平台或不同质量档之间的状态差异。</li>
+</ol></li>
+<li>检查 Viewport 和 Scissor 是否裁掉了目标：
+<ol type="1">
+<li>选中没有正确显示的光栅化 Draw。</li>
+<li>在 Texture Viewer 中打开该 Draw 的颜色输出。</li>
+<li>在 Render Overlay 中选择 Viewport/Scissor。</li>
+<li>查看彩色覆盖区域是否包含目标应出现的位置。</li>
+<li>回到 Pipeline State 的光栅化阶段，核对 Viewport、Scissor
+的偏移和尺寸。 Viewport 或 Scissor 的坐标、宽高为零或与 Render Target
+尺寸不匹配，都会让几何体只显示一部分或完全消失。</li>
+</ol></li>
+<li>检查背面剔除和顶点绕序：
+<ol type="1">
+<li>选中可疑 Draw，并在 Texture Viewer 中打开其输出目标。</li>
+<li>在 Render Overlay 中选择 Backface Cull。</li>
+<li>观察目标三角形是否主要被剔除。</li>
+<li>在 Pipeline State 中检查 Cull Mode、Front Face 或 Front CCW。</li>
+<li>在 Mesh Viewer 中确认模型顶点绕序和坐标系方向。
+模型镜像、负缩放或左右手坐标系转换常会反转绕序，使原本的正面被当作背面剔除。</li>
+</ol></li>
+<li>定位深度或模板测试导致的不可见问题：
+<ol type="1">
+<li>选中目标 Draw，并打开当前颜色输出。</li>
+<li>在 Render Overlay 中先选择 Depth Test，再选择 Stencil Test。</li>
+<li>观察通过和失败区域。</li>
+<li>在 Pipeline State 中检查 Depth Enable、Depth Write、Compare
+Function、Stencil Reference 和 Mask。</li>
+<li>打开深度模板纹理，读取目标像素处的实际 Depth 和 Stencil 值。 Depth
+Test
+覆盖中绿色表示至少有片元通过，红色表示该位置没有片元通过；它能快速区分“没有光栅化”和“被测试拒绝”。</li>
+</ol></li>
+<li>检查混合状态和颜色写掩码：
+<ol type="1">
+<li>选中颜色异常或完全透明的 Draw。</li>
+<li>在 Pipeline State 的输出合并阶段找到对应 Render Target 槽位。</li>
+<li>检查 Blend Enable、源/目标因子、Blend Operation 和 Color Write
+Mask。</li>
+<li>在 Texture Viewer 中选择 Clear before Draw 以隔离当前 Draw
+的贡献。</li>
+<li>使用 Pixel History 比较混合前值、Shader 输出值和最终值。 即使 Pixel
+Shader 输出正确，错误的混合因子、Alpha
+或写掩码仍可能让最终颜色保持不变。</li>
+</ol></li>
+<li>用 Mesh Viewer 检查顶点输入和索引：
+<ol type="1">
+<li>选中目标 Draw。</li>
+<li>打开 Window → Mesh Viewer，并切换到 VS Input。</li>
+<li>检查 Index、Position、Normal、UV 等列是否符合预期。</li>
+<li>核对 Pipeline State 中的拓扑、Vertex Buffer 槽、Format、Stride 和
+Offset。</li>
+<li>在 3D 预览中检查三角形是否破碎、拉伸或完全为空。
+大量重复顶点、跳变索引或错位属性通常说明 Index Buffer、Stride、Offset
+或输入布局配置错误。</li>
+</ol></li>
+<li>用 VS Output 判断顶点变换是否正确：
+<ol type="1">
+<li>在 Mesh Viewer 中从 VS Input 切换到 VS Output。</li>
+<li>点击 Reset，使视图回到投影后的默认观察位置。</li>
+<li>检查输出 Position 的 x、y、z、w 数值。</li>
+<li>查找 NaN、Inf、极大值、w 接近零或全部落在裁剪空间外的顶点。</li>
+<li>将异常行与 VS Input 中的同一顶点对照。 VS Input 正常而 VS Output
+异常，通常把问题范围缩小到变换矩阵、常量、骨骼数据或 Vertex Shader
+逻辑。</li>
+</ol></li>
+<li>检查实例化绘制中的单个 Instance：
+<ol type="1">
+<li>选中 Instanced Draw。</li>
+<li>在 Mesh Viewer 顶部选择具体 Instance。</li>
+<li>逐个切换正常和异常的 Instance。</li>
+<li>检查 Instance-rate 属性、Instance Offset 和每实例变换数据。</li>
+<li>在 VS Output 预览中选择 all instances，观察整体分布。
+只有部分实例异常时，优先检查实例步进率、实例索引、矩阵数组边界和实例数据更新时机。</li>
+</ol></li>
+<li>单步调试 Vertex Shader：
+<ol type="1">
+<li>选中目标 Draw 并打开 Mesh Viewer。</li>
+<li>在 VS Input 表格中选中一个异常顶点。</li>
+<li>右键选择 Debug Vertex。</li>
+<li>使用 F10 单步执行，并观察 Inputs、Constants、Locals、Registers 和
+Outputs。</li>
+<li>在关键表达式上设置 Watch，找到数值首次偏离预期的位置。 如果 Debug
+Vertex 不可用，应检查当前 API、Shader 特性以及捕获中是否包含可用的
+Shader 调试信息。</li>
+</ol></li>
+<li>精确读取纹理像素值：
+<ol type="1">
+<li>在 Texture Viewer 中打开目标纹理或 Render Target。</li>
+<li>先选择正确的 Mip、Array Slice、Cubemap Face 和 MSAA Sample。</li>
+<li>在目标位置单击鼠标右键选取像素。</li>
+<li>使用方向键逐像素微调位置。</li>
+<li>在底部状态栏读取坐标和各通道的精确数值。
+拾取到的原始数值不受当前通道开关或显示范围影响，因此比肉眼观察颜色更适合判断精度和编码问题。</li>
+</ol></li>
+<li>用 Pixel History 找出最后一次错误写入：
+<ol type="1">
+<li>在 Texture Viewer 中打开目标输出并选取异常像素。</li>
+<li>点击 Pixel Context 下方的 History。</li>
+<li>查看从帧开始到当前事件之间所有修改该像素的事件。</li>
+<li>展开事件，检查多个 Fragment 的 Shader
+输出、测试结果以及修改前后值。</li>
+<li>跳转到最后一个造成错误结果的事件。 Pixel History
+中绿色通常表示片元通过全部测试，红色表示某项测试失败；它能回答“这个像素是谁写坏的”。</li>
+</ol></li>
+<li>单步调试 Pixel Shader：
+<ol type="1">
+<li>在 Event Browser 中选中要分析的 Draw。</li>
+<li>在其输出目标上选取一个被该 Draw 覆盖的像素。</li>
+<li>点击 Pixel Context 下方的 Debug。</li>
+<li>若同一像素有多个 Fragment，先通过 Pixel History 选定具体
+Fragment。</li>
+<li>使用 F10、Shift+F10 和 Ctrl+F10 单步、回退或运行到光标，并检查 Watch
+和输出值。 Pixel Shader
+调试适合定位纹理采样、法线重建、分支条件、颜色空间和 Alpha
+计算中的数值错误。</li>
+</ol></li>
+<li>单步调试 Compute Shader 线程：
+<ol type="1">
+<li>在 Event Browser 中选中目标 Dispatch。</li>
+<li>打开 Pipeline State 的 Compute Shader 阶段。</li>
+<li>输入要分析的 Group ID 和 Thread ID。</li>
+<li>点击 Debug，进入 Shader Debugger。</li>
+<li>检查常量、SRV、UAV、线程索引、组共享内存和最终写入地址。
+应先用输出资源确定异常元素的索引，再换算成 Group ID 和 Thread
+ID；调试能力取决于 API、Shader 指令和 RenderDoc 版本。</li>
+</ol></li>
+<li>检查 Constant Buffer 中的实际变量值：
+<ol type="1">
+<li>选中目标 Draw 或 Dispatch。</li>
+<li>在 Pipeline State 的对应 Shader 阶段找到 Constant Buffer。</li>
+<li>点击 Go 图标打开变量视图。</li>
+<li>检查矩阵、向量、数组、布尔值和动态偏移。</li>
+<li>在相邻事件间切换，观察数据是否在预期时机更新。
+重点检查矩阵行列主序、结构体对齐、数组步长和过期数据；这些问题往往不会产生
+API 错误，却会直接破坏 Shader 结果。</li>
+</ol></li>
+<li>用 Buffer Viewer 解码 Structured Buffer 或 UAV：
+<ol type="1">
+<li>从 Pipeline State 或 Resource Inspector 打开目标 Buffer。</li>
+<li>设置正确的字节 Offset 和 Length。</li>
+<li>在格式栏中按 Shader 结构定义成员类型、数组和布局规则。</li>
+<li>检查关键行是否存在零值、越界样式数据、NaN 或异常索引。</li>
+<li>必要时将结果导出为 CSV，或导出原始字节做进一步比较。 自定义 Buffer
+Format 能把不可读的十六进制数据还原为结构化字段；格式、Packing 和实际
+GPU 内存布局必须保持一致。</li>
+</ol></li>
+<li>用通道、范围和直方图显示隐藏的纹理信息：
+<ol type="1">
+<li>在 Texture Viewer 中打开目标纹理。</li>
+<li>右键 R、G、B 或 A 按钮，仅显示单个通道。</li>
+<li>调整 Black Point 和 White Point，或使用 Auto-fit。</li>
+<li>打开 Histogram 查看数值分布。</li>
+<li>根据资源含义切换 Gamma Display 和 Alpha Checkerboard。
+这套方法适合查看 HDR、法线、Mask、AO、粗糙度和
+Alpha；“看起来全黑”经常只是有效值不在默认 [0, 1] 显示范围内。</li>
+</ol></li>
+<li>逐个检查 Mip、Slice、Face 和 MSAA Sample：
+<ol type="1">
+<li>在 Texture Viewer 中打开多子资源纹理。</li>
+<li>依次切换每个 Mip Level。</li>
+<li>对数组纹理或 3D 纹理切换 Slice，对 Cubemap 切换 Face。</li>
+<li>对 MSAA 纹理分别查看单个 Sample 和 Resolve 结果。</li>
+<li>在问题坐标读取数值并比较各子资源差异。 错误的 Subresource View、LOD
+选择或 Resolve 过程，常表现为只有特定距离、眼睛、级联或 Sample
+出现异常。</li>
+</ol></li>
+<li>快速标记 NaN、Inf、负值和越界范围：
+<ol type="1">
+<li>打开可疑的浮点纹理或 Render Target。</li>
+<li>在 Render Overlay 中选择 NaN/Inf/-ve display。</li>
+<li>根据红色、绿色和蓝色高亮定位 NaN、Inf 和负值像素。</li>
+<li>再选择 Clipping，查看低于 Black Point 或高于 White Point
+的区域。</li>
+<li>对高亮位置执行 Pixel History 或 Pixel Debug。
+该技巧适合追查除零、未初始化数据、非法开方、法线归一化失败以及 HDR
+数值爆炸。</li>
+</ol></li>
+<li>隔离当前 Draw 实际覆盖和写入的区域：
+<ol type="1">
+<li>选中目标光栅化 Draw，并打开其 Render Target。</li>
+<li>在 Render Overlay 中选择 Highlight Drawcall，确认屏幕覆盖范围。</li>
+<li>切换到 Wireframe Mesh，检查几何边界和三角形密度。</li>
+<li>切换到 Clear before Draw，去掉之前内容对当前结果的干扰。</li>
+<li>对比三种视图，判断问题属于几何、覆盖、混合还是颜色太接近背景。 这些
+Overlay 只对相关的光栅化 Draw 有意义；若 Overlay
+为空，应先确认选中的事件和输出目标是否正确。</li>
+</ol></li>
+<li>用 Quad Overdraw 查找像素着色浪费：
+<ol type="1">
+<li>选中要分析的 Draw 或 Render Pass 内事件。</li>
+<li>在 Texture Viewer 中打开颜色输出。</li>
+<li>在 Render Overlay 中选择 Quad Overdraw (Draw)。</li>
+<li>再选择 Quad Overdraw (Pass) 查看截至当前事件的累计结果。</li>
+<li>对高 Overdraw 区域检查透明层、粒子、UI、遮挡顺序和 Depth Prepass。
+Quad Overdraw 以 2×2 像素 Quad 为单位统计执行压力，适合发现大量重复
+Pixel Shader 执行和边缘辅助像素开销。</li>
+</ol></li>
+<li>用 Triangle Size 判断微小三角形问题：
+<ol type="1">
+<li>选中目标 Draw 或 Pass 内事件。</li>
+<li>在 Render Overlay 中选择 Triangle Size (Draw)。</li>
+<li>再选择 Triangle Size (Pass) 查看累计分布。</li>
+<li>找出大量只覆盖少数像素的区域。</li>
+<li>回到 Mesh Viewer 检查 LOD、细分级别和远处模型密度。
+大量微小三角形会降低光栅化效率；应结合画质要求考虑 LOD、网格简化和
+Tessellation 上限。</li>
+</ol></li>
+<li>沿资源 Usage 追踪生产者和消费者：
+<ol type="1">
+<li>在 Texture Viewer 缩略图或 Pipeline State 中右键目标资源。</li>
+<li>打开 Resource Inspector。</li>
+<li>查看 Usage in Frame 中的 EID 范围和读写类型。</li>
+<li>跳转到最后一次写入、第一次异常读取和中间的 Copy/Resolve 事件。</li>
+<li>检查 Related Resources 和 Resource Initialisation Parameters。
+资源追踪适合定位错误的 Render Target、Ping-Pong
+资源、View、别名资源，以及“读到了上一帧内容”的问题。</li>
+</ol></li>
+<li>检查 Shader 接口、源码和反汇编：
+<ol type="1">
+<li>在 Pipeline State 中选中目标 Shader 阶段。</li>
+<li>点击 Shader 旁的 Go 图标打开 Shader Viewer。</li>
+<li>对照 Input Signature 和 Output Signature 的
+Semantic、Location、类型和插值方式。</li>
+<li>查看原始源码与 DXBC、DXIL、SPIR-V 等反汇编。</li>
+<li>若有多个 Disassembly Target，选择可用的硬件 ISA 或其他表示继续分析。
+接口不匹配会导致属性丢失或通道错位；反汇编还能确认编译器是否消除了分支、使用了预期精度及生成了昂贵指令。</li>
+</ol></li>
+<li>临时替换 Shader 验证问题范围：
+<ol type="1">
+<li>在 Pipeline State 中找到目标 Shader。</li>
+<li>点击 Shader 旁的 Edit 按钮。</li>
+<li>做最小诊断修改，例如输出固定颜色、绕过一个分支或屏蔽一次纹理采样。</li>
+<li>按 F5 或点击 Apply changes 编译并应用。</li>
+<li>观察画面变化；关闭编辑窗口即可恢复捕获中的原 Shader。
+替换会影响捕获中所有使用该 Shader 的事件，而不只影响当前
+Draw，因此修改应保持单一变量，便于建立因果关系。</li>
+</ol></li>
+<li>开启 API Validation 并从错误消息跳回事件：
+<ol type="1">
+<li>在 Capture Options 中勾选 Enable API validation。</li>
+<li>重新启动应用并捕获可复现问题的帧。</li>
+<li>打开 Window → Debug Messages。</li>
+<li>按 Severity 和 Category 检查错误、警告及性能提示。</li>
+<li>双击消息，跳转到触发该消息的 EID。 API Validation
+能发现非法资源状态、描述符错误和同步问题，但会增加运行开销，性能测量时应另取关闭
+Validation 的捕获进行复核。</li>
+</ol></li>
+</ol>
+
+    </div>
+
+    <!-- 标签 -->
+    
+      <div class="post-tags">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+          <path d="M7 7h.01"></path>
+        </svg>
+        
+          <a href="../../tags/Tooling/" class="tag-link">Tooling</a>
+        
+          <a href="../../tags/Graphics-Pipeline/" class="tag-link">Graphics Pipeline</a>
+        
+      </div>
+    
+
+    <!-- 版权信息 -->
+    
+      <div class="post-copyright">
+        <p><strong>本文作者：</strong>Berg Zha</p>
+        <p><strong>本文链接：</strong><a href="https://junglemanpro.com/posts/fddd1c7e/">https://junglemanpro.com/posts/fddd1c7e/</a></p>
+        <p><strong>版权声明：</strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！</p>
+      </div>
+    
+
+    <!-- 上一篇 / 下一篇 -->
+    <nav class="post-nav">
+      
+        <a href="../d50397d2/" class="post-nav-item prev">
+          <span class="post-nav-label">上一篇</span>
+          <span class="post-nav-title">光照技术-环境光遮蔽 AO：多尺度遮蔽与 PBR 融合</span>
+        </a>
+      
+      
+      
+        <a href="../8d2f85fc/" class="post-nav-item next">
+          <span class="post-nav-label">下一篇</span>
+          <span class="post-nav-title">性能优化-移动 GPU 缓存与 TBDR：带宽、能效与延迟渲染</span>
+        </a>
+      
+    </nav>
+  </article>
+
+  <!-- TOC 目录 -->
+  
+</div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-content">
+      <!-- 版权信息 -->
+      <div class="footer-copyright">
+        <p>
+          &copy; 
+          
+            2024 - 
+          
+          2026 
+          <a href="../../index.html">Berg Zha</a>
+        </p>
+      </div>
+
+      <!-- 社交链接 -->
+      
+        <div class="footer-social">
+          
+          
+          
+        </div>
+      
+
+      <!-- 技术支持 -->
+      <div class="footer-powered">
+        <p>
+          Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a>
+          <span class="separator">|</span>
+          Theme Starter
+        </p>
+      </div>
+
+      <!-- 备案信息 -->
+      
+
+      <!-- 自定义内容 -->
+      
+    </div>
+  </div>
+</footer>
+
+
+  <!-- 关于弹框 -->
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-details">
+  <div class="about-header">
+    <h2 id="about-title">关于</h2>
+    <button type="button" class="tool-btn about-close" aria-label="关闭关于" autofocus>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </button>
+  </div>
+  <dl id="about-details" class="about-details">
+    <div class="about-item">
+      <dt>我是谁</dt>
+      <dd>一个热爱底层渲染的人</dd>
+    </div>
+    <div class="about-item">
+      <dt>与我交流</dt>
+      <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
+    </div>
+  </dl>
+</dialog>
+
+  
+  <!-- 搜索模态框 -->
+  
+    <div id="search-modal" class="search-modal">
+  <div class="search-container">
+    <!-- 搜索头部 -->
+    <div class="search-header">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="搜索文章、文档..." 
+          autocomplete="off"
+          autofocus
+        >
+        <button class="search-close" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="search-shortcut">
+        <kbd>ESC</kbd> 关闭
+        <span class="shortcut-divider">|</span>
+        <kbd>↑</kbd><kbd>↓</kbd> 导航
+        <span class="shortcut-divider">|</span>
+        <kbd>Enter</kbd> 打开
+      </div>
+    </div>
+
+    <!-- 搜索结果 -->
+    <div id="search-results" class="search-results">
+      <div class="search-tip">输入关键词开始搜索</div>
+    </div>
+
+    <!-- 搜索页脚 -->
+    <div class="search-footer">
+      <span class="search-footer-text">
+        <kbd>Ctrl</kbd> + <kbd>K</kbd> 快速搜索
+      </span>
+    </div>
+  </div>
+</div>
+
+  
+
+  <!-- 站点配置 -->
+  <script>
+    window.STARTER_CONFIG = {
+      root: '/',
+      searchEnabled: true
+    };
+  </script>
+
+  <!-- 主脚本 -->
+  
+<script src="../../js/main.js"></script>
+
+  
+  
+    
+<script src="../../js/search.js"></script>
+
+  
+  
+  
+    
+<script src="../../js/doc-sidebar.js"></script>
+
+  
+</body>
+</html>
