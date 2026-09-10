@@ -232,7 +232,8 @@
   
   <main class="main-content">
     <div class="container">
-      <div class="page-layout post-layout">
+      
+<div class="page-layout post-layout has-toc">
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
@@ -299,6 +300,44 @@
       <!-- 封面图 -->
       
     </header>
+
+    
+      <details class="mobile-post-toc">
+        <summary aria-controls="mobile-post-toc-content">
+          <span>文章目录</span>
+          <svg class="toc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </summary>
+        <nav id="mobile-post-toc-content" class="toc-content" aria-label="文章目录">
+          <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E5%85%88%E6%8A%8A-layout%E5%90%8C%E6%AD%A5%E5%92%8C%E9%A9%BB%E7%95%99%E4%BD%8D%E7%BD%AE%E6%8B%86%E5%BC%80"><span class="toc-text">一、先把
+Layout、同步和驻留位置拆开</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E6%99%AE%E9%80%9A-layout-transition%E9%87%8D%E7%9A%84%E5%88%B0%E5%BA%95%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">二、普通 Layout
+Transition：重的到底是什么？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#tile-store-%E5%BE%80%E5%BE%80%E6%9D%A5%E8%87%AA%E7%BB%93%E6%9E%9C%E8%BF%98%E5%BE%97%E6%B4%BB%E7%9D%80"><span class="toc-text">1. Tile Store
+往往来自“结果还得活着”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#afbc-ubwc-%E4%B8%8D%E6%98%AF%E6%AF%8F%E6%9D%A1-transition-%E9%83%BD%E8%A6%81%E9%87%8D%E5%81%9A%E7%9A%84%E5%8C%85%E8%A3%85%E5%B7%A5%E5%BA%8F"><span class="toc-text">2. AFBC &#x2F; UBWC
+不是每条 Transition 都要重做的包装工序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#availability-visibility-%E4%B8%8D%E7%AD%89%E4%BA%8E%E6%B8%85%E7%A9%BA%E6%89%80%E6%9C%89-l1l2"><span class="toc-text">3. Availability &#x2F;
+Visibility 不等于清空所有 L1&#x2F;L2</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#pipeline-barrier-%E4%B8%8D%E7%AD%89%E4%BA%8E-device-wait-idle"><span class="toc-text">4. Pipeline Barrier
+不等于 Device Wait Idle</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89subpass-%E7%9A%84%E7%9C%9F%E6%AD%A3%E4%BB%B7%E5%80%BC%E6%8A%8A%E4%B8%80%E8%88%AC%E7%BA%B9%E7%90%86%E8%AF%BB%E5%8F%96%E5%8F%98%E6%88%90%E5%B1%80%E9%83%A8%E4%BD%BF%E7%94%A8%E5%90%88%E5%90%8C"><span class="toc-text">三、Subpass
+的真正价值：把一般纹理读取变成局部使用合同</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#by_region-%E6%8F%8F%E8%BF%B0%E7%9A%84%E6%98%AF-framebuffer-local%E4%B8%8D%E6%98%AF%E5%9B%BA%E5%AE%9A-1616-%E5%B1%8F%E9%9A%9C"><span class="toc-text">1.
+BY_REGION 描述的是 framebuffer-local，不是固定 16×16 屏障</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#subpassload-%E9%99%90%E5%88%B6%E4%BA%86%E8%AE%BF%E9%97%AE%E6%96%B9%E5%BC%8F%E4%BD%86%E4%B8%8D%E6%89%BF%E8%AF%BA%E6%9F%90%E6%9D%A1%E8%B7%A8%E5%8E%82%E5%95%86%E6%8C%87%E4%BB%A4"><span class="toc-text">2. subpassLoad
+限制了访问方式，但不承诺某条跨厂商指令</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E5%8A%A8-layout-transition-%E4%BB%8D%E7%84%B6%E5%AD%98%E5%9C%A8"><span class="toc-text">3. 自动 Layout Transition
+仍然存在</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%8C%E4%B8%80%E4%B8%AA-vkrenderpass%E4%B8%8D%E4%BF%9D%E8%AF%81%E4%B8%80%E4%B8%AA%E7%A1%AC%E4%BB%B6%E6%B8%B2%E6%9F%93-pass"><span class="toc-text">4. “同一个
+VkRenderPass”不保证“一个硬件渲染 Pass”</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E5%85%88%E6%8C%91%E5%AF%B9%E5%B7%A5%E4%BD%9Csubpass-%E6%89%8D%E6%9C%89%E6%84%8F%E4%B9%89"><span class="toc-text">四、先挑对工作，Subpass
+才有意义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E4%B8%80%E4%B8%AA%E5%8F%AF%E4%BB%A5%E8%90%BD%E5%88%B0%E5%B7%A5%E7%A8%8B%E9%87%8C%E7%9A%84%E5%8F%8C-subpass-%E6%A1%88%E4%BE%8B"><span class="toc-text">五、一个可以落到工程里的双
+Subpass 案例</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9A%E4%B9%89%E9%99%84%E4%BB%B6%E8%80%8C%E4%B8%8D%E6%98%AF%E5%85%88%E5%86%99-nextsubpass"><span class="toc-text">1. 定义附件，而不是先写
+NextSubpass</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%99%E4%B8%AD%E9%97%B4%E7%BB%93%E6%9E%9C%E5%AE%8C%E6%95%B4%E7%9A%84-transient-%E5%90%88%E5%90%8C"><span class="toc-text">2. 给中间结果完整的 transient
+合同</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%8E%E7%A1%AE%E6%AF%8F%E4%B8%AA-subpass-%E7%9A%84%E9%99%84%E4%BB%B6%E5%BC%95%E7%94%A8"><span class="toc-text">3. 明确每个 subpass 的附件引用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%80%E5%85%B3%E9%94%AE%E7%9A%84%E4%BE%9D%E8%B5%96%E5%86%99%E7%9A%84%E6%98%AF%E9%99%84%E4%BB%B6%E4%B8%8D%E6%98%AF-storage-image"><span class="toc-text">4.
+最关键的依赖：写的是附件，不是 storage image</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E7%A7%8D%E7%BC%96%E5%8F%B7%E5%BF%85%E9%A1%BB%E5%90%8C%E6%97%B6%E5%AF%B9%E4%B8%8A"><span class="toc-text">5. 三种编号必须同时对上</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%B0%E5%BD%95%E5%91%BD%E4%BB%A4%E5%8F%AA%E6%98%AF%E6%9C%80%E5%90%8E%E4%B8%80%E6%AD%A5"><span class="toc-text">6. 记录命令只是最后一步</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E7%AE%97%E4%B8%A4%E6%9C%AC%E9%A2%84%E7%AE%97%E5%A4%96%E5%AD%98%E5%BE%80%E8%BF%94%E4%B8%8E%E7%89%87%E4%B8%8A%E5%B7%A5%E4%BD%9C%E9%9B%86"><span class="toc-text">六、算两本预算：外存往返与片上工作集</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%96%E5%AD%98%E8%B4%A6%E8%BF%99%E4%B8%AA%E4%BE%8B%E5%AD%90%E6%9C%80%E5%A4%9A%E8%83%BD%E5%8F%96%E6%B6%88%E5%93%AA%E4%B8%80%E7%AC%94%E6%90%AC%E8%BF%90"><span class="toc-text">1.
+外存账：这个例子最多能取消哪一笔搬运？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%87%E4%B8%8A%E8%B4%A6%E5%88%AB%E5%8F%AA%E6%95%B0-g-buffer%E5%BF%98%E4%BA%86-hdr-%E8%BE%93%E5%87%BA"><span class="toc-text">2. 片上账：别只数
+G-Buffer，忘了 HDR 输出</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B0%8F%E6%94%B9%E6%A0%BC%E5%BC%8F%E6%9C%89%E6%97%B6%E6%AF%94%E5%BC%BA%E8%A1%8C%E5%90%88%E5%B9%B6%E6%9B%B4%E5%A4%9A-subpass-%E6%9B%B4%E6%9C%89%E6%95%88"><span class="toc-text">3.
+小改格式，有时比强行合并更多 subpass 更有效</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B8%A6%E5%AE%BD%E4%B8%8B%E9%99%8D%E4%BA%86gpu-%E6%97%B6%E9%97%B4%E5%8D%B4%E6%B2%A1%E4%B8%8B%E9%99%8D"><span class="toc-text">七、为什么带宽下降了，GPU
+时间却没下降？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E4%BA%94%E7%A7%8D%E6%9C%80%E5%AE%B9%E6%98%93%E6%8A%8A%E6%94%B6%E7%9B%8A%E5%81%9A%E6%B2%A1%E7%9A%84%E6%94%B9%E6%B3%95"><span class="toc-text">八、五种最容易把收益做没的改法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8A%8A%E5%85%A8%E5%B1%80%E4%BE%9D%E8%B5%96%E4%BC%AA%E8%A3%85%E6%88%90-by_region"><span class="toc-text">1. 把全局依赖伪装成 BY_REGION</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%B4%E6%97%B6%E9%99%84%E4%BB%B6%E5%90%8E%E6%9D%A5%E5%8F%88%E6%8B%BF%E5%8E%BB%E9%87%87%E6%A0%B7%E6%88%AA%E5%9B%BE%E6%88%96%E8%B0%83%E8%AF%95"><span class="toc-text">2.
+“临时”附件后来又拿去采样、截图或调试</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8A%8A%E8%BE%93%E5%85%A5%E8%AF%BB%E5%8F%96%E5%92%8C%E5%90%8C-subpass-%E5%8F%8D%E9%A6%88%E7%8E%AF%E6%B7%B7%E4%B8%BA%E4%B8%80%E8%B0%88"><span class="toc-text">3. 把输入读取和同 subpass
+反馈环混为一谈</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E9%94%AE%E6%8A%8A%E6%89%80%E6%9C%89-g-buffer-%E5%8D%87%E7%BA%A7%E6%88%90-4-msaa"><span class="toc-text">4. 一键把所有 G-Buffer 升级成
+4× MSAA</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BA%86%E8%AE%A1%E6%95%B0%E5%A5%BD%E7%9C%8B%E7%AF%A1%E6%94%B9%E8%B5%84%E6%BA%90%E5%A3%B0%E6%98%8E"><span class="toc-text">5. 为了计数好看，篡改资源声明</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E6%80%8E%E4%B9%88%E8%AF%81%E6%98%8E%E9%A9%B1%E5%8A%A8%E7%9C%9F%E7%9A%84%E9%87%87%E7%94%A8%E4%BA%86%E4%BD%A0%E6%83%B3%E8%A6%81%E7%9A%84%E8%B7%AF%E5%BE%84"><span class="toc-text">九、怎么证明驱动真的采用了你想要的路径？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%AD%A3%E7%A1%AE%E6%80%A7%E5%85%88%E7%A1%AE%E8%AE%A4%E7%94%BB%E7%9A%84%E6%98%AF%E5%90%8C%E4%B8%80%E4%BB%B6%E4%BA%8B"><span class="toc-text">1. 正确性：先确认画的是同一件事</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%89%A7%E8%A1%8C%E7%BB%93%E6%9E%84%E9%80%BB%E8%BE%91%E5%90%88%E5%B9%B6%E4%B8%8D%E6%98%AF%E7%89%A9%E7%90%86%E5%90%88%E5%B9%B6"><span class="toc-text">2.
+执行结构：逻辑合并不是物理合并</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%A7%E5%93%81%E6%94%B6%E7%9B%8A%E5%90%8C%E6%97%B6%E8%AE%B0%E5%BD%95%E4%B8%89%E7%B1%BB%E9%A2%84%E7%AE%97"><span class="toc-text">3. 产品收益：同时记录三类预算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81dynamic-rendering-local-read%E5%90%8C%E4%B8%80%E4%B8%AA%E7%9B%AE%E6%A0%87%E4%B8%8D%E6%98%AF%E4%BB%BB%E6%84%8F%E8%AF%BB%E5%86%99%E8%AE%B8%E5%8F%AF%E8%AF%81"><span class="toc-text">十、Dynamic
+Rendering Local Read：同一个目标，不是任意读写许可证</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%81%E4%B8%80%E8%90%BD%E5%9C%B0%E8%B7%AF%E7%BA%BF%E6%8C%89%E4%BB%80%E4%B9%88%E9%A1%BA%E5%BA%8F%E6%8A%95%E5%85%A5%E6%89%8D%E5%88%92%E7%AE%97"><span class="toc-text">十一、落地路线：按什么顺序投入才划算？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93subpass-%E6%98%AF%E5%B1%80%E9%83%A8%E6%80%A7%E5%90%88%E5%90%8C%E4%B8%8D%E6%98%AF%E9%9B%B6%E6%88%90%E6%9C%AC%E6%89%BF%E8%AF%BA"><span class="toc-text">总结：Subpass
+是局部性合同，不是零成本承诺</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-text">参考资料</span></a></li></ol></li></ol>
+        </nav>
+      </details>
+    
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
@@ -1243,7 +1282,7 @@ Rendering Local Read：同一个目标，不是任意读写许可证</span></a><
       <dd>一个热爱底层渲染的人</dd>
     </div>
     <div class="about-item">
-      <dt>联系我</dt>
+      <dt>与我交流</dt>
       <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
     </div>
   </dl>

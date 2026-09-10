@@ -232,7 +232,8 @@
   
   <main class="main-content">
     <div class="container">
-      <div class="page-layout post-layout">
+      
+<div class="page-layout post-layout has-toc">
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
@@ -299,6 +300,30 @@
       <!-- 封面图 -->
       
     </header>
+
+    
+      <details class="mobile-post-toc">
+        <summary aria-controls="mobile-post-toc-content">
+          <span>文章目录</span>
+          <svg class="toc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </summary>
+        <nav id="mobile-post-toc-content" class="toc-content" aria-label="文章目录">
+          <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9E%B6%E6%9E%84%E9%80%89%E5%9E%8B%E5%AF%B9%E6%AF%94%E4%B8%AA%E4%BA%BA%E7%89%88-vs-%E5%9B%A2%E9%98%9F%E7%89%88"><span class="toc-text">1. 架构选型对比：个人版 vs
+团队版</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E7%A1%80%E7%B3%BB%E7%BB%9F%E5%87%86%E5%A4%87debian-1112"><span class="toc-text">2. 基础系统准备（Debian 11&#x2F;12）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3-docker-%E5%AE%98%E6%96%B9%E6%BA%90%E5%AE%89%E8%A3%85%E9%97%AE%E9%A2%98"><span class="toc-text">2.1 解决 Docker 官方源安装问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E6%A0%87%E5%87%86%E5%B7%A5%E4%BD%9C%E7%9B%AE%E5%BD%95"><span class="toc-text">2.2 创建标准工作目录</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B9%E6%A1%88-a%E4%B8%AA%E4%BA%BA%E6%9E%81%E7%AE%80%E8%BD%BB%E9%87%8F%E7%89%88%E9%83%A8%E7%BD%B2%E6%8E%A8%E8%8D%90%E5%8D%95%E4%BA%BA%E5%B0%8F%E5%86%85%E5%AD%98-vps"><span class="toc-text">3. 方案
+A：个人极简轻量版部署（推荐单人&#x2F;小内存 VPS）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E9%85%8D%E7%BD%AE.env"><span class="toc-text">3.1 环境变量配置：.env</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B7%AF%E7%94%B1%E4%B8%8E%E8%B4%A6%E5%8F%B7%E6%B1%A0%E9%85%8D%E7%BD%AEconfig.yaml"><span class="toc-text">3.2
+路由与账号池配置：config.yaml</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%B9%E5%99%A8%E7%BC%96%E6%8E%92docker-compose.yml"><span class="toc-text">3.3
+容器编排：docker-compose.yml</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8%E4%B8%8E%E9%AA%8C%E8%AF%81"><span class="toc-text">3.4 启动与验证</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B9%E6%A1%88-b%E5%9B%A2%E9%98%9F%E5%A4%9A%E7%A7%9F%E6%88%B7%E9%85%8D%E9%A2%9D%E7%89%88%E9%83%A8%E7%BD%B2%E5%B8%A6%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%8E-web-ui"><span class="toc-text">4. 方案
+B：团队多租户配额版部署（带数据库与 Web UI）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E8%A7%84%E5%88%92"><span class="toc-text">4.1 配置文件规划</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%B9%E5%99%A8%E7%BC%96%E6%8E%92docker-compose.yml-1"><span class="toc-text">4.2
+容器编排：docker-compose.yml</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%9F%E6%88%90%E4%B8%8E%E7%AE%A1%E7%90%86%E8%99%9A%E6%8B%9F-keyvirtual-key"><span class="toc-text">4.3 生成与管理虚拟 Key（Virtual
+Key）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%A2%E6%88%B7%E7%AB%AF%E6%8E%A5%E5%85%A5%E6%8C%87%E5%8D%97"><span class="toc-text">5. 客户端接入指南</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8E%A5%E5%85%A5%E4%B8%89%E8%A6%81%E7%B4%A0"><span class="toc-text">5.1 接入三要素</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8E%A5%E5%85%A5%E6%96%B9%E5%BC%8F%E7%A4%BA%E4%BE%8B"><span class="toc-text">5.2 接入方式示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E6%88%98%E9%81%BF%E5%9D%91%E6%8C%87%E5%8D%97%E6%A0%B8%E5%BF%83%E7%BB%8F%E9%AA%8C"><span class="toc-text">6. 实战避坑指南（核心经验）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9D%91-1%E4%B8%AD%E8%BD%AC%E7%AB%99%E4%B8%80%E5%BC%80%E5%8D%95%E6%A0%B8-cpu-%E5%8D%A0%E7%94%A8-100%E6%9C%8D%E5%8A%A1%E5%99%A8ssh-%E5%8D%A1%E6%AD%BB"><span class="toc-text">坑
+1：中转站一开，单核 CPU 占用 100%，服务器&#x2F;SSH 卡死</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9D%91-2%E8%B4%A6%E5%8F%B7%E6%B1%A0%E6%9C%AA%E7%94%9F%E6%95%88%E8%AF%B7%E6%B1%82%E6%B2%A1%E6%9C%89%E8%BD%AE%E8%AF%A2%E4%B8%94%E4%B8%8D%E4%BC%9A%E5%88%87%E5%8F%B7"><span class="toc-text">坑
+2：账号池未生效，请求没有轮询且不会切号</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9D%91-3docker-%E4%B8%8E%E6%9C%8D%E5%8A%A1%E5%99%A8-vpn-%E8%8A%82%E7%82%B9%E4%BB%A3%E7%90%86%E5%86%B2%E7%AA%81"><span class="toc-text">坑 3：Docker 与服务器 VPN
+&#x2F; 节点代理冲突</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9D%91-4%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90%E5%8D%A1%E9%A1%BF%E8%BF%9F%E9%92%9D%E6%88%96%E4%B8%80%E6%AC%A1%E6%80%A7%E5%90%90%E5%87%BAsse-%E6%B5%81%E5%BC%8F%E5%A4%B1%E6%95%88"><span class="toc-text">坑
+4：代码生成卡顿、迟钝或一次性吐出（SSE 流式失效）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9D%91-5openai-key-%E7%B1%BB%E5%9E%8B%E9%80%89%E6%8B%A9%E4%B8%8E%E6%9D%83%E9%99%90%E5%AE%89%E5%85%A8"><span class="toc-text">坑 5：OpenAI Key
+类型选择与权限安全</span></a></li></ol></li></ol>
+        </nav>
+      </details>
+    
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
@@ -654,7 +679,7 @@ Key）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-l
       <dd>一个热爱底层渲染的人</dd>
     </div>
     <div class="about-item">
-      <dt>联系我</dt>
+      <dt>与我交流</dt>
       <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
     </div>
   </dl>

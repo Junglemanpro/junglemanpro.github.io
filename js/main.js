@@ -132,28 +132,51 @@
     });
   }
 
+  // ===== 移动端文章目录 =====
+  function initMobileToc() {
+    const toc = document.querySelector(".mobile-post-toc");
+    if (!toc) return;
+
+    // 先折叠目录，再让平滑滚动计算目标位置，避免展开高度造成偏移。
+    toc.querySelectorAll('a[href^="#"]').forEach(function (link) {
+      link.addEventListener("click", function () {
+        toc.open = false;
+      });
+    });
+    toc.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && toc.open) {
+        toc.open = false;
+        toc.querySelector("summary").focus({ preventScroll: true });
+        event.stopPropagation();
+      }
+    });
+  }
+
+  function getAnchorOffset() {
+    const headerHeight = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue("--header-height")) || 64;
+    const mobileToc = document.querySelector(".mobile-post-toc");
+    const tocHeight = mobileToc && mobileToc.getClientRects().length
+      ? mobileToc.querySelector("summary").getBoundingClientRect().height + 8
+      : 0;
+    return headerHeight + tocHeight + 20;
+  }
+
   // ===== TOC 高亮 =====
   function initTocHighlight() {
-    const toc = document.querySelector(".toc-content");
-    if (!toc) return;
+    const tocs = document.querySelectorAll(".toc-content");
+    if (!tocs.length) return;
 
     const headings = document.querySelectorAll(
       ".markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4"
     );
     if (headings.length === 0) return;
 
-    const headerHeight =
-      parseInt(
-        getComputedStyle(document.documentElement).getPropertyValue(
-          "--header-height"
-        )
-      ) || 64;
-    const offset = headerHeight + 20;
-
-    let activeLink = null;
+    let activeId = null;
 
     function updateActiveHeading() {
       let current = null;
+      const offset = getAnchorOffset();
 
       headings.forEach(function (heading) {
         const rect = heading.getBoundingClientRect();
@@ -164,14 +187,17 @@
 
       if (current) {
         const id = current.id;
-        const link = toc.querySelector('a[href="#' + id + '"]');
-
-        if (link && link !== activeLink) {
-          if (activeLink) {
-            activeLink.parentElement.classList.remove("active");
-          }
-          link.parentElement.classList.add("active");
-          activeLink = link;
+        if (id !== activeId) {
+          tocs.forEach(function (toc) {
+            toc.querySelectorAll("li.active").forEach(function (item) {
+              item.classList.remove("active");
+            });
+            const link = Array.from(toc.querySelectorAll('a[href^="#"]')).find(function (item) {
+              return decodeURIComponent(item.hash.slice(1)) === id;
+            });
+            if (link) link.parentElement.classList.add("active");
+          });
+          activeId = id;
         }
       }
     }
@@ -302,20 +328,13 @@
         const href = this.getAttribute("href");
         if (href === "#") return;
 
-        const target = document.querySelector(href);
+        const target = document.getElementById(decodeURIComponent(href.slice(1)));
         if (target) {
           e.preventDefault();
-          const headerHeight =
-            parseInt(
-              getComputedStyle(document.documentElement).getPropertyValue(
-                "--header-height"
-              )
-            ) || 64;
           const top =
             target.getBoundingClientRect().top +
             window.pageYOffset -
-            headerHeight -
-            20;
+            getAnchorOffset();
 
           window.scrollTo({
             top: top,
@@ -324,6 +343,10 @@
 
           // 更新 URL
           history.pushState(null, null, href);
+          if (this.closest(".mobile-post-toc")) {
+            target.setAttribute("tabindex", "-1");
+            target.focus({ preventScroll: true });
+          }
         }
       });
     });
@@ -402,6 +425,7 @@
     initThemeToggle();
     initMobileMenu();
     initAboutDialog();
+    initMobileToc();
     initTocHighlight();
     initLightbox();
     initLazyLoad();

@@ -232,7 +232,8 @@
   
   <main class="main-content">
     <div class="container">
-      <div class="page-layout post-layout">
+      
+<div class="page-layout post-layout has-toc">
   <article class="post-article">
     <!-- 文章头部 -->
     <header class="post-header">
@@ -299,6 +300,30 @@
       <!-- 封面图 -->
       
     </header>
+
+    
+      <details class="mobile-post-toc">
+        <summary aria-controls="mobile-post-toc-content">
+          <span>文章目录</span>
+          <svg class="toc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </summary>
+        <nav id="mobile-post-toc-content" class="toc-content" aria-label="文章目录">
+          <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B8%B2%E6%9F%93%E7%AE%A1%E7%BA%BF-%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93g-buffer%E5%85%89%E7%85%A7%E4%B8%8E-vulkan-subpass"><span class="toc-text">渲染管线-延迟渲染：G-Buffer、光照与
+Vulkan Subpass</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E6%B8%B2%E6%9F%93%E8%8C%83%E5%BC%8F%E5%8F%98%E9%9D%A9%E4%BB%8E%E6%AD%A3%E5%90%91%E5%88%B0%E5%BB%B6%E8%BF%9F"><span class="toc-text">一、
+渲染范式变革：从正向到延迟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%AD%A3%E5%90%91%E6%B8%B2%E6%9F%93forward-rendering%E7%9A%84%E7%97%9B%E7%82%B9"><span class="toc-text">1. 正向渲染（Forward
+Rendering）的痛点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E7%9A%84%E6%A0%B8%E5%BF%83%E8%A7%A3%E8%80%A6%E6%80%9D%E6%83%B3"><span class="toc-text">2. 延迟渲染的核心解耦思想</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-g-buffer-%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AD%98%E5%82%A8%E4%BC%98%E5%8C%96"><span class="toc-text">二、 G-Buffer
+架构设计与存储优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E5%85%B8-g-buffer-%E5%B8%83%E5%B1%80"><span class="toc-text">1. 经典 G-Buffer 布局</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E4%B8%9A%E7%BA%A7-g-buffer-%E5%B8%A6%E5%AE%BD%E4%BC%98%E5%8C%96%E6%89%A9%E5%B1%95"><span class="toc-text">2. 工业级 G-Buffer
+带宽优化扩展</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-%E5%BB%B6%E8%BF%9F%E6%B8%B2%E6%9F%93%E7%9A%84%E6%9D%83%E8%A1%A1%E5%88%A9%E5%BC%8A"><span class="toc-text">三、 延迟渲染的权衡利弊</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B1%80%E9%99%90%E6%80%A7%E7%9A%84%E4%B8%BB%E6%B5%81%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-text">局限性的主流解决方案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E5%B7%A5%E7%A8%8B%E5%AE%9E%E7%8E%B0%E5%9F%BA%E4%BA%8E-vulkan-subpass-%E7%9A%84%E7%8E%B0%E4%BB%A3%E7%AE%A1%E7%BA%BF%E5%AE%9E%E8%B7%B5"><span class="toc-text">四、
+工程实现：基于 Vulkan Subpass 的现代管线实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#subpass-0%E5%87%A0%E4%BD%95%E9%98%B6%E6%AE%B5-geometry-pass"><span class="toc-text">1. Subpass 0：几何阶段
+(Geometry Pass)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#subpass-1%E5%BB%B6%E8%BF%9F%E5%85%89%E7%85%A7%E9%98%B6%E6%AE%B5-lighting-pass"><span class="toc-text">2. Subpass 1：延迟光照阶段
+(Lighting Pass)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E6%B7%B7%E5%90%88%E6%B8%B2%E6%9F%93%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%A4%84%E7%90%86%E5%8D%8A%E9%80%8F%E6%98%8E%E4%B8%8E%E8%B0%83%E8%AF%95%E5%87%A0%E4%BD%95%E4%BD%93"><span class="toc-text">五、
+混合渲染工作流：处理半透明与调试几何体</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B7%B1%E5%BA%A6%E5%A4%8D%E7%94%A8%E4%B8%8E%E7%8A%B6%E6%80%81%E9%85%8D%E7%BD%AE-depth-buffer-reuse"><span class="toc-text">深度复用与状态配置 (Depth
+Buffer Reuse)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E8%BF%9B%E9%98%B6%E5%85%89%E7%85%A7%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-text">六、 进阶光照优化策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%89%E4%BD%93%E7%A7%AF%E6%88%AA%E6%96%AD-light-volumes-attenuation-bounds"><span class="toc-text">1. 光体积截断
+(Light Volumes &amp; Attenuation Bounds)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%B0%E4%BB%A3%E6%9E%B6%E6%9E%84%E6%BC%94%E8%BF%9Btiled-clustered-deferred-shading"><span class="toc-text">2.
+现代架构演进：Tiled &amp; Clustered Deferred Shading</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83-%E6%80%BB%E7%BB%93"><span class="toc-text">七、 总结</span></a></li></ol></li></ol>
+        </nav>
+      </details>
+    
 
     <!-- 文章内容 -->
     <div class="post-content markdown-body">
@@ -747,7 +772,7 @@ Buffer Reuse)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class
       <dd>一个热爱底层渲染的人</dd>
     </div>
     <div class="about-item">
-      <dt>联系我</dt>
+      <dt>与我交流</dt>
       <dd><a href="mailto:bergzha@gmail.com">bergzha@gmail.com</a></dd>
     </div>
   </dl>
