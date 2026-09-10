@@ -2,6 +2,24 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://junglemanpro.com/posts/b6cb97c0/</loc>
+    
+    <lastmod>2026-09-10</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://junglemanpro.com/posts/ab78a68f/</loc>
+    
+    <lastmod>2026-09-10</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>https://junglemanpro.com/posts/99c1ef2/</loc>
     
     <lastmod>2026-09-10</lastmod>
@@ -83,15 +101,6 @@
   </url>
   
   <url>
-    <loc>https://junglemanpro.com/posts/b6cb97c0/</loc>
-    
-    <lastmod>2026-09-10</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
     <loc>https://junglemanpro.com/posts/39398621/</loc>
     
     <lastmod>2026-09-10</lastmod>
@@ -164,15 +173,6 @@
   </url>
   
   <url>
-    <loc>https://junglemanpro.com/posts/5623d276/</loc>
-    
-    <lastmod>2026-09-10</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
     <loc>https://junglemanpro.com/posts/b8c2564b/</loc>
     
     <lastmod>2026-09-10</lastmod>
@@ -183,6 +183,15 @@
   
   <url>
     <loc>https://junglemanpro.com/posts/1566474a/</loc>
+    
+    <lastmod>2026-09-10</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://junglemanpro.com/posts/5623d276/</loc>
     
     <lastmod>2026-09-10</lastmod>
     
@@ -210,15 +219,6 @@
   
   <url>
     <loc>https://junglemanpro.com/posts/29be1544/</loc>
-    
-    <lastmod>2026-09-10</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://junglemanpro.com/posts/ab78a68f/</loc>
     
     <lastmod>2026-09-10</lastmod>
     
@@ -259,13 +259,6 @@
   </url>
   
   <url>
-    <loc>https://junglemanpro.com/tags/Tooling/</loc>
-    <lastmod>2026-09-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
     <loc>https://junglemanpro.com/tags/Graphics-Pipeline/</loc>
     <lastmod>2026-09-10</lastmod>
     <changefreq>weekly</changefreq>
@@ -274,6 +267,13 @@
   
   <url>
     <loc>https://junglemanpro.com/tags/Optimization/</loc>
+    <lastmod>2026-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://junglemanpro.com/tags/Tooling/</loc>
     <lastmod>2026-09-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
